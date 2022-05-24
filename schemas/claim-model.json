@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "Claim",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "type": ["string", "object"],
+      "title": "subject",
+      "maxLength": 200,
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      }
+    },
+    "claim": {
+      "type": "string",
+      "title": "claim",
+      "maxLength": 200
+    },
+    "object": {
+      "type": ["string", "object"],
+      "title": "subject",
+      "maxLength": 200,
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      }
+    },
+    "qualifier": {
+      "type": "string",
+      "title": "qualifier",
+      "maxLength": 200
+    },
+    "aspect": {
+      "type": "string",
+      "title": "aspect",
+      "maxLength": 200
+    },
+    "howKnown": {
+      "type": "string",
+      "title": "howKnown",
+      "maxLength": 200
+    },
+    "source": {
+      "type": "string",
+      "title": "source",
+      "maxLength": 200
+    },
+    "effectiveDate": {
+      "type": "string",
+      "title": "effectiveDate",
+      "maxLength": 200,
+      "format": "date-time"
+    },
+    "confidence": {
+      "type": "number",
+      "title": "confidence",
+      "maximum": 5,
+      "minimum": 1
+    },
+    "reviewRating": {
+      "type": "number",
+      "title": "reviewRating",
+      "maximum": 5,
+      "minimum": 1
+    }
+  },
+  "required": [
+    "subject",
+    "claim",
+    "object",
+    "howKnown",
+    "source",
+    "effectiveDate"
+  ]
+}
