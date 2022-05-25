@@ -8,6 +8,10 @@ import { fromString } from "uint8arrays";
 import claimSchema from "./schemas/claim-model.json";
 
 // The key must be provided as an environment variable
+if (!process.env.DID_KEY) {
+  console.error("DID_KEY is needed as environment variable.");
+  process.exit(9);
+}
 const key = fromString(process.env.DID_KEY, "base16");
 // Create and authenticate the DID
 const did = new DID({
