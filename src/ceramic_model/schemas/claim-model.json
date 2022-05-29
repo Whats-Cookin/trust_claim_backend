@@ -4,14 +4,9 @@
   "type": "object",
   "properties": {
     "subject": {
-      "type": ["string", "object"],
+      "type": "string",
       "title": "subject",
-      "maxLength": 200,
-      "patternProperties": {
-        "^.*$": {
-          "type": "string"
-        }
-      }
+      "maxLength": 200
     },
     "claim": {
       "type": "string",
@@ -19,14 +14,9 @@
       "maxLength": 200
     },
     "object": {
-      "type": ["string", "object"],
-      "title": "subject",
-      "maxLength": 200,
-      "patternProperties": {
-        "^.*$": {
-          "type": "string"
-        }
-      }
+      "type": "string",
+      "title": "object",
+      "maxLength": 200
     },
     "qualifier": {
       "type": "string",
@@ -51,7 +41,6 @@
     "effectiveDate": {
       "type": "string",
       "title": "effectiveDate",
-      "maxLength": 200,
       "format": "date-time"
     },
     "confidence": {

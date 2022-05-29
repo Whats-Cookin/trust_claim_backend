@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model ClaimSchema {
+  id         Int          @id @default(autoincrement())
+  alias      String
+  ceramicId  String
+  createdAt  DateTime     @default(now())
+  ClaimTile  ClaimTile[]
+  ClaimModel ClaimModel[]
+}
+
+model ClaimDefinition {
+  id        Int      @id @default(autoincrement())
+  alias     String
+  ceramicId String
+  createdAt DateTime @default(now())
+}
+
+model ClaimModel {
+  id              Int         @id @default(autoincrement())
+  definitionAlias String
+  definitionValue String
+  schemaAlias     String
+  schemaValue     String
+  schemaRef       ClaimSchema @relation(fields: [claimSchemaId], references: [id])
+  claimSchemaId   Int
+  createdAt       DateTime    @default(now())
+}
+
+model ClaimTile {
+  id            Int         @id @default(autoincrement())
+  subject       String
+  claim         String
+  object        String
+  qualifier     String?
+  aspect        String?
+  howKnown      String
+  source        String
+  effectiveDate DateTime
+  confidence    Int?
+  reviewRating  Int?
+  ceramicId     String
+  schema        ClaimSchema @relation(fields: [claimSchemaId], references: [id])
+  claimSchemaId Int
+  createdAt     DateTime    @default(now())
+  lastUpdatedAt DateTime    @default(now())
+}

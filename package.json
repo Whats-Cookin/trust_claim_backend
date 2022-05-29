@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"tsc -w\" \"nodemon build/index.js\"",
     "compile": "tsc",
-    "create_model": "node --experimental-json-modules src/ceramic_model/create_model.mjs",
+    "create_model": "rm build/ceramic_model/create_model.mjs; tsc --project src/ceramic_model/tsconfig.datamodel.json && renamer --find \".js\" --replace \".mjs\" build/ceramic_model/create_model.js; node --experimental-json-modules build/ceramic_model/create_model.mjs",
     "lint": "eslint . --fix"
   },
   "author": "",
@@ -16,27 +16,34 @@
     "@glazed/datamodel": "^0.3.0",
     "@glazed/devtools": "^0.2.0",
     "@glazed/did-datastore": "^0.3.1",
+    "@prisma/client": "^3.14.0",
     "cors": "^2.8.5",
     "dids": "^3.1.0",
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
+    "http-errors": "^2.0.0",
     "key-did-provider-ed25519": "^2.0.0",
     "key-did-resolver": "^2.0.4",
+    "morgan": "^1.10.0",
     "uint8arrays": "^3.0.0"
   },
   "engines": {
-    "node": ">=16.15.0"
+    "node": ">=16.13.0"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.2",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
+    "@types/http-errors": "^1.8.2",
+    "@types/morgan": "^1.9.3",
     "@types/node": "^17.0.35",
     "@typescript-eslint/eslint-plugin": "^5.26.0",
     "@typescript-eslint/parser": "^5.26.0",
     "concurrently": "^7.2.1",
     "eslint": "^8.16.0",
     "nodemon": "^2.0.16",
+    "prisma": "^3.14.0",
+    "renamer": "^4.0.0",
     "typescript": "^4.6.4"
   }
 }
