@@ -3,19 +3,24 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import createError from "http-errors";
-const port = process.env.PORT || 9000;
+import { jwtVerify } from "./middlewares/jwtVerify";
 import apiRoutes from "./routes/api.route";
+import authRoutes from "./routes/auth.route";
 
+const port = process.env.PORT || 9000;
 const app = express();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan("dev"));
 
 app.use(cors());
 
-app.use("/api", apiRoutes);
+app.use("/api", jwtVerify, apiRoutes);
+app.use("/auth", authRoutes);
 
-app.use((req, res, next) => {
+// if nothing matches, this should be before the express error handler
+app.use((_req, _res, next) => {
   next(new createError.NotFound());
 });
 
