@@ -25,6 +25,7 @@
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
     "http-errors": "^2.0.0",
+    "joi": "^17.6.0",
     "jsonwebtoken": "^8.5.1",
     "key-did-provider-ed25519": "^2.0.0",
     "key-did-resolver": "^2.0.4",

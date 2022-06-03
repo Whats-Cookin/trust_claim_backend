@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
-import { generateJWT } from "../utils";
+import {
+  generateJWT,
+  passToExpressErrorHandler,
+  verifyRefreshToken,
+} from "../utils";
 import createError from "http-errors";
 import bcrypt from "bcryptjs";
 
@@ -23,10 +27,7 @@ export const signup = async (
 
     res.status(201).json({ message: "User created" });
   } catch (err: any) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
+    passToExpressErrorHandler(err, next);
   }
 };
 
@@ -54,9 +55,25 @@ export const login = async (
       refreshToken: generateJWT(user.id, email, "refresh"),
     });
   } catch (err: any) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const { refreshToken } = req.body;
+  try {
+    const { email, userId } = verifyRefreshToken(refreshToken);
+    const userIdAsNum = Number(userId);
+
+    res.send({
+      accessToken: generateJWT(userIdAsNum, email, "access"),
+      refreshToken: generateJWT(userIdAsNum, email, "refresh"),
+    });
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
   }
 };

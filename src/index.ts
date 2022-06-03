@@ -4,8 +4,8 @@ import cors from "cors";
 import morgan from "morgan";
 import createError from "http-errors";
 import { jwtVerify } from "./middlewares/jwtVerify";
-import apiRoutes from "./routes/api.route";
-import authRoutes from "./routes/auth.route";
+import apiRoutes from "./routes/apiRoutes";
+import authRoutes from "./routes/authRoutes";
 
 const port = process.env.PORT || 9000;
 const app = express();
@@ -16,8 +16,8 @@ app.use(morgan("dev"));
 
 app.use(cors());
 
-app.use("/api", jwtVerify, apiRoutes);
 app.use("/auth", authRoutes);
+app.use("/api", jwtVerify, apiRoutes);
 
 // if nothing matches, this should be before the express error handler
 app.use((_req, _res, next) => {

@@ -1,9 +1,10 @@
+import { NextFunction } from "express";
 import JWT from "jsonwebtoken";
 
 export const generateJWT = (
   userId: number,
   email: string,
-  tokenType: "access" | "refresh" | "passReset"
+  tokenType: "access" | "refresh"
 ): string => {
   try {
     let secretVar: string;
@@ -11,15 +12,11 @@ export const generateJWT = (
     switch (tokenType) {
       case "access":
         secretVar = "ACCESS_SECRET";
-        expiresIn = "1h";
+        expiresIn = "1d";
         break;
       case "refresh":
         secretVar = "REFRESH_SECRET";
         expiresIn = "1y";
-        break;
-      case "passReset":
-        secretVar = "MAIL_SECRET";
-        expiresIn = "24h";
         break;
     }
 
@@ -29,27 +26,29 @@ export const generateJWT = (
       expiresIn,
       // need to set an issuer
       issuer: "",
-      audience: userId,
+      audience: String(userId),
     };
 
     const token = JWT.sign(payload, secret, options);
 
-    // if (tokenType === "refresh" && bId) {
-    //   // we set the token to redis
-    //   redisClient.SADD(`bId:${userId}`, bId);
-    //   redisClient.SET(
-    //     `refreshToken:${userId}-${bId}`,
-    //     token,
-    //     "EX",
-    //     365 * 24 * 60 * 60,
-    //     (err, reply) => {
-    //       // TODO should we keep the redis.print???
-    //       redis.print(err, reply);
-    //     }
-    //   );
-    // }
     return token;
   } catch (err) {
     throw err;
   }
+};
+
+export const verifyRefreshToken = (refreshToken: string) => {
+  const decoded = JWT.verify(
+    refreshToken,
+    process.env.REFRESH_SECRET as string as string
+  );
+  const { email, aud: userId } = decoded as JWTDecoded;
+  return { email, userId };
+};
+
+export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
+  if (!err.statusCode) {
+    err.statusCode = 500;
+  }
+  next(err);
 };
