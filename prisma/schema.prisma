@@ -10,35 +10,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ClaimSchema {
-  id         Int          @id @default(autoincrement())
-  alias      String
-  ceramicId  String
-  createdAt  DateTime     @default(now())
-  ClaimTile  ClaimTile[]
-  ClaimModel ClaimModel[]
+model User {
+  id           Int     @id @default(autoincrement())
+  email        String  @unique
+  passwordHash String
+  name         String?
 }
 
-model ClaimDefinition {
-  id        Int      @id @default(autoincrement())
-  alias     String
-  ceramicId String
-  createdAt DateTime @default(now())
-}
-
-model ClaimModel {
-  id              Int         @id @default(autoincrement())
-  definitionAlias String
-  definitionValue String
-  schemaAlias     String
-  schemaValue     String
-  schemaRef       ClaimSchema @relation(fields: [claimSchemaId], references: [id])
-  claimSchemaId   Int
-  createdAt       DateTime    @default(now())
-}
-
-model ClaimTile {
-  id            Int         @id @default(autoincrement())
+model Claim {
+  id            Int      @id @default(autoincrement())
   subject       String
   claim         String
   object        String
@@ -49,9 +29,6 @@ model ClaimTile {
   effectiveDate DateTime
   confidence    Int?
   reviewRating  Int?
-  ceramicId     String
-  schema        ClaimSchema @relation(fields: [claimSchemaId], references: [id])
-  claimSchemaId Int
-  createdAt     DateTime    @default(now())
-  lastUpdatedAt DateTime    @default(now())
+  createdAt     DateTime @default(now())
+  lastUpdatedAt DateTime @default(now())
 }
