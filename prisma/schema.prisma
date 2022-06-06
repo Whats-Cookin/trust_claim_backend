@@ -32,3 +32,4 @@ model Claim {
   createdAt     DateTime @default(now())
   lastUpdatedAt DateTime @default(now())
 }
+ 
