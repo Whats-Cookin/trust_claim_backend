@@ -73,3 +73,7 @@ Take the seed portion, and set it as the env variable `DID_KEY`.
 ```
 npm run dev
 ```
+
+## PoC Deployment
+
+See `ssh -l ubuntu -i .ssh/trustclaim.pem trustclaims.whatscookin.us`
