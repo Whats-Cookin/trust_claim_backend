@@ -1,3 +1,37 @@
+## Docker
+
+Running in application in docker is only important if you don't want to set up postgresql server in your pc.
+
+To run docker, from root directory
+
+```
+docker-compose up
+```
+
+To stop running the containers
+
+```
+docker-compose down
+```
+
+Env variable will be needed
+
+```
+PORT=9000
+DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
+```
+
+## JWT Token secrets
+
+For one way hashing and comparing, jwt needs 2 environment variables
+
+```
+ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
+REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+```
+
+Value can be anything.
+
 ## Local Ceramic node
 
 To run this, running a ceramic node is important.

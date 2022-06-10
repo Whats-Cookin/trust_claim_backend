@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "concurrently \"tsc -w\" \"nodemon build/index.js\"",
     "compile": "tsc",
+    "start": "node build/index.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "create_model": "rm build/ceramic_model/create_model.mjs; tsc --project src/ceramic_model/tsconfig.datamodel.json && renamer --find \".js\" --replace \".mjs\" build/ceramic_model/create_model.js; node --experimental-json-modules build/ceramic_model/create_model.mjs",
+    "create:model": "rm build/ceramic_model/create_model.mjs; tsc --project src/ceramic_model/tsconfig.datamodel.json && renamer --find \".js\" --replace \".mjs\" build/ceramic_model/create_model.js; node --experimental-json-modules build/ceramic_model/create_model.mjs",
+    "docker:up": "tsc && docker up",
+    "docker:dev": "nodemon build/index.js",
+    "docker:down": "docker down",
     "lint": "eslint . --fix"
   },
   "author": "",
