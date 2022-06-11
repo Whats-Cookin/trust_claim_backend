@@ -1,3 +1,5 @@
+This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml
+
 ## Docker
 
 Running in application in docker is only important if you don't want to set up postgresql server in your pc.
