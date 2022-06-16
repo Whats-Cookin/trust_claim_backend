@@ -69,8 +69,6 @@ REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
 
 Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
-Take the seed portion, and set it as the env variable `DID_KEY`.
-
 ## PoC Deployment
 
 See `ssh -l ubuntu -i .ssh/trustclaim.pem trustclaims.whatscookin.us`
