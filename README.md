@@ -2,9 +2,7 @@ This is an implementation of the OpenTrustClaims schema from https://github.com/
 
 ## Run the application
 
-Running in application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url in .env file. Check [Env variables](#env-variables) section.
-
-Create a `.env` file in project root directory. And refer to [Env variables](#env-variables) section.
+Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables) section.
 
 Then running below command is sufficient.
 
@@ -12,7 +10,7 @@ Then running below command is sufficient.
 npm run dev
 ```
 
-To run with docker, firstly, have all the [env variables](#env-variables) in a `.env` file in our project root.
+To run with docker, firstly, have all the env variables in `.env` and `.env.dev` file in our project root. Check [Env variables](#env-variables) for help with env variables.
 
 Then, build the project -
 
@@ -26,6 +24,19 @@ Build the docker containers and run it.
 
 ```
 docker-compose up
+```
+
+Once the docker containers are running, install the packages and run the migration
+
+```
+npm i
+npm run migrate:dev
+```
+
+Then, while developing run
+
+```
+npm run dev
 ```
 
 To stop and delete the containers
@@ -44,27 +55,49 @@ Database is handled with the help of prisma orm.
 
 #### Apply migration
 
+If migration is not for docker container then run
+
 ```
 npx prisma migrate dev
 ```
 
+For docker container
+
+```
+npx dotenv -e .env.dev -- npx prisma migrate dev --name {name of the migration}
+```
+
 #### To check the database, use the goodness of prisma studio
+
+If not using docker containers
 
 ```
 npx prisma studio
+```
+
+If using docker containers
+
+```
+npm run prisma:studio
 ```
 
 After running this command prisma studio opens in port 5555.
 
 ## Env variables
 
-Create a `.env` file in project root. Refer to below example for env variables:
+Create a `.env` file in project root. If running with docker an additional `.env.dev` file is needed. Refer to below example for env variables:
 
 ```
 PORT=9000
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
 ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
 REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+```
+
+In `.env.dev`, change `DATABASE_URL` like below, everything else can be exactly like `.env`.
+
+```
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/claim"
 ```
 
 Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
