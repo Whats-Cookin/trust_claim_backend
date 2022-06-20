@@ -8,8 +8,9 @@ export const claimPost = async (
   next: NextFunction
 ) => {
   try {
+    const userId = (req as ModifiedRequest).userId;
     const claim = await prisma.claim.create({
-      data: req.body,
+      data: { userId, ...req.body },
     });
 
     res.status(201).json(claim);

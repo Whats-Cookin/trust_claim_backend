@@ -22,12 +22,12 @@ model Claim {
   id            Int          @id @default(autoincrement())
   subject       String
   claim         String
-  object        String
+  object        String?
   qualifier     String?
   aspect        String?
-  howKnown      String
-  source        String
-  effectiveDate DateTime
+  howKnown      String?
+  source        String?
+  effectiveDate DateTime?
   confidence    Int?
   reviewRating  Int?
   createdByUser User         @relation(fields: [userId], references: [id])

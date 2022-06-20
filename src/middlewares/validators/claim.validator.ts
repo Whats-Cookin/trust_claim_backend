@@ -5,12 +5,12 @@ import { passToExpressErrorHandler } from "../../utils";
 const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
-  object: Joi.string().required(),
+  object: Joi.string(),
   qualifier: Joi.string(),
   aspect: Joi.string(),
-  howKnown: Joi.string().required(),
-  source: Joi.string().required(),
-  effectiveDate: Joi.date().required(),
+  howKnown: Joi.string(),
+  source: Joi.string(),
+  effectiveDate: Joi.date(),
   confidence: Joi.number().min(1).max(5),
   reviewRating: Joi.number().min(1).max(5),
 });
@@ -24,6 +24,7 @@ export const claimPostValidator = async (
     await claimPostSchema.validateAsync(req.body);
     next();
   } catch (err: any) {
+    err.statusCode = 400;
     passToExpressErrorHandler(err, next);
   }
 };

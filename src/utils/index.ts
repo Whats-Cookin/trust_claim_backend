@@ -24,8 +24,7 @@ export const generateJWT = (
     const payload = { email };
     const options = {
       expiresIn,
-      // need to set an issuer
-      issuer: "",
+      issuer: "trustclaims.whatscookin.us",
       audience: String(userId),
     };
 
@@ -49,6 +48,7 @@ export const verifyRefreshToken = (refreshToken: string) => {
 export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   if (!err.statusCode) {
     err.statusCode = 500;
+    err.message = "Could not process the request. Try again later!";
   }
   next(err);
 };
