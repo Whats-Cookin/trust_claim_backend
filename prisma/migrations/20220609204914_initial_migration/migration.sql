@@ -1,14 +1,16 @@
 -- CreateTable
 CREATE TABLE "User" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
-    "name" TEXT
+    "name" TEXT,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Claim" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "subject" TEXT NOT NULL,
     "claim" TEXT NOT NULL,
     "object" TEXT NOT NULL,
@@ -16,11 +18,13 @@ CREATE TABLE "Claim" (
     "aspect" TEXT,
     "howKnown" TEXT NOT NULL,
     "source" TEXT NOT NULL,
-    "effectiveDate" DATETIME NOT NULL,
+    "effectiveDate" TIMESTAMP(3) NOT NULL,
     "confidence" INTEGER,
     "reviewRating" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "lastUpdatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Claim_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
