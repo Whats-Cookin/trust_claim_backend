@@ -33,10 +33,10 @@ npm i
 npm run migrate:dev
 ```
 
-Then, while developing run
+Then, while developing, run
 
 ```
-npm run dev
+npm run dev:watch
 ```
 
 To stop and delete the containers
