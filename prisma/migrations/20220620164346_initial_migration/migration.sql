@@ -1,21 +1,38 @@
-/*
-  Warnings:
-
-  - Added the required column `userId` to the `Claim` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- CreateEnum
 CREATE TYPE "IssuerIdType" AS ENUM ('DID', 'ETH', 'PUBKEY');
 
 -- CreateEnum
 CREATE TYPE "SignedClaimType" AS ENUM ('CERAMIC', 'NFT', 'CRYPTOJSON', 'OTHER');
 
--- AlterTable
-ALTER TABLE "Claim" ADD COLUMN     "userId" INTEGER NOT NULL,
-ALTER COLUMN "object" DROP NOT NULL,
-ALTER COLUMN "howKnown" DROP NOT NULL,
-ALTER COLUMN "source" DROP NOT NULL,
-ALTER COLUMN "effectiveDate" DROP NOT NULL;
+-- CreateTable
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "name" TEXT,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Claim" (
+    "id" SERIAL NOT NULL,
+    "subject" TEXT NOT NULL,
+    "claim" TEXT NOT NULL,
+    "object" TEXT,
+    "qualifier" TEXT,
+    "aspect" TEXT,
+    "howKnown" TEXT,
+    "source" TEXT,
+    "effectiveDate" TIMESTAMP(3),
+    "confidence" INTEGER,
+    "reviewRating" INTEGER,
+    "userId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Claim_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "SignedClaim" (
@@ -29,6 +46,9 @@ CREATE TABLE "SignedClaim" (
 
     CONSTRAINT "SignedClaim_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SignedClaim_claimId_key" ON "SignedClaim"("claimId");
