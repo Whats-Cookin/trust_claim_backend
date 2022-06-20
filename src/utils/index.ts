@@ -52,3 +52,15 @@ export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   }
   next(err);
 };
+
+export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
+  const newObj = { ...obj };
+  const newObjAsArray = Object.entries(newObj);
+
+  newObjAsArray.forEach(([key, val]) => {
+    if (!val) {
+      newObj[key] = undefined;
+    }
+  });
+  return newObj;
+};
