@@ -8,7 +8,7 @@ export const jwtVerify = (req: Request, _res: Response, next: NextFunction) => {
     try {
       const decoded = jwt.verify(token, process.env.ACCESS_SECRET as string);
       (req as ModifiedRequest).isAuthenticated = true;
-      (req as ModifiedRequest).userId = (decoded as JWTDecoded).aud;
+      (req as ModifiedRequest).userId = parseInt((decoded as JWTDecoded).aud);
       next();
     } catch (err: any) {
       const message =

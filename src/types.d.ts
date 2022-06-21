@@ -15,7 +15,7 @@ declare global {
 
   export interface ModifiedRequest extends Request {
     isAuthenticated: boolean;
-    userId: string;
+    userId: number;
   }
 }
 

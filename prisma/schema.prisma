@@ -15,20 +15,48 @@ model User {
   email        String  @unique
   passwordHash String
   name         String?
+  Claim        Claim[]
 }
 
 model Claim {
-  id            Int      @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   subject       String
   claim         String
-  object        String
+  object        String?
   qualifier     String?
   aspect        String?
-  howKnown      String
-  source        String
-  effectiveDate DateTime
+  howKnown      String?
+  source        String?
+  effectiveDate DateTime?
   confidence    Int?
   reviewRating  Int?
-  createdAt     DateTime @default(now())
-  lastUpdatedAt DateTime @default(now())
+  createdByUser User         @relation(fields: [userId], references: [id])
+  userId        Int
+  createdAt     DateTime     @default(now())
+  lastUpdatedAt DateTime     @default(now())
+  SignedClaim   SignedClaim?
+}
+
+model SignedClaim {
+  id              Int             @id @default(autoincrement())
+  claim           Claim           @relation(fields: [claimId], references: [id])
+  claimId         Int             @unique
+  issuerId        String
+  issuerIdType    IssuerIdType    @default(DID)
+  signedAddress   String
+  signedClaimType SignedClaimType @default(CERAMIC)
+  signedClaimBlob Json?
+}
+
+enum IssuerIdType {
+  DID
+  ETH
+  PUBKEY
+}
+
+enum SignedClaimType {
+  CERAMIC
+  NFT
+  CRYPTOJSON
+  OTHER
 }
