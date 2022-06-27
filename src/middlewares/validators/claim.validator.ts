@@ -11,7 +11,7 @@ const claimPostSchema = Joi.object({
   howKnown: Joi.string().allow(""),
   source: Joi.string().allow(""),
   effectiveDate: Joi.date(),
-  confidence: Joi.number().min(1).max(5),
+  confidence: Joi.number().min(0.0).max(1.0),
   reviewRating: Joi.number().min(1).max(5),
 });
 

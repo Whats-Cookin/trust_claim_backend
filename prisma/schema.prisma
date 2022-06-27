@@ -28,7 +28,7 @@ model Claim {
   howKnown      String?
   source        String?
   effectiveDate DateTime?
-  confidence    Int?
+  confidence    Float?
   reviewRating  Int?
   createdByUser User         @relation(fields: [userId], references: [id])
   userId        Int
