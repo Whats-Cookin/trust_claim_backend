@@ -38,3 +38,21 @@ export const authRefreshTokenValidator = async (
     passToExpressErrorHandler(err, next);
   }
 };
+
+const githubAuthSchema = Joi.object({
+  githubAuthCode: Joi.string().required(),
+});
+
+export const githubAuthValidator = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  try {
+    await githubAuthSchema.validateAsync(req.body);
+    next();
+  } catch (err: any) {
+    err.statusCode = 400;
+    passToExpressErrorHandler(err, next);
+  }
+};

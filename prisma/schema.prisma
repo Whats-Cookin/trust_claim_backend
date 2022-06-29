@@ -11,11 +11,18 @@ datasource db {
 }
 
 model User {
-  id           Int     @id @default(autoincrement())
-  email        String  @unique
-  passwordHash String
-  name         String?
-  Claim        Claim[]
+  id             Int      @id @default(autoincrement())
+  email          String?  @unique
+  passwordHash   String?
+  name           String?
+  authType       AuthType @default(PASSWORD)
+  authProviderId String?
+  Claim          Claim[]
+}
+
+enum AuthType {
+  PASSWORD
+  GITHUB
 }
 
 model Claim {
