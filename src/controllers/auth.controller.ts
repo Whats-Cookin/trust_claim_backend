@@ -7,6 +7,7 @@ import {
 } from "../utils";
 import createError from "http-errors";
 import bcrypt from "bcryptjs";
+import axios from "axios";
 
 export const signup = async (
   req: Request,
@@ -45,6 +46,10 @@ export const login = async (
     }
 
     const { passwordHash } = user;
+    if (!passwordHash) {
+      throw new createError.Unauthorized("Invalid email/password");
+    }
+
     const isEqual = await bcrypt.compare(password, passwordHash);
     if (!isEqual) {
       throw new createError.Unauthorized("Invalid email/password");
@@ -74,6 +79,60 @@ export const refreshToken = async (
       refreshToken: generateJWT(userIdAsNum, email, "refresh"),
     });
   } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const githubAuthenticator = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { githubAuthCode } = req.body;
+
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+    const accessTokenUrl = "https://github.com/login/oauth/access_token";
+    const { data: tokens } = await axios.post(
+      accessTokenUrl,
+      {},
+      {
+        params: {
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: githubAuthCode,
+        },
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    const { access_token } = tokens;
+
+    const githubUserInfoUrl = "https://api.github.com/user";
+    const { data: userData } = await axios.get(githubUserInfoUrl, {
+      headers: { Authorization: `token ${access_token}` },
+    });
+    const { id: githubId, email, name } = userData;
+    const githubIdAsString = String(githubId);
+
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { authType: "GITHUB", authProviderId: githubIdAsString, name },
+      create: {
+        email,
+        authProviderId: githubIdAsString,
+        authType: "GITHUB",
+        name,
+      },
+    });
+
+    res.status(200).json({
+      accessToken: generateJWT(user.id, email, "access"),
+      refreshToken: generateJWT(user.id, email, "refresh"),
+    });
+  } catch (err: any) {
     passToExpressErrorHandler(err, next);
   }
 };
