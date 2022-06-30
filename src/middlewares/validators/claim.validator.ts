@@ -12,7 +12,7 @@ const claimPostSchema = Joi.object({
   source: Joi.string().allow(""),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
-  reviewRating: Joi.number().min(1).max(5),
+  reviewRating: Joi.number().min(0).max(5),
 });
 
 export const claimPostValidator = async (
