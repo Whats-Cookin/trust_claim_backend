@@ -135,10 +135,10 @@ sudo su postgres
 pg_dump claim > /postgres/backup_filename.sql
 ```
 
-Then run the following 2 commands.
+Then run the following 2 commands to generate artifacts and deploy migrations.
 
 ```
-npx prisma generate // generates the prisma artifacts
+npx prisma generate
 npx prisma migrate deploy
 ```
 
