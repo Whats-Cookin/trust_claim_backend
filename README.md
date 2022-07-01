@@ -147,3 +147,23 @@ Then, building the project is enough, because `pm2` is watching for changes.
 ```
 npm run build
 ```
+
+#### NGINX config
+
+Nginx config is located here - `/etc/nginx/sites-available/trustclaims.whatscookin.us`. To change the config -
+
+```
+sudo vim /etc/nginx/sites-available/trustclaims.whatscookin.us
+```
+
+After changing Nginx config, test it using -
+
+```
+sudo nginx -t
+```
+
+Then reload nginx service
+
+```
+sudo systemctl reload nginx.service`
+```
