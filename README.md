@@ -104,4 +104,46 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
 ## PoC Deployment
 
-See `ssh -l ubuntu -i .ssh/trustclaim.pem trustclaims.whatscookin.us`
+SSH into the server with the private key. If you don't have the key, ask for it in slack.
+
+```
+ssh -l ubuntu -i [key] trustclaims.whatscookin.us
+```
+
+cd into the project
+
+```
+cd /home/ubuntu/trust_claim_backend
+```
+
+Pull the latest master branch from github
+
+```
+git pull origin master
+```
+
+Run this command to check for possible changes in packages, and install changed packages.
+
+```
+npm i
+```
+
+If there is any database migration, it is a good idea to backup the database.
+
+```
+sudo su postgres
+pg_dump claim > /postgres/backup_filename.sql
+```
+
+Then run the following 2 commands.
+
+```
+npx prisma generate // generates the prisma artifacts
+npx prisma migrate deploy
+```
+
+Then, building the project is enough, because `pm2` is watching for changes.
+
+```
+npm run build
+```
