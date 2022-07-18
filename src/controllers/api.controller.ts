@@ -27,26 +27,43 @@ export const claimPost = async (
   }
 };
 
-export const claimSearch = async (
+export const claimGet = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const { search } = req.query;
+    const { claimId } = req.params;
 
-    if (!search) {
-      throw new createError.BadRequest("Need a search query");
+    if (claimId) {
+      const claim = await prisma.claim.findUnique({
+        where: {
+          id: Number(claimId),
+        },
+      });
+
+      if (!claim) {
+        throw new createError.NotFound("Claim does not exist");
+      }
+
+      res.status(201).json(claim);
+      return;
     }
 
-    const claims = await prisma.claim.findMany({
-      where: {
-        OR: [
-          { subject: { contains: search as string, mode: "insensitive" } },
-          { object: { contains: search as string, mode: "insensitive" } },
-        ],
-      },
-    });
+    let claims = [];
+    if (search) {
+      claims = await prisma.claim.findMany({
+        where: {
+          OR: [
+            { subject: { contains: search as string, mode: "insensitive" } },
+            { object: { contains: search as string, mode: "insensitive" } },
+          ],
+        },
+      });
+    } else {
+      claims = await prisma.claim.findMany({});
+    }
 
     res.status(201).json(claims);
   } catch (err) {
