@@ -5,7 +5,7 @@ import getopt
 import psycopg2
 from dotenv import dotenv_values
 
-config = dotenv_values("../.env.dev")
+config = dotenv_values("../.env")
 
 
 def get_db_connection():
