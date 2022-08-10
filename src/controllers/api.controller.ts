@@ -1,7 +1,11 @@
-import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
-import { Claim } from "prisma/prisma-client";
-import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
+import { Request, Response, NextFunction } from "express";
+import { NodeType } from "prisma/prisma-client";
+import {
+  passToExpressErrorHandler,
+  turnFalsyPropsToUndefined,
+  getClaimUrl,
+} from "../utils";
 import createError from "http-errors";
 
 export const claimPost = async (
@@ -12,7 +16,7 @@ export const claimPost = async (
   try {
     const userId = (req as ModifiedRequest).userId;
     const rawClaim: any = turnFalsyPropsToUndefined(req.body);
-    const claim: Claim = await prisma.claim.create({
+    const claim = await prisma.claim.create({
       data: {
         userId,
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
@@ -20,6 +24,49 @@ export const claimPost = async (
         ...rawClaim,
       },
     });
+
+    const claimUrl = getClaimUrl(claim.id);
+
+    let claimQueries = [{ subject: claim.subject }, { object: claim.subject }];
+
+    if (claim.object) {
+      claimQueries = [
+        ...claimQueries,
+        { subject: claim.object },
+        { object: claim.object },
+      ];
+    }
+
+    const matchedClaims = await prisma.claim.findMany({
+      where: {
+        OR: claimQueries,
+        NOT: { id: claim.id },
+      },
+    });
+
+    const claimEdges = matchedClaims.map((matchedClaim) => {
+      return {
+        nodeOne: getClaimUrl(matchedClaim.id),
+        nodeOneId: matchedClaim.id,
+        nodeOneType: "CLAIM" as NodeType,
+        nodeTwo: claimUrl,
+        nodeTwoId: claim.id,
+        nodeTwoType: "CLAIM" as NodeType,
+      };
+    });
+
+    const issuerEdge = {
+      nodeOneId: userId,
+      nodeOne: `http://trustclaims.whatscookin.us/users/${userId}`,
+      nodeOneType: "ISSUER" as NodeType,
+      nodeTwo: claimUrl,
+      nodeTwoId: claim.id,
+      nodeTwoType: "CLAIM" as NodeType,
+    };
+
+    const edges = [issuerEdge, ...claimEdges];
+
+    await prisma.edge.createMany({ data: edges });
 
     res.status(201).json(claim);
   } catch (err) {

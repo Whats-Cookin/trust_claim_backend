@@ -46,6 +46,21 @@ model Claim {
   SignedClaim   SignedClaim?
 }
 
+enum NodeType {
+  ISSUER
+  CLAIM
+}
+
+model Edge {
+  id          Int      @id @default(autoincrement())
+  nodeOne     String
+  nodeOneId   Int
+  nodeOneType NodeType
+  nodeTwo     String
+  nodeTwoId   Int
+  nodeTwoType NodeType
+}
+
 model SignedClaim {
   id              Int             @id @default(autoincrement())
   claim           Claim           @relation(fields: [claimId], references: [id])
