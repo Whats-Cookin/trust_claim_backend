@@ -41,7 +41,7 @@ export const claimPost = async (
             data: {
               userId: spider?.id,
               subject: claim.object,
-              claim: "owns",
+              claim: "issuer",
               issuerId: `http://trustclaims.whatscookin.us/users/${spider.id}`,
               issuerIdType: "URL",
             },
