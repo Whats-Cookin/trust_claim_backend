@@ -1,11 +1,6 @@
 import { prisma } from "../db/prisma";
 import { Request, Response, NextFunction } from "express";
-import { NodeType } from "prisma/prisma-client";
-import {
-  passToExpressErrorHandler,
-  turnFalsyPropsToUndefined,
-  getClaimUrl,
-} from "../utils";
+import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
 export const claimPost = async (
@@ -25,48 +20,43 @@ export const claimPost = async (
       },
     });
 
-    const claimUrl = getClaimUrl(claim.id);
-
-    let claimQueries = [{ subject: claim.subject }, { object: claim.subject }];
+    const edgeData = [{ source: userId, target: claim.id, relation: "issuer" }];
 
     if (claim.object) {
-      claimQueries = [
-        ...claimQueries,
-        { subject: claim.object },
-        { object: claim.object },
-      ];
+      let subjectClaim = await prisma.claim.findFirst({
+        where: { subject: rawClaim.object },
+      });
+
+      const spider = await prisma.user.findFirst({
+        where: { name: "SPIDER" },
+      });
+
+      if (!spider) {
+        console.error("Spider user is not present");
+      }
+
+      if (spider) {
+        if (!subjectClaim) {
+          subjectClaim = await prisma.claim.create({
+            data: {
+              userId: spider?.id,
+              subject: claim.object,
+              claim: "owns",
+              issuerId: `http://trustclaims.whatscookin.us/users/${spider.id}`,
+              issuerIdType: "URL",
+            },
+          });
+        }
+
+        edgeData.push({
+          source: subjectClaim.id,
+          target: claim.id,
+          relation: claim.claim,
+        });
+      }
     }
 
-    const matchedClaims = await prisma.claim.findMany({
-      where: {
-        OR: claimQueries,
-        NOT: { id: claim.id },
-      },
-    });
-
-    const claimEdges = matchedClaims.map((matchedClaim) => {
-      return {
-        nodeOne: getClaimUrl(matchedClaim.id),
-        nodeOneId: matchedClaim.id,
-        nodeOneType: "CLAIM" as NodeType,
-        nodeTwo: claimUrl,
-        nodeTwoId: claim.id,
-        nodeTwoType: "CLAIM" as NodeType,
-      };
-    });
-
-    const issuerEdge = {
-      nodeOneId: userId,
-      nodeOne: `http://trustclaims.whatscookin.us/users/${userId}`,
-      nodeOneType: "ISSUER" as NodeType,
-      nodeTwo: claimUrl,
-      nodeTwoId: claim.id,
-      nodeTwoType: "CLAIM" as NodeType,
-    };
-
-    const edges = [issuerEdge, ...claimEdges];
-
-    await prisma.edge.createMany({ data: edges });
+    await prisma.edge.createMany({ data: edgeData });
 
     res.status(201).json(claim);
   } catch (err) {

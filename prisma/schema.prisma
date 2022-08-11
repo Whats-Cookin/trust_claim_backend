@@ -46,19 +46,11 @@ model Claim {
   SignedClaim   SignedClaim?
 }
 
-enum NodeType {
-  ISSUER
-  CLAIM
-}
-
 model Edge {
-  id          Int      @id @default(autoincrement())
-  nodeOne     String
-  nodeOneId   Int
-  nodeOneType NodeType
-  nodeTwo     String
-  nodeTwoId   Int
-  nodeTwoType NodeType
+  id       Int    @id @default(autoincrement())
+  source   Int
+  target   Int
+  relation String
 }
 
 model SignedClaim {

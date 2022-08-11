@@ -64,7 +64,3 @@ export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
   });
   return newObj;
 };
-
-export const getClaimUrl = (claimId:number) => {
-  return `http://trustclaims.whatscookin.us/claims/${claimId}`;
-}
