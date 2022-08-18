@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
-import { Claim } from "prisma/prisma-client";
+import { Claim, Prisma } from "prisma/prisma-client";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
@@ -33,7 +33,7 @@ export const claimGet = async (
   next: NextFunction
 ) => {
   try {
-    const { search } = req.query;
+    const { search, page = 0, limit = 0 } = req.query;
     const { claimId } = req.params;
 
     if (claimId) {
@@ -52,20 +52,29 @@ export const claimGet = async (
     }
 
     let claims = [];
+    let count = 0;
     if (search) {
+      const query: Prisma.ClaimWhereInput = {
+        OR: [
+          { subject: { contains: search as string, mode: "insensitive" } },
+          { object: { contains: search as string, mode: "insensitive" } },
+        ],
+      };
       claims = await prisma.claim.findMany({
-        where: {
-          OR: [
-            { subject: { contains: search as string, mode: "insensitive" } },
-            { object: { contains: search as string, mode: "insensitive" } },
-          ],
-        },
+        where: query,
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) ? Number(limit) : undefined,
       });
+      count = await prisma.claim.count({ where: query });
     } else {
-      claims = await prisma.claim.findMany({});
+      count = await prisma.claim.count({});
+      claims = await prisma.claim.findMany({
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) > 0 ? Number(limit) : undefined,
+      });
     }
 
-    res.status(201).json(claims);
+    res.status(201).json({ claims, count });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
