@@ -3,3 +3,4 @@ build
 *.env*
 dev.db
 model.json
+.vscode

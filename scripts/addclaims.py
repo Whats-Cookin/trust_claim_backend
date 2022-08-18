@@ -1,11 +1,17 @@
+import validators
 import urllib
 import pandas as pd
 import sys
-import getopt
 import psycopg2
+import json
 from dotenv import dotenv_values
 
 config = dotenv_values("../.env")
+
+
+def print_error_and_exit(str):
+    print(f"Error: {str}")
+    sys.exit(2)
 
 
 def get_db_connection():
@@ -41,7 +47,7 @@ def db_post_many(query, values):
         conn.commit()
 
     except (Exception, psycopg2.Error) as error:
-        print("Failed inserting {}".format(error))
+        print("Failed insertion: {}".format(error))
 
     finally:
         if conn:
@@ -49,64 +55,44 @@ def db_post_many(query, values):
             conn.close()
 
 
-def main(argv):
-    arg_file = ""
-    arg_subject = ""
-    arg_qualifier = ""
-    arg_claim = ""
-    arg_aspect = ""
-    arg_rating = ""
-    arg_source = ""
-    arg_confidence = ""
-    arg_help = f"{argv[0]} -f <filepath> -s <subject> -q <qualifier> -c <claim> -a <aspect> -r <rating> -S <source> -C <confidence>"
+def main():
+    settings = None
 
     try:
-        opts, _ = getopt.getopt(argv[1:], "hf:s:q:c:a:r:S:C:", ["help", "file=", "subject=",
-                                "qualifier=", "claim=", "aspect=", "rating=", "source=", "confidence="])
+        with open("config.json") as f:
+            settings = json.load(f)
     except Exception as e:
-        print(arg_help)
-        sys.exit(2)
+        print_error_and_exit(str(e))
 
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print(arg_help)
-            sys.exit(2)
-        elif opt in ("-f", "--file"):
-            arg_file = arg
-        elif opt in ("-s", "--subject"):
-            arg_subject = arg
-        elif opt in ("-q", "--qualifier"):
-            arg_qualifier = arg
-        elif opt in ("-c", "--claim"):
-            arg_claim = arg
-        elif opt in ("-a", "--aspect"):
-            arg_aspect = arg
-        elif opt in ("-r", "--rating"):
-            arg_rating = int(arg)
-        elif opt in ("-S", "--source"):
-            arg_source = arg
-        elif opt in ("-C", "--confidence"):
-            print("confidence arg", arg)
-            arg_confidence = float(arg)
+    filename = settings.get("filename")
+    subject = settings.get("subject")
+    subject_from_csv_header = settings.get("subject_from_csv_header")
+    claim_object = settings.get("object")  # object is a python built-in keyword
+    object_from_csv_header = settings.get("object_from_csv_header")
+    qualifier = settings.get("qualifier")
+    qualifier_from_csv_header = settings.get("qualifier_from_csv_header")
+    claim = settings.get("claim")
+    aspect = settings.get("aspect")
+    rating = settings.get("rating")
+    source = settings.get("source")
+    confidence = settings.get("confidence")
+    how_known = settings.get("howknown")
 
-    if not arg_file:
-        print("Missing required argument -f (filepath).")
-        sys.exit(2)
-    if not arg_subject:
-        print("Missing required argument -s (subject).")
-        sys.exit(2)
-    if not arg_claim:
-        print("Missing required argument -c (claim).")
-        sys.exit(2)
+    if not (filename):
+        print_error_and_exit('"filename" is a required field')
+    if not (subject or subject_from_csv_header):
+        print_error_and_exit('Either "subject" or "subject_from_csv_header" field is required')
+    if not (claim_object or object_from_csv_header):
+        print_error_and_exit('Either "object" or "object_from_csv_header" field is required')
+    if not (claim):
+        print_error_and_exit('"claim" is a required field')
 
     try:
-        df = pd.read_csv(arg_file)
+        df = pd.read_csv(filename)
     except FileNotFoundError:
-        print(f"File not found. Is \"{arg_file}\" a valid path?")
-        sys.exit(2)
+        print_error_and_exit(f"Error: File not found. Is \"{filename}\" a valid path?")
     except Exception as e:
-        print(f"{str(e)}")
-        sys.exit(2)
+        print_error_and_exit(f"{str(e)}")
 
     spider = db_get_one("""SELECT * FROM "User" WHERE name='SPIDER'""")
     spider_id = spider[0]
@@ -114,20 +100,26 @@ def main(argv):
     values = []
     for _, row in df.iterrows():
         try:
-            sub = row[arg_subject]
-            subject = "http://trustclaims.whatscookin.us/local/company/" + urllib.parse.quote(sub)
-            qualifier = row[arg_qualifier]
+            sub = subject or row[subject_from_csv_header]
+            obj = claim_object or row[object_from_csv_header]
+            obj_is_url = validators.url(obj)
+
+            if not obj_is_url is True:
+                obj = "http://trustclaims.whatscookin.us/local/company/" + urllib.parse.quote(obj)
+
+            qlfr = qualifier or row[qualifier_from_csv_header]
             issuer_id = f"http://trustclaims.whatscookin.us/users/{spider_id}"
 
-            values.append((subject, qualifier, arg_claim, arg_aspect,
-                           arg_rating, arg_source, arg_confidence, spider_id, issuer_id, 'URL'))
+            values.append((sub, obj, qlfr, claim, aspect, how_known,
+                           rating, source, confidence, spider_id, issuer_id, 'URL'))
 
         except Exception as e:
             print("Error, ", type(e))
 
-    query = """INSERT INTO "Claim" (subject, qualifier, claim, aspect, "reviewRating", source, confidence, "userId", "issuerId", "issuerIdType") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+    query = """INSERT INTO "Claim" (subject, object, qualifier, claim, aspect, "howKnown", "reviewRating", source, confidence, "userId", "issuerId", "issuerIdType") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+
     db_post_many(query, values)
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
