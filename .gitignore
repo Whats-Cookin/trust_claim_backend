@@ -4,3 +4,4 @@ build
 dev.db
 model.json
 .vscode
+.DS_Store
