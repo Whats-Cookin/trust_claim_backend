@@ -1,18 +1,20 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
-import { Claim, Prisma } from "prisma/prisma-client";
+import { Prisma } from "prisma/prisma-client";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
+import axios from "axios";
 
 export const claimPost = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  let claim;
   try {
     const userId = (req as ModifiedRequest).userId;
     const rawClaim: any = turnFalsyPropsToUndefined(req.body);
-    const claim: Claim = await prisma.claim.create({
+    claim = await prisma.claim.create({
       data: {
         userId,
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
@@ -20,11 +22,34 @@ export const claimPost = async (
         ...rawClaim,
       },
     });
-
-    res.status(201).json(claim);
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
+
+  if (
+    process.env.COMPOSEDB_URL &&
+    process.env.COMPOSEDB_USERNAME &&
+    process.env.COMPOSEDB_PASSWORD &&
+    claim
+  ) {
+    try {
+      const { id: claimId, ...rest } = claim;
+      await axios.post(
+        process.env.COMPOSEDB_URL,
+        { claimId, ...rest },
+        {
+          auth: {
+            username: process.env.COMPOSEDB_USERNAME,
+            password: process.env.COMPOSEDB_PASSWORD,
+          },
+        }
+      );
+    } catch (err: any) {
+      console.error(err?.message);
+    }
+  }
+
+  res.status(201).json(claim);
 };
 
 export const claimGet = async (
