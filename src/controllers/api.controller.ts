@@ -46,7 +46,6 @@ export const claimPost = async (
       );
     } catch (err: any) {
       console.error(err?.message);
-      throw err;
     }
   }
 
