@@ -30,31 +30,37 @@ model Claim {
   subject       String
   claim         String
   object        String?
-  qualifier     String?
+  statement     String?
   aspect        String?
-  howKnown      String?
-  source        String?
+  sourceUrl     String?
   effectiveDate DateTime?
   confidence    Float?
-  reviewRating  Int?
-  createdByUser User          @relation(fields: [userId], references: [id])
-  userId        Int
+  rating        Float?
   issuerId      String?
-  issuerIdType  IssuerIdType?
   createdAt     DateTime      @default(now())
   lastUpdatedAt DateTime      @default(now())
+  createdByUser User          @relation(fields: [userId], references: [id])
+  ClaimSource   ClaimSource?
   SignedClaim   SignedClaim?
 }
 
 model SignedClaim {
   id              Int             @id @default(autoincrement())
   claim           Claim           @relation(fields: [claimId], references: [id])
-  claimId         Int             @unique
   issuerId        String
   issuerIdType    IssuerIdType    @default(DID)
   signedAddress   String
   signedClaimType SignedClaimType @default(CERAMIC)
   signedClaimBlob Json?
+}
+
+model ClaimSource {
+  id              Int         @id @default(autoincrement())
+  retrieveFrom    String?
+  howKnown        String?
+  author          String?
+  curator         String? 
+  dateObserved    DateTime    @default(now())
 }
 
 enum IssuerIdType {
