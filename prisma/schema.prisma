@@ -26,23 +26,23 @@ enum AuthType {
 }
 
 model Claim {
-  id            Int           @id @default(autoincrement())
-  subject       String
+  id            Int          @id @default(autoincrement())
   claim         String
-  object        String?
-  qualifier     String?
   aspect        String?
-  howKnown      String?
-  source        String?
-  effectiveDate DateTime?
+  statement     String?
+  object        String?
   confidence    Float?
+  effectiveDate DateTime?
+  subject       String
+  issuer        String?
+  source        String?
+  howKnown      String?
   reviewRating  Int?
-  createdByUser User          @relation(fields: [userId], references: [id])
+  issuanceDate  DateTime
+  createdByUser User         @relation(fields: [userId], references: [id])
   userId        Int
-  issuerId      String?
-  issuerIdType  IssuerIdType?
-  createdAt     DateTime      @default(now())
-  lastUpdatedAt DateTime      @default(now())
+  createdAt     DateTime     @default(now())
+  lastUpdatedAt DateTime     @default(now())
   SignedClaim   SignedClaim?
 }
 
