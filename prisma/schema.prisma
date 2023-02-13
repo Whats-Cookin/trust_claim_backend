@@ -40,6 +40,7 @@ model Claim {
   createdAt     DateTime      @default(now())
   lastUpdatedAt DateTime      @default(now())
   createdByUser User          @relation(fields: [userId], references: [id])
+  userId        Int
   ClaimSource   ClaimSource?
   SignedClaim   SignedClaim?
 }
@@ -47,6 +48,7 @@ model Claim {
 model SignedClaim {
   id              Int             @id @default(autoincrement())
   claim           Claim           @relation(fields: [claimId], references: [id])
+  claimId         Int             @unique
   issuerId        String
   issuerIdType    IssuerIdType    @default(DID)
   signedAddress   String
@@ -56,6 +58,8 @@ model SignedClaim {
 
 model ClaimSource {
   id              Int         @id @default(autoincrement())
+  claim           Claim           @relation(fields: [claimId], references: [id])
+  claimId         Int             @unique
   retrieveFrom    String?
   howKnown        String?
   author          String?
