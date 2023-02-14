@@ -15,7 +15,7 @@ To run with docker, firstly, have all the env variables in `.env` and `.env.dev`
 Then, build the project -
 
 ```
-npx prisma generate. # the first time
+npx prisma generate # the first time
 npm run build
 ```
 
