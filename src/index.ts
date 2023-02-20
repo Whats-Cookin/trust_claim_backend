@@ -3,7 +3,6 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import createError from "http-errors";
-import { jwtVerify } from "./middlewares/jwtVerify";
 import apiRoutes from "./routes/apiRoutes";
 import authRoutes from "./routes/authRoutes";
 
@@ -17,8 +16,7 @@ app.use(morgan("dev"));
 app.use(cors());
 
 app.use("/auth", authRoutes);
-app.use("/api", jwtVerify, apiRoutes);
-
+app.use("/api", apiRoutes);
 // if nothing matches, this should be before the express error handler
 app.use((_req, _res, next) => {
   next(new createError.NotFound());
