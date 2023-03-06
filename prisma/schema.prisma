@@ -26,12 +26,27 @@ enum AuthType {
   GITHUB
 }
 
+enum EntityType {
+  PERSON
+  ORGANIZATION
+  CLAIM
+  IMPACT
+  EVENT
+  DOCUMENT
+  PRODUCT
+  PLACE
+  UNKNOWN
+  OTHER
+}
+
 // Derived models
 
 // Nodes & Edges are used to return element graph to front end view
 
-// Nodes are generated from subject, object, source of claims
+// Nodes are generated from subject, object, source of claims, and even claim itself may be a node
+// these fields are useful for display
 model Node { 
+  id         Int           @id @default(autoincrement())
   nodeUri    String
   name       String
   entType    EntityType
@@ -40,28 +55,22 @@ model Node {
   thumbnail  String?  // thumbnail?
 }
 
-model Edge {   // from claim
-  startNode  Node @relation(fields: [startNodeUri], references: [nodeUri])
-  startNodeUri String
-  endNode    Node? @relation(fields: [endNodeUri], references: [nodeUri])
-  endNodeUri String?
+
+// Relationship between two nodes
+//   subject -> object, edge label is claim  (if claim is a relationship)
+//   subject -> claim, edge label is claim   (if claim is a rating or credential)
+//   claim -> source, edge is "source" (still associated with claim)
+
+model Edge { 
+  id          Int           @id @default(autoincrement())
+  startNode   Node @relation("StartNode", fields: [startNodeId], references: [id])
+  startNodeId Int
+  endNode     Node? @relation("EndNode", fields: [endNodeId], references: [id])
+  endNodeId   Int?
   label      String
   thumbnail  String?     
   claim      Claim  @relation(fields: [claimId], references: [id])
   claimId    Int
-}
-
-// For deduping/normalizing
-model NodeNames {
-  node       Node @relation(fields: [startNodeUri], references: [nodeUri])
-  nodeUri    String
-  name       String
-}
-
-model NodeUris {
-  node Node @relation(fields: [startNodeUri], references: [nodeUri])
-  nodeUri    String
-  altUri     String
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims
