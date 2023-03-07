@@ -2,7 +2,7 @@ This is an implementation of the OpenTrustClaims schema from https://github.com/
 
 ## Run the application
 
-Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables) section.
+Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables).  section.
 
 Then running below command is sufficient.
 
@@ -15,6 +15,7 @@ To run with docker, firstly, have all the env variables in `.env` and `.env.dev`
 Then, build the project -
 
 ```
+npx prisma generate # the first time
 npm run build
 ```
 
