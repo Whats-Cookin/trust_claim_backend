@@ -11,7 +11,7 @@ datasource db {
 }
 
 // User is only for convenience, the app itself signs the claims if the user is logged in web2 methods
-// The User *may* be the source, or the source may be the actual wallet issuing the claim directly to composedb 
+// The User *may* be the source, or the source may be the actual wallet issuing the claim directly to composedb
 model User {
   id             Int      @id @default(autoincrement())
   email          String?  @unique
@@ -26,47 +26,60 @@ enum AuthType {
   GITHUB
 }
 
-// Derived models
-
-// Nodes & Edges are used to return element graph to front end view
-
-// Nodes are generated from subject, object, source of claims
-model Node { 
-  nodeUri    String
-  name       String
-  entType    EntityType
-  descrip    String
-  image      String?  // image?
-  thumbnail  String?  // thumbnail?
+// TODO add real entity types
+enum EntityType {
+  S_EDGE
+  S_NODE
 }
 
-model Edge {   // from claim
-  startNode  Node @relation(fields: [startNodeUri], references: [nodeUri])
+// Derived models
+
+// Nodes and Edges are used to return element graph to front end view
+
+// Nodes are generated from subject, object, source of claims
+model Node {
+  nodeUri   String      @id
+  name      String
+  entType   EntityType
+  descrip   String
+  image     String? // image?
+  thumbnail String? // thumbnail?
+  NodeNames NodeNames[]
+  NodeUris  NodeUris[]
+  startEdge Edge[]      @relation("StartNode")
+  endEdge   Edge[]      @relation("EndNode")
+}
+
+model Edge {
+  id           String  @id
+  startNode    Node    @relation("StartNode", fields: [startNodeUri], references: [nodeUri])
   startNodeUri String
-  endNode    Node? @relation(fields: [endNodeUri], references: [nodeUri])
-  endNodeUri String?
-  label      String
-  thumbnail  String?     
-  claim      Claim  @relation(fields: [claimId], references: [id])
-  claimId    Int
+  endNode      Node?   @relation("EndNode", fields: [endNodeUri], references: [nodeUri])
+  endNodeUri   String?
+  label        String
+  thumbnail    String?
+  claim        Claim   @relation(fields: [claimId], references: [id])
+  claimId      Int
 }
 
 // For deduping/normalizing
 model NodeNames {
-  node       Node @relation(fields: [startNodeUri], references: [nodeUri])
-  nodeUri    String
-  name       String
+  id           String @id
+  node         Node   @relation(fields: [startNodeUri], references: [nodeUri])
+  startNodeUri String
+  name         String
 }
 
 model NodeUris {
-  node Node @relation(fields: [startNodeUri], references: [nodeUri])
-  nodeUri    String
-  altUri     String
+  id           String @id
+  node         Node   @relation(fields: [startNodeUri], references: [nodeUri])
+  startNodeUri String
+  altUri       String
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims
 model Claim {
-  id            Int           @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   subject       String
   claim         String
   object        String?
@@ -74,44 +87,44 @@ model Claim {
   effectiveDate DateTime?
 
   // splat ClaimSource
-  sourceID      String?
-  howKnown      HowKnown?
-  dateObserved  DateTime?
-  digestMultibase  String?
-  author           String?
-  curator          String?
-  
+  sourceID        String?
+  howKnown        HowKnown?
+  dateObserved    DateTime?
+  digestMultibase String?
+  author          String?
+  curator         String?
+
   // splat NormalizedRating
-  aspect      String?
-  score       Float?
-  stars       Int?
+  aspect String?
+  score  Float?
+  stars  Int?
 
   // splat Measure
-  amt       Float?
-  unit      String?
+  amt         Float?
+  unit        String?
   howMeasured String?
 
   // splat Sharing
   intendedAudience String?
-  respondAt String?
+  respondAt        String?
 
-  confidence    Float?
+  confidence Float?
 
   // signer of the original claim
-  issuerId      String?
-  issuerIdType  IssuerIdType?
+  issuerId     String?
+  issuerIdType IssuerIdType?
 
   // cid or other external address of signed claim
-  claimAddress  String?
+  claimAddress String?
 
   // embedded cryptographically signed version
-  proof         String?
+  proof String?
 
   // for the database record itself
-  createdAt     DateTime      @default(now())
-  lastUpdatedAt DateTime      @default(now())
+  createdAt     DateTime @default(now())
+  lastUpdatedAt DateTime @default(now())
+  Edge          Edge[]
 }
-
 
 enum IssuerIdType {
   DID
@@ -121,16 +134,15 @@ enum IssuerIdType {
 }
 
 enum HowKnown {
-    FIRST_HAND
-    SECOND_HAND
-    WEB_DOCUMENT
-    VERIFIED_LOGIN
-    BLOCKCHAIN
-    SIGNED_DOCUMENT
-    PHYSICAL_DOCUMENT
-    INTEGRATION
-    RESEARCH
-    OPINION
-    OTHER
+  FIRST_HAND
+  SECOND_HAND
+  WEB_DOCUMENT
+  VERIFIED_LOGIN
+  BLOCKCHAIN
+  SIGNED_DOCUMENT
+  PHYSICAL_DOCUMENT
+  INTEGRATION
+  RESEARCH
+  OPINION
+  OTHER
 }
-

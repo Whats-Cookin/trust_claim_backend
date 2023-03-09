@@ -44,6 +44,7 @@ export const login = async (
     if (!user) {
       throw new createError.Unauthorized("Invalid email/password");
     }
+    console.info(user);
 
     const { passwordHash } = user;
     if (!passwordHash) {
@@ -52,14 +53,17 @@ export const login = async (
 
     const isEqual = await bcrypt.compare(password, passwordHash);
     if (!isEqual) {
+    console.info('isequal');
       throw new createError.Unauthorized("Invalid email/password");
     }
 
+    console.info('done');
     res.status(200).json({
       accessToken: generateJWT(user.id, email, "access"),
       refreshToken: generateJWT(user.id, email, "refresh"),
     });
   } catch (err: any) {
+    console.error(err);
     passToExpressErrorHandler(err, next);
   }
 };
