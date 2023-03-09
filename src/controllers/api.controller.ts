@@ -4,6 +4,28 @@ import { Prisma } from "prisma/prisma-client";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 import axios from "axios";
+import { z, AnyZodObject, ZodError } from "zod";
+
+export async function zParse<T extends AnyZodObject>(
+  schema: T,
+  req: Request
+): Promise<z.infer<T>> {
+  return schema.parseAsync(req);
+}
+
+const simpleClaimSchema = z.object({
+  body: z.object({
+    subject: z.string(),
+    object: z.string(),
+    claim: z.string(),
+    statement: z.string().optional(),
+    aspect: z.string().optional(),
+    howKnown: z.string().optional(),
+    source: z.string().optional(),
+    effectiveDate: z.string().optional(),
+    confidence: z.number().optional(),
+  }),
+});
 
 export const claimPost = async (
   req: Request,
@@ -11,15 +33,16 @@ export const claimPost = async (
   next: NextFunction
 ) => {
   let claim;
+  const { body } = simpleClaimSchema.parse(req)
   try {
     const userId = (req as ModifiedRequest).userId;
-    const rawClaim: any = turnFalsyPropsToUndefined(req.body);
+    const sourceURI = body.source;
     claim = await prisma.claim.create({
       data: {
-        userId,
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: "URL",
-        ...rawClaim,
+        sourceURI,
+        ...body,
       },
     });
   } catch (err) {
@@ -45,7 +68,7 @@ export const claimPost = async (
         }
       );
     } catch (err: any) {
-      console.error(err?.message);
+      console.error(err);
     }
   }
 
