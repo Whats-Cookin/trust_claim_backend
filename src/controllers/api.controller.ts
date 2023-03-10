@@ -16,7 +16,6 @@ export const claimPost = async (
     const rawClaim: any = turnFalsyPropsToUndefined(req.body);
     claim = await prisma.claim.create({
       data: {
-        userId,
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: "URL",
         ...rawClaim,
@@ -45,7 +44,7 @@ export const claimPost = async (
         }
       );
     } catch (err: any) {
-      console.error(err?.message);
+      console.error(err);
     }
   }
 

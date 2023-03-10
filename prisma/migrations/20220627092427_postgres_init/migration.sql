@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Claim" ALTER COLUMN "confidence" SET DATA TYPE DOUBLE PRECISION;

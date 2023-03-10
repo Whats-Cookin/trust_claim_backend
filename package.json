@@ -21,7 +21,7 @@
     "@glazed/datamodel": "^0.3.0",
     "@glazed/devtools": "^0.2.0",
     "@glazed/did-datastore": "^0.3.1",
-    "@prisma/client": "^3.14.0",
+    "@prisma/client": "^3.15.0",
     "axios": "^0.27.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -34,7 +34,8 @@
     "key-did-provider-ed25519": "^2.0.0",
     "key-did-resolver": "^2.0.4",
     "morgan": "^1.10.0",
-    "uint8arrays": "^3.0.0"
+    "uint8arrays": "^3.0.0",
+    "zod": "^3.21.4"
   },
   "engines": {
     "node": ">=16.13.0"
@@ -54,7 +55,7 @@
     "dotenv-cli": "^5.1.0",
     "eslint": "^8.16.0",
     "nodemon": "^2.0.16",
-    "prisma": "^3.14.0",
+    "prisma": "^3.15.2",
     "renamer": "^4.0.0",
     "typescript": "^4.6.4"
   }

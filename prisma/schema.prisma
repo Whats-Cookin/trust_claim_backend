@@ -10,6 +10,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User is only for convenience, the app itself signs the claims if the user is logged in web2 methods
+// The User *may* be the source, or the source may be the actual wallet issuing the claim directly to composedb
 model User {
   id             Int      @id @default(autoincrement())
   email          String?  @unique
@@ -17,7 +19,6 @@ model User {
   name           String?
   authType       AuthType @default(PASSWORD)
   authProviderId String?
-  Claim          Claim[]
 }
 
 enum AuthType {
@@ -25,36 +26,105 @@ enum AuthType {
   GITHUB
 }
 
+enum EntityType {
+  PERSON
+  ORGANIZATION
+  CLAIM
+  IMPACT
+  EVENT
+  DOCUMENT
+  PRODUCT
+  PLACE
+  UNKNOWN
+  OTHER
+}
+
+// Derived models
+
+// Nodes & Edges are used to return element graph to front end view
+
+// Nodes are generated from subject, object, source of claims, and even claim itself may be a node
+// these fields are useful for display
+model Node {
+  id        Int        @id @default(autoincrement())
+  nodeUri   String
+  name      String
+  entType   EntityType
+  descrip   String
+  image     String? // image?
+  thumbnail String? // thumbnail?
+  edgesTo   Edge[]     @relation("edgeTo")
+  edgesFrom Edge[]     @relation("edgeFrom")
+}
+
+// Relationship between two nodes
+//   subject -> object, edge label is claim  (if claim is a relationship)
+//   subject -> claim, edge label is claim   (if claim is a rating or credential)
+//   claim -> source, edge is "source" (still associated with claim)
+
+model Edge {
+  id          Int     @id @default(autoincrement())
+  startNode   Node    @relation("edgeFrom", fields: [startNodeId], references: [id])
+  startNodeId Int
+  endNode     Node?   @relation("edgeTo", fields: [endNodeId], references: [id])
+  endNodeId   Int?
+  label       String
+  thumbnail   String?
+  claim       Claim   @relation("edgeClaim", fields: [claimId], references: [id])
+  claimId     Int
+}
+
+// Raw data from signed claims - generated from composedb stream of TrustClaims
 model Claim {
-  id            Int           @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   subject       String
   claim         String
   object        String?
-  qualifier     String?
-  aspect        String?
-  howKnown      String?
-  source        String?
+  statement     String?
   effectiveDate DateTime?
-  confidence    Float?
-  reviewRating  Int?
-  createdByUser User          @relation(fields: [userId], references: [id])
-  userId        Int
-  issuerId      String?
-  issuerIdType  IssuerIdType?
-  createdAt     DateTime      @default(now())
-  lastUpdatedAt DateTime      @default(now())
-  SignedClaim   SignedClaim?
-}
 
-model SignedClaim {
-  id              Int             @id @default(autoincrement())
-  claim           Claim           @relation(fields: [claimId], references: [id])
-  claimId         Int             @unique
-  issuerId        String
-  issuerIdType    IssuerIdType    @default(DID)
-  signedAddress   String
-  signedClaimType SignedClaimType @default(CERAMIC)
-  signedClaimBlob Json?
+  // splat ClaimSource
+  sourceURI       String?
+  howKnown        HowKnown?
+  dateObserved    DateTime?
+  digestMultibase String?
+  author          String?
+  curator         String?
+
+  // splat NormalizedRating
+  aspect String?
+  score  Float?
+  stars  Int?
+
+  // splat Measure
+  amt         Float?
+  unit        String?
+  howMeasured String?
+
+  // splat Sharing
+  intendedAudience String?
+  respondAt        String?
+
+  confidence Float?
+
+  // signer of the original claim
+  issuerId     String?
+  issuerIdType IssuerIdType?
+
+  // cid or other external address of signed claim
+  claimAddress String?
+
+  // embedded cryptographically signed version
+  proof String?
+
+  /////////////////  Below here nothing to do with actual claim ///////////////
+
+  // specific to this database instance
+  edges Edge[] @relation(name: "edgeClaim")
+
+  // for the database record itself
+  createdAt     DateTime @default(now())
+  lastUpdatedAt DateTime @default(now())
 }
 
 enum IssuerIdType {
@@ -64,9 +134,16 @@ enum IssuerIdType {
   URL
 }
 
-enum SignedClaimType {
-  CERAMIC
-  NFT
-  CRYPTOJSON
+enum HowKnown {
+  FIRST_HAND
+  SECOND_HAND
+  WEB_DOCUMENT
+  VERIFIED_LOGIN
+  BLOCKCHAIN
+  SIGNED_DOCUMENT
+  PHYSICAL_DOCUMENT
+  INTEGRATION
+  RESEARCH
+  OPINION
   OTHER
 }
