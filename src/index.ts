@@ -5,15 +5,22 @@ import morgan from "morgan";
 import createError from "http-errors";
 import apiRoutes from "./routes/apiRoutes";
 import authRoutes from "./routes/authRoutes";
+import * as swaggerUi from 'swagger-ui-express';
+import swaggerDocument from "../swagger.json";
+
 
 const port = process.env.PORT || 9000;
-const app = express();
+export const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan("dev"));
 
 app.use(cors());
+
+// Serve Swagger UI at /api-docs endpoint
+// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, { explorer: true, swaggerOptions: { validatorUrl: null, url: `http://localhost:9000/api-docs` } }));
 
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);

@@ -213,7 +213,7 @@ async function main() {
       },
     },
   })
-  console.log({ alice, bob })
+  console.log({ alice, josh, jean, sarah, cody, maximus, bob, clark })
 }
 main()
   .then(async () => {
