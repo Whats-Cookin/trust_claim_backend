@@ -6,10 +6,10 @@ const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
   object: Joi.string().allow(""),
-  qualifier: Joi.string().allow(""),
+  statement: Joi.string().allow(""),
   aspect: Joi.string().allow(""),
   howKnown: Joi.string().allow(""),
-  source: Joi.string().allow(""),
+  sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
   reviewRating: Joi.number().custom((value, helpers) => {
