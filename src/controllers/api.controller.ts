@@ -37,6 +37,7 @@ export const claimPost = async (
         process.env.COMPOSEDB_URL,
         { claimId, ...rest },
         {
+	  timeout: 1000,
           auth: {
             username: process.env.COMPOSEDB_USERNAME,
             password: process.env.COMPOSEDB_PASSWORD,
