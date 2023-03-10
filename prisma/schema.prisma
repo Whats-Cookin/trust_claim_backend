@@ -93,8 +93,8 @@ model Claim {
 
   // splat NormalizedRating
   aspect String?
-  score  Float?
-  stars  Int?
+  score  Float? // -1 to 1
+  stars  Int?   // 0 to 5
 
   // splat Measure
   amt         Float?
