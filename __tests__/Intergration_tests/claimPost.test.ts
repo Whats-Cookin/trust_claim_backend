@@ -1,7 +1,6 @@
 import request from "supertest";
 import { app } from "../../src/index";
-import { prismaMock } from "../singleton";
-
+import { prismaMock } from "../../singleton";
 import jwt from 'jsonwebtoken';
 
 const generateToken = () => {
@@ -11,6 +10,8 @@ const generateToken = () => {
   const token = jwt.sign(payload, secret, options);
   return token;
 };
+
+const fakeJwtToken = generateToken();
 
 describe("claimPost", () => {
   let server: import("http").Server;
@@ -27,7 +28,6 @@ describe("claimPost", () => {
     // Seed the test database with initial data
     await prismaMock.claim.create({
       data: {
-        userId: 1,
         issuerId: "http://trustclaims.whatscookin.us/users/1",
         issuerIdType: "URL",
         subject: "https://www.bcorporation.net/",
@@ -52,10 +52,10 @@ describe("claimPost", () => {
   });
 
   it("creates a claim", async () => {
-    const fakeJwtToken = generateToken();
+    
     const response = await request(server)
-      .post("/api/claim")
-      .send({ subject: "bar", claim: "rated" })
+      .post("/claim")
+      .send({ subject: "https://www.bcorporation.net/", claim: "rated" })
       .set("Authorization", `Bearer ${fakeJwtToken}`);
 
     expect(response.status).toBe(201);
@@ -65,28 +65,27 @@ describe("claimPost", () => {
     const claim = await prismaMock.claim.findUnique({
       where: { id: response.body.id },
     });
+    
     expect(claim).not.toBeNull();
-    expect(claim?.subject).toBe("bar");
+    expect(claim?.subject).toBe("https://www.bcorporation.net/");
     expect(claim?.claim).toBe("rated");
   });
 
-  it("handles errors", async () => {
-    const fakeJwtToken = generateToken();
-    const response = await request(server)
-      .get("/api/error")
-      
-      .set("Authorization", `Bearer ${fakeJwtToken}`);
+  it('should handle errors and return them', async () => {
+    const response = await request(app)
+      .post('/api/claim')
+      .send({
+        // invalid data
+        subject: 'sample',
+        object: 'fox news',
+        claim: 'rated',
+      })
+      .set('Authorization', `Bearer ${fakeJwtToken}`);
 
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "An error occurred" });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe('Invalid data');
   });
 
-  // error endpoint 
-  beforeAll(() => {
-    app.get("/api/error", (req, res) => {
-      res.status(500).json({ error: "An error occurred" });
-    });
-  });
 });
 
 
