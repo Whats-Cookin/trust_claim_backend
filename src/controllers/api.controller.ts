@@ -16,7 +16,6 @@ export const claimPost = async (
     const rawClaim: any = turnFalsyPropsToUndefined(req.body);
     claim = await prisma.claim.create({
       data: {
-        userId,
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: "URL",
         ...rawClaim,
@@ -38,6 +37,7 @@ export const claimPost = async (
         process.env.COMPOSEDB_URL,
         { claimId, ...rest },
         {
+	  timeout: 1000,
           auth: {
             username: process.env.COMPOSEDB_USERNAME,
             password: process.env.COMPOSEDB_PASSWORD,
@@ -45,7 +45,7 @@ export const claimPost = async (
         }
       );
     } catch (err: any) {
-      console.error(err?.message);
+      console.error(err);
     }
   }
 
