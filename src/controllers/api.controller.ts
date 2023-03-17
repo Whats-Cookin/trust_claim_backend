@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
 import { Prisma } from "prisma/prisma-client";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
+import { processClaimSignal } from "./data.controller.js";
 import createError from "http-errors";
 import axios from "axios";
 
@@ -48,6 +49,8 @@ export const claimPost = async (
       console.error(err);
     }
   }
+
+  processClaimSignal.dispatch({claim: claim})
 
   res.status(201).json(claim);
 };
