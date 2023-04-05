@@ -14,24 +14,29 @@ export const signup = async (
   res: Response,
   next: NextFunction
 ) => {
-  console.log("IN SIGNUP");
   const { email, password } = req.body;
 
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
-      throw new createError.Conflict("Email already exists");
+      throw new createError.Conflict(`User with email '${email}' already exists`);
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
     await prisma.user.create({ data: { email, passwordHash } });
 
-    res.status(201).json({ message: "User created" });
+    res.status(201).json({ message: "User created successfully" });
   } catch (err: any) {
-    passToExpressErrorHandler(err, next);
+    console.error(err);
+
+    const message = err.message || "Internal server error";
+    const status = err.status || 500;
+
+    res.status(status).json({ message });
   }
 };
+
 
 export const login = async (
   req: Request,
@@ -43,17 +48,17 @@ export const login = async (
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new createError.Unauthorized("Invalid email/password");
+      throw new createError.Unauthorized("Invalid email or password.");
     }
 
     const { passwordHash } = user;
     if (!passwordHash) {
-      throw new createError.Unauthorized("Invalid email/password");
+      throw new createError.Unauthorized("Invalid email or password.");
     }
 
     const isEqual = await bcrypt.compare(password, passwordHash);
     if (!isEqual) {
-      throw new createError.Unauthorized("Invalid email/password");
+      throw new createError.Unauthorized("Invalid email or password.");
     }
 
     res.status(200).json({
@@ -61,9 +66,17 @@ export const login = async (
       refreshToken: generateJWT(user.id, email, "refresh"),
     });
   } catch (err: any) {
-    passToExpressErrorHandler(err, next);
+    if (err instanceof createError.HttpError) {
+      // This is a known error, so we can return a clear error message and status code.
+      next(err);
+    } else {
+      // This is an unknown error, so we should log it and return a generic error message and status code.
+      console.error(err);
+      next(new createError.InternalServerError("An unexpected error occurred."));
+    }
   }
 };
+
 
 export const refreshToken = async (
   req: Request,
