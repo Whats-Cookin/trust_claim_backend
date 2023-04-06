@@ -15,7 +15,7 @@
     "migrate:postgres": "dotenv -e .env.test -- npx prisma migrate deploy",
     "prisma:studio": "dotenv -e .env.dev -- npx prisma studio",
     "lint": "eslint . --fix",
-    "test": "dotenv -e .env.test jest -i"
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
