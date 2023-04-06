@@ -23,6 +23,10 @@ export const signup = async (
       throw new createError.Conflict(`User with email '${email}' already exists`);
     }
 
+    if (password.length < 6) {
+      throw new createError.BadRequest(`Password should be at least 6 characters long`);
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
     await prisma.user.create({ data: { email, passwordHash } });
 
@@ -36,6 +40,7 @@ export const signup = async (
     res.status(status).json({ message });
   }
 };
+
 
 
 export const login = async (
