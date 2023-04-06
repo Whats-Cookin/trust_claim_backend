@@ -5,3 +5,6 @@ dev.db
 model.json
 .vscode
 .DS_Store
+/trust-claim-frontend
+trust-claim-frontend/
+.env
