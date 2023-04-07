@@ -48,6 +48,7 @@ export const verifyRefreshToken = (refreshToken: string) => {
 export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   if (!err.statusCode) {
     err.statusCode = 500;
+    console.error(err);
     err.message = "Could not process the request. Try again later!";
   }
   next(err);

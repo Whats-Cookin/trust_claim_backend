@@ -37,7 +37,7 @@ export const claimPost = async (
         process.env.COMPOSEDB_URL,
         { claimId, ...rest },
         {
-	  timeout: 1000,
+          timeout: 1000,
           auth: {
             username: process.env.COMPOSEDB_USERNAME,
             password: process.env.COMPOSEDB_PASSWORD,
@@ -100,6 +100,55 @@ export const claimGet = async (
     }
 
     res.status(201).json({ claims, count });
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const nodesGet = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { search, page = 0, limit = 0 } = req.query;
+
+    let nodes,
+      edges = [];
+    let count = 0;
+    if (search) {
+      const queryNode: Prisma.NodeWhereInput = {
+        OR: [
+          { name: { contains: search as string, mode: "insensitive" } },
+          { descrip: { contains: search as string, mode: "insensitive" } },
+        ],
+      };
+      const queryEdges: Prisma.EdgeWhereInput = {};
+
+      nodes = await prisma.node.findMany({
+        where: queryNode,
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) ? Number(limit) : undefined,
+      });
+      edges = await prisma.node.findMany({
+        where: queryEdges,
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) ? Number(limit) : undefined,
+      });
+      count = await prisma.node.count({ where: queryNode });
+    } else {
+      count = await prisma.node.count({});
+      nodes = await prisma.node.findMany({
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) > 0 ? Number(limit) : undefined,
+      });
+      edges = await prisma.edge.findMany({
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) > 0 ? Number(limit) : undefined,
+      });
+    }
+
+    res.status(201).json({ nodes, edges, count });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
