@@ -129,7 +129,32 @@ export const nodesGet = async (
         take: Number(limit) ? Number(limit) : undefined,
         where: query,
         include: {
-          edgesFrom: true
+          edgesFrom: {
+            select :{
+              id: true,
+              claimId: true,
+              startNodeId:true,
+              endNodeId:true,
+              label:true,
+              thumbnail:true,
+              claim :true,
+              endNode:true,
+              startNode: true,
+            }
+          },
+          edgesTo: {
+            select :{
+              id: true,
+              claimId: true,
+              startNodeId:true,
+              endNodeId:true,
+              label:true,
+              thumbnail:true,
+              claim :true,
+              endNode:true,
+              startNode: true,
+            }
+          },
         },
       });
       
