@@ -2,8 +2,19 @@ import request from "supertest";
 import { app } from '../../src';
 import { prisma } from "../../src/db/prisma";
 
+let server: any;
+
 describe("GET /claims", () => {
+  
+  beforeAll((done) => {
+    server = app.listen(8000, () => {
+      console.log("Server is running on port 8000");
+      done();
+    });
+  }); 
+
   afterAll(async () => {
+    await server.close();
     await prisma.$disconnect();
   });
 
