@@ -115,26 +115,26 @@ export const nodesGet = async (
   
       let nodes = [];
       let count = 0;
+      let query : Prisma.NodeWhereInput = {};
       if (search) {
-        const query: Prisma.NodeWhereInput = {
+        query = {
           OR: [
             { name: { contains: search as string, mode: "insensitive" } },
             { descrip: { contains: search as string, mode: "insensitive" } },
           ],
         };
-        nodes = await prisma.node.findMany({
-          where: query,
-          skip: (Number(page) - 1) * Number(limit),
-          take: Number(limit) ? Number(limit) : undefined,
-        });
-        count = await prisma.node.count({ where: query });
-      } else {
-        count = await prisma.node.count({});
-        nodes = await prisma.node.findMany({
-          skip: (Number(page) - 1) * Number(limit),
-          take: Number(limit) > 0 ? Number(limit) : undefined,
-        });
-      }
+      } 
+      nodes = await prisma.node.findMany({
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit) ? Number(limit) : undefined,
+        where: query,
+        include: {
+          edgesFrom: true
+        },
+      });
+      
+      count = await prisma.node.count({ where: query });
+
   
       res.status(201).json({ nodes, count });
     } catch (err) {
