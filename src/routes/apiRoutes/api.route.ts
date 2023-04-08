@@ -9,7 +9,7 @@ const router = Router();
 
 router.post("/claim", jwtVerify, claimPostNormalizer, claimPostValidator, claimPost);
 router.get("/claim/:claimId?", claimGet);
-router.get("/nodes/?", nodesGet);
+router.get("/node/:nodeId?", nodesGet);
 
 
 export default router;

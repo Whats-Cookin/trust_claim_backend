@@ -112,6 +112,50 @@ export const nodesGet = async (
   ) => {
     try {
       const { search, page = 0, limit = 0 } = req.query;
+      const { nodeId } = req.params;
+
+      if (nodeId) {
+        const node = await prisma.node.findUnique({
+          where: {
+            id: Number(nodeId),
+          },
+          include: {
+            edgesFrom: {
+              select :{
+                id: true,
+                claimId: true,
+                startNodeId:true,
+                endNodeId:true,
+                label:true,
+                thumbnail:true,
+                claim :true,
+                endNode:true,
+                startNode: true,
+              }
+            },
+            edgesTo: {
+              select :{
+                id: true,
+                claimId: true,
+                startNodeId:true,
+                endNodeId:true,
+                label:true,
+                thumbnail:true,
+                claim :true,
+                endNode:true,
+                startNode: true,
+              }
+            },
+          },
+        });
+  
+        if (!node) {
+          throw new createError.NotFound("Node does not exist");
+        }
+  
+        res.status(201).json(node);
+        return;
+      }
   
       let nodes = [];
       let count = 0;
@@ -121,6 +165,7 @@ export const nodesGet = async (
           OR: [
             { name: { contains: search as string, mode: "insensitive" } },
             { descrip: { contains: search as string, mode: "insensitive" } },
+            { nodeUri: { contains: search as string, mode: "insensitive" } }
           ],
         };
       } 
