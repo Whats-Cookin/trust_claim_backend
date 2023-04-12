@@ -11,11 +11,13 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(morgan("dev"));
+app.use(morgan("dev"))
 
-app.use(cors({
-  origin: ['https://live.linkedtrust.us']
-}));
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
