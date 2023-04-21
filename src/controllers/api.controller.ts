@@ -215,3 +215,49 @@ export const nodesGet = async (
       passToExpressErrorHandler(err, next);
     }
   };
+
+    export const getNodeForLoggedInUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const userId = (req as ModifiedRequest).userId;
+      const rawClaim: any = turnFalsyPropsToUndefined(req.body);
+      
+      // Find a single node connected to the user's claims
+      const node = await prisma.node.findMany({
+        where: {
+          edgesTo: {
+            some: {
+              claim: {
+                issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
+                // `http://trustclaims.whatscookin.us/users/${userId}`
+                // `http://trustclaims.whatscookin.us/users/+1`
+                issuerIdType: "URL",
+                ...rawClaim,
+              },
+            },
+          },
+        },
+        include: {
+          edgesTo: {
+            include: {
+              endNode: true,
+            },
+          },
+          edgesFrom: {
+            include: {
+              startNode: true,
+            },
+          },
+        },
+      });
+  
+      res.status(200).json({ node });
+      // res.status(200).json({ node: node[0] });
+    } catch (err) {
+      console.error(err);
+      passToExpressErrorHandler(err, next);
+    }
+  };
