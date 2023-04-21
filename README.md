@@ -168,3 +168,23 @@ Then reload nginx service
 ```
 sudo systemctl reload nginx.service`
 ```
+
+## add database into your docker
+
+get docker id
+
+```bash
+docker ps
+```
+
+copy db into your docker
+
+```bash
+docker cp <path>/trustclaims.sql <id>:/tmp/dump_file
+```
+
+restore the db file
+
+```bash
+docker exec -it <id> psql -U postgres -d claim -f /tmp/dump_file
+```

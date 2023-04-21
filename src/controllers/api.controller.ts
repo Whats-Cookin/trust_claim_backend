@@ -121,6 +121,8 @@ export const nodesGet = async (
           },
           include: {
             edgesFrom: {
+              skip: (Number(page) - 1) * Number(limit),
+              take: Number(limit) ? Number(limit) : undefined,
               select :{
                 id: true,
                 claimId: true,
@@ -134,6 +136,8 @@ export const nodesGet = async (
               }
             },
             edgesTo: {
+              skip: (Number(page) - 1) * Number(limit),
+              take: Number(limit) ? Number(limit) : undefined,
               select :{
                 id: true,
                 claimId: true,
