@@ -84,6 +84,21 @@ npm run prisma:studio
 
 After running this command prisma studio opens in port 5555.
 
+#### Integrated seeding with Prisma Migrate:
+Database seeding happens in two ways with Prisma: manually with prisma db seed and automatically in prisma migrate dev.
+
+Run 
+```
+npx prisma db seed
+```
+or
+```
+npm i
+prisma migrate dev
+```
+
+When you want to use prisma migrate dev without seeding, you can pass the --skip-seed flag.
+
 ## Env variables
 
 Create a `.env` file in project root. If running with docker an additional `.env.dev` file is needed. Refer to below example for env variables:

@@ -7,7 +7,7 @@ import apiRoutes from "./routes/apiRoutes";
 import authRoutes from "./routes/authRoutes";
 
 const port = process.env.PORT || 9000;
-const app = express();
+export const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
