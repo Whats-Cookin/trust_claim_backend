@@ -214,9 +214,13 @@ export const nodesGet = async (
     } catch (err) {
       passToExpressErrorHandler(err, next);
     }
-  };
+};
 
-    export const getNodeForLoggedInUser = async (
+// this is fine, later we also want to find the nodes with their metamask DID - most of them will NOT be by their issuer id
+
+// Most would be by their DID, most users will NOT identify by our user id, but by some external universal way
+
+export const getNodeForLoggedInUser = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -225,15 +229,13 @@ export const nodesGet = async (
       const userId = (req as ModifiedRequest).userId;
       const rawClaim: any = turnFalsyPropsToUndefined(req.body);
       
-      // Find a single node connected to the user's claims
+       // Find a single node connected to the user's claims
       const node = await prisma.node.findMany({
         where: {
           edgesTo: {
             some: {
               claim: {
                 issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-                // `http://trustclaims.whatscookin.us/users/${userId}`
-                // `http://trustclaims.whatscookin.us/users/+1`
                 issuerIdType: "URL",
                 ...rawClaim,
               },
@@ -255,9 +257,8 @@ export const nodesGet = async (
       });
   
       res.status(200).json({ node });
-      // res.status(200).json({ node: node[0] });
     } catch (err) {
       console.error(err);
       passToExpressErrorHandler(err, next);
     }
-  };
+};
