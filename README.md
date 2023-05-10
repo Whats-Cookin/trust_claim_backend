@@ -149,6 +149,12 @@ Then, building the project is enough, because `pm2` is watching for changes.
 npm run build
 ```
 
+NOTE: Run this when the server is ONLY down
+
+```
+pm2 start index.js --watch
+```
+
 #### NGINX config
 
 Nginx config is located here - `/etc/nginx/sites-available/trustclaims.whatscookin.us`. To change the config -
