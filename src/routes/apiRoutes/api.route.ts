@@ -3,6 +3,7 @@ import { claimPostValidator } from "../../middlewares/validators";
 import { claimPostNormalizer } from "../../middlewares/normalizers";
 import { claimPost, claimGet, nodesGet } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
+import { getNodeForLoggedInUser } from "../../controllers/api.controller";
 
 
 const router = Router();
@@ -10,6 +11,7 @@ const router = Router();
 router.post("/claim", jwtVerify, claimPostNormalizer, claimPostValidator, claimPost);
 router.get("/claim/:claimId?", claimGet);
 router.get("/node/:nodeId?", nodesGet);
+router.get("/my-node", getNodeForLoggedInUser);
 
 
 export default router;

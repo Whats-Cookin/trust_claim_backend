@@ -214,4 +214,51 @@ export const nodesGet = async (
     } catch (err) {
       passToExpressErrorHandler(err, next);
     }
-  };
+};
+
+// this is fine, later we also want to find the nodes with their metamask DID - most of them will NOT be by their issuer id
+
+// Most would be by their DID, most users will NOT identify by our user id, but by some external universal way
+
+export const getNodeForLoggedInUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const userId = (req as ModifiedRequest).userId;
+      const rawClaim: any = turnFalsyPropsToUndefined(req.body);
+      
+       // Find a single node connected to the user's claims
+      const node = await prisma.node.findMany({
+        where: {
+          edgesTo: {
+            some: {
+              claim: {
+                issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
+                issuerIdType: "URL",
+                ...rawClaim,
+              },
+            },
+          },
+        },
+        include: {
+          edgesTo: {
+            include: {
+              endNode: true,
+            },
+          },
+          edgesFrom: {
+            include: {
+              startNode: true,
+            },
+          },
+        },
+      });
+  
+      res.status(200).json({ node });
+    } catch (err) {
+      console.error(err);
+      passToExpressErrorHandler(err, next);
+    }
+};
