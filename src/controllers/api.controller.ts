@@ -69,7 +69,7 @@ export const claimGet = async (
       });
 
       if (!claim) {
-        throw new createError.NotFound("Claim does not exist");
+        throw new createError.NotFound("Not Found");
       }
 
       res.status(201).json(claim);
