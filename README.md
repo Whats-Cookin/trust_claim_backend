@@ -149,7 +149,7 @@ Then, building the project is enough, because `pm2` is watching for changes.
 npm run build
 ```
 
-NOTE: Run this when the server is ONLY down
+NOTE: Run this ONLY when the server is  down
 
 ```
 pm2 start index.js --watch
