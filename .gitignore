@@ -5,3 +5,4 @@ dev.db
 model.json
 .vscode
 .DS_Store
+*.env.test*
