@@ -129,7 +129,7 @@ ssh -l ubuntu -i [key] trustclaims.whatscookin.us
 cd into the project
 
 ```
-cd /home/ubuntu/trust_claim_backend
+cd /data/trust_claim_backend
 ```
 
 Pull the latest master branch from github
