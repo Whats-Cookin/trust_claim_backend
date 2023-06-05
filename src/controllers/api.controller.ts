@@ -29,7 +29,8 @@ export const claimPost = async (
     process.env.COMPOSEDB_URL &&
     process.env.COMPOSEDB_USERNAME &&
     process.env.COMPOSEDB_PASSWORD &&
-    claim
+    claim &&
+    false
   ) {
     try {
       const { id: claimId, ...rest } = claim;
