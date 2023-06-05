@@ -118,16 +118,20 @@ export const githubAuthenticator = async (
     const { id: githubId, email, name } = userData;
     const githubIdAsString = String(githubId);
 
-    const user = await prisma.user.upsert({
-      where: { email },
-      update: { authType: "GITHUB", authProviderId: githubIdAsString, name },
-      create: {
-        email,
-        authProviderId: githubIdAsString,
-        authType: "GITHUB",
-        name,
-      },
+    let user = await prisma.user.findFirst({
+      where: { authType: "GITHUB", authProviderId: githubIdAsString },
     });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: email,
+          authType: "GITHUB",
+          authProviderId: githubIdAsString,
+          name,
+        },
+      });
+    }
 
     res.status(200).json({
       accessToken: generateJWT(user.id, email, "access"),
