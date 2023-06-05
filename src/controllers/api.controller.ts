@@ -3,7 +3,7 @@ import { prisma } from "../db/prisma";
 import { Prisma } from "prisma/prisma-client";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
-import axios from "axios";
+
 
 export const claimPost = async (
   req: Request,
@@ -25,30 +25,29 @@ export const claimPost = async (
     passToExpressErrorHandler(err, next);
   }
 
-  if (
-    process.env.COMPOSEDB_URL &&
-    process.env.COMPOSEDB_USERNAME &&
-    process.env.COMPOSEDB_PASSWORD &&
-    claim &&
-    false
-  ) {
-    try {
-      const { id: claimId, ...rest } = claim;
-      await axios.post(
-        process.env.COMPOSEDB_URL,
-        { claimId, ...rest },
-        {
-	  timeout: 10000,
-          auth: {
-            username: process.env.COMPOSEDB_USERNAME,
-            password: process.env.COMPOSEDB_PASSWORD,
-          },
-        }
-      );
-    } catch (err: any) {
-      console.error(err);
-    }
-  }
+  // if (
+  //   process.env.COMPOSEDB_URL &&
+  //   process.env.COMPOSEDB_USERNAME &&
+  //   process.env.COMPOSEDB_PASSWORD &&
+  //   claim
+  // ) {
+  //   try {
+  //     const { id: claimId, ...rest } = claim;
+  //     await axios.post(
+  //       process.env.COMPOSEDB_URL,
+  //       { claimId, ...rest },
+  //       {
+	//   timeout: 10000,
+  //         auth: {
+  //           username: process.env.COMPOSEDB_USERNAME,
+  //           password: process.env.COMPOSEDB_PASSWORD,
+  //         },
+  //       }
+  //     );
+  //   } catch (err: any) {
+  //     console.error(err);
+  //   }
+  // }
 
   res.status(201).json(claim);
 };
