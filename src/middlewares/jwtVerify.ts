@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import createError from "http-errors";
 
+const DID_USER = 
+
 export const jwtVerify = (req: Request, _res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (token) {
@@ -16,6 +18,12 @@ export const jwtVerify = (req: Request, _res: Response, next: NextFunction) => {
       next(new createError.Unauthorized(message));
     }
   } else {
-    next(new createError.Unauthorized("Access token required"));
+    (req as ModifiedRequest).isAuthenticated = false;
+    (req as ModifiedRequest).userId = 0;
+    // now we will need to check the did is right
+    // we can verify the request directly if it has a claimAddress
+    // so we don't really need a user login
+    //    next(new createError.Unauthorized("Access token required"));
+    next();
   }
 };
