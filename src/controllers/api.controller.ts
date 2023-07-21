@@ -105,6 +105,28 @@ export const claimGet = async (
   }
 };
 
+export const claimsGet = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { search, page = 0, limit = 0 } = req.query;
+    
+    const claims = await prisma.claim.findMany({
+      skip: (Number(page) - 1) * Number(limit),
+      take: 10,
+      orderBy: {
+        createdAt: 'desc',
+      }
+    })
+    res.status(200).json(claims)
+    return
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+}
+
 export const nodesGet = async (
     req: Request,
     res: Response,

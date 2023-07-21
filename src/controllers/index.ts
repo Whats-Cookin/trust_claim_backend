@@ -1,4 +1,4 @@
-export { claimPost, claimGet, nodesGet } from "./api.controller";
+export { claimPost, claimGet, claimsGet, nodesGet } from "./api.controller";
 export {
   login,
   signup,
