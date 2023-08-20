@@ -3,6 +3,7 @@ import { prisma } from "../db/prisma";
 import { Prisma } from "prisma/prisma-client";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
+import { validateNoLeadingZeroes } from "ethereumjs-util";
 
 
 export const claimPost = async (
@@ -104,6 +105,68 @@ export const claimGet = async (
     passToExpressErrorHandler(err, next);
   }
 };
+
+export const claimsGet = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { search, page = 0, limit = 0 } = req.query;
+    
+    // const claims = await prisma.claim.findMany({
+    //   skip: (Number(page) - 1) * Number(limit),
+    //   take: 10,
+    //   orderBy: {
+    //     createdAt: 'desc',
+    //   }
+    // })
+
+    const nodes = await prisma.node.findMany({
+      skip: (Number(page) - 1) * Number(limit),
+      take: 10,
+      orderBy: {
+        id: 'desc',
+      },
+      include: {
+        edgesFrom: {
+          skip: (Number(page) - 1) * Number(limit),
+          take: Number(limit) ? Number(limit) : undefined,
+          select :{
+            id: true,
+            claimId: true,
+            startNodeId:true,
+            endNodeId:true,
+            label:true,
+            thumbnail:true,
+            claim :true,
+            endNode:true,
+            startNode: true,
+          }
+        },
+        edgesTo: {
+          skip: (Number(page) - 1) * Number(limit),
+          take: Number(limit) ? Number(limit) : undefined,
+          select :{
+            id: true,
+            claimId: true,
+            startNodeId:true,
+            endNodeId:true,
+            label:true,
+            thumbnail:true,
+            claim :true,
+            endNode:true,
+            startNode: true,
+          }
+        },
+      },
+    });
+    res.status(200).json(nodes)
+    return
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+}
 
 export const nodesGet = async (
     req: Request,
