@@ -170,6 +170,8 @@ NOTE: Run this ONLY when the server is  down
 pm2 start index.js --watch
 ```
 
+Logs are in `/data/home/ubuntu/.pm2/logs`
+
 #### NGINX config
 
 Nginx config is located here - `/etc/nginx/sites-available/trustclaims.whatscookin.us`. To change the config -
