@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
 import { Prisma } from "prisma/prisma-client";
-import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
+import { passToExpressErrorHandler, turnFalsyPropsToUndefined, poormansNormalizer } from "../utils";
 import createError from "http-errors";
 import { validateNoLeadingZeroes } from "ethereumjs-util";
 
@@ -14,7 +14,8 @@ export const claimPost = async (
   let claim;
   try {
     const userId = (req as ModifiedRequest).userId;
-    const rawClaim: any = turnFalsyPropsToUndefined(req.body);
+    let rawClaim: any = turnFalsyPropsToUndefined(req.body);
+    rawClaim = poormansNormalizer(rawClaim);
     claim = await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
