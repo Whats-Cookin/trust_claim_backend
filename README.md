@@ -172,6 +172,12 @@ pm2 start index.js --watch
 
 Logs are in `/data/home/ubuntu/.pm2/logs`
 
+To see all about the pm2 process use
+
+```
+PM2_HOME=/data/home/ubuntu/.pm2 /data/home/ubuntu/.nvm/versions/node/v16.15.1/bin/pm2 describe index
+```
+
 #### NGINX config
 
 Nginx config is located here - `/etc/nginx/sites-available/trustclaims.whatscookin.us`. To change the config -
