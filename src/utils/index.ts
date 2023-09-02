@@ -48,7 +48,8 @@ export const verifyRefreshToken = (refreshToken: string) => {
 export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   if (!err.statusCode) {
     err.statusCode = 500;
-    err.message = "Could not process the request. Try again later!";
+    console.log(err.message);
+    err.message = "Could not process the request, check inputs and try again";
   }
   next(err);
 };
@@ -60,6 +61,29 @@ export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
   newObjAsArray.forEach(([key, val]) => {
     if (!val) {
       newObj[key] = undefined;
+    }
+  });
+  return newObj;
+};
+
+interface Mapping {
+    [key: string]: {
+        [key: string]: string;
+    };
+}
+
+// handle common mis-keys
+const SIMILAR_MAP : Mapping = {
+   'howKnown': { 'website': 'WEB_DOCUMENT', 'WEBSITE': 'WEB_DOCUMENT'},
+}
+
+export const poormansNormalizer = (obj: { [key: string]: any }) => {
+  const newObj = { ...obj };
+  const newObjAsArray = Object.entries(newObj);
+
+  newObjAsArray.forEach(([key, val]) => {
+    if (key in SIMILAR_MAP && val in SIMILAR_MAP[key]) {
+       newObj[key] = SIMILAR_MAP[key][val]
     }
   });
   return newObj;
