@@ -8,6 +8,20 @@ const claimPostSchema = Joi.object({
   object: Joi.string().allow(""),
   statement: Joi.string().allow(""),
   aspect: Joi.string().allow(""),
+  amt: Joi.alternatives().try(
+    Joi.string().allow('').custom((value, helpers) => {
+      let strippedValue = value.replace(/\$|\s+/g, ''); // Strip $ and spaces
+      if (strippedValue === '') {
+        return null; // Convert empty string to null
+      }
+      let numberValue = parseFloat(strippedValue);
+      if (isNaN(numberValue)) {
+        throw new Error("Can't convert aspect to number");
+      }
+      return numberValue; // Return the converted number
+    }),
+    Joi.number()
+  ),
   howKnown: Joi.string().allow(""),
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
