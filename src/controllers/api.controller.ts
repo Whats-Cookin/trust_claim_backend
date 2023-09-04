@@ -188,12 +188,13 @@ export const claimsFeed = async (
 
     // this weird syntax is for security its actually correct
     const nodes = await prisma.$queryRaw`
-      SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link, n2.descrip as statement
+      SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, c.statement as statement, c.stars as stars, c.score as score, c.amt as amt, c."effectiveDate" as effective_date, c."howKnown" as how_known, c.aspect as aspect, c.confidence as confidence, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link
       FROM "Node" AS n1
       INNER JOIN "Edge" AS e ON n1.id = e."startNodeId"
       INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
       INNER JOIN "Edge" as e2 on n2.id = e2."startNodeId"
       INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
+      INNER JOIN "Claim" as c on e."claimId" = c.id
       ORDER BY n1.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
