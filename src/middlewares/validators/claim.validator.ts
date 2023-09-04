@@ -26,7 +26,7 @@ const claimPostSchema = Joi.object({
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
-  claimAddress: Joi.string.allow(""),
+  claimAddress: Joi.string().allow(""),
   stars: Joi.number().custom((value, helpers) => {
     const ancestor = helpers.state.ancestors?.[0];
 
