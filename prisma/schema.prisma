@@ -24,6 +24,7 @@ model User {
 enum AuthType {
   PASSWORD
   GITHUB
+  LINKEDIN
 }
 
 enum EntityType {

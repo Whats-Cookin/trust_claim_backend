@@ -56,3 +56,21 @@ export const githubAuthValidator = async (
     passToExpressErrorHandler(err, next);
   }
 };
+
+const linkedinAuthSchema = Joi.object({
+  code: Joi.string().required(),
+});
+
+export const linkedinAuthValidator = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  try {
+    await linkedinAuthSchema.validateAsync(req.body);
+    next();
+  } catch (err: any) {
+    err.statusCode = 400;
+    passToExpressErrorHandler(err, next);
+  }
+};
