@@ -7,7 +7,7 @@ const updateIssuerIdScript = async () => {
   const repeatedIds: any[] = [];
   const allClaims = await prisma.claim.findMany({});
 
-  allClaims.forEach((claim) => {
+  allClaims.forEach((claim: any) => {
     if (claim.object) {
       if (acc[claim.object]) {
         repeatedIds.push(claim.id);
