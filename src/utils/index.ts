@@ -1,12 +1,9 @@
-import dotenv from "dotenv";
 import { NextFunction } from "express";
 import JWT from "jsonwebtoken";
 import axios from "axios";
 import qs from "qs";
 import { prisma } from "../db/prisma";
 import { AuthType } from "@prisma/client";
-
-dotenv.config();
 
 export const generateJWT = (
   userId: number,

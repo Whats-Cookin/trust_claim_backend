@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction, CookieOptions } from "express";
+import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
 import {
   generateJWT,
@@ -11,24 +11,7 @@ import createError from "http-errors";
 import bcrypt from "bcryptjs";
 import axios from "axios";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import { AuthType } from "@prisma/client";
-
-dotenv.config();
-
-const accessTokenCookieOptions: CookieOptions = {
-  maxAge: 900000, // 15 mins
-  httpOnly: true,
-  domain: "localhost",
-  path: "/",
-  sameSite: "lax",
-  secure: false,
-};
-
-const refreshTokenCookieOptions: CookieOptions = {
-  ...accessTokenCookieOptions,
-  maxAge: 3.154e10,
-};
 
 export const signup = async (
   req: Request,
@@ -161,10 +144,11 @@ export const googleAuthenticator = async (
   next: NextFunction
 ) => {
   try {
-    const { code } = req.query;
+    const { code } = req.body;
+    console.log(`code in backend: ${code}`);
 
     // an alternate way of getting goolgeUser would be to destructure also the access_token and call google's userinfo endpoint
-    const { id_token } = await getGoogleAuthTokens(code as string);
+    const { id_token } = await getGoogleAuthTokens(code.toString());
     const googleUser: any = jwt.decode(id_token);
 
     // is this ok?? if the email is not verified, we will throw 403
@@ -182,11 +166,10 @@ export const googleAuthenticator = async (
       AuthType.GOOGLE
     );
 
-    res.cookie("accessToken", generateJWT(user.id, email, "access"));
-    res.cookie("refreshToken", generateJWT(user.id, email, "refresh"));
-
-    // i'm not sure how to handle this in frontend
-    res.redirect("http://localhost:5173/");
+    res.status(200).json({
+      accessToken: generateJWT(user.id, email, "access"),
+      refreshToken: generateJWT(user.id, email, "refresh"),
+    });
   } catch (error: any) {
     console.error(error);
     throw new Error(error.message);
