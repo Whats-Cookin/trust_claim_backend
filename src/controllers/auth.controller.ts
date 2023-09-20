@@ -148,7 +148,7 @@ export const googleAuthenticator = async (
     console.log(`code in backend: ${code}`);
 
     // an alternate way of getting goolgeUser would be to destructure also the access_token and call google's userinfo endpoint
-    const { id_token } = await getGoogleAuthTokens(code.toString());
+    const { id_token } = await getGoogleAuthTokens(code);
     const googleUser: any = jwt.decode(id_token);
 
     // is this ok?? if the email is not verified, we will throw 403

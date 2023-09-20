@@ -102,7 +102,7 @@ interface GoogleTokensResult {
 }
 
 export const getGoogleAuthTokens = async (
-  code: string
+  code: any
 ): Promise<GoogleTokensResult> => {
   const url = "https://oauth2.googleapis.com/token";
 
@@ -167,6 +167,7 @@ export const getOrCreateUser = async (
         name,
       },
     });
+    console.log("New user created!");
   }
   return user;
 };
