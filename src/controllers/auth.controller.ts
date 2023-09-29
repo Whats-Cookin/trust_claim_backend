@@ -3,11 +3,16 @@ import { prisma } from "../db/prisma";
 import {
   generateJWT,
   passToExpressErrorHandler,
+  sismoConnectServerConfig,
   verifyRefreshToken,
 } from "../utils";
 import createError from "http-errors";
 import bcrypt from "bcryptjs";
 import axios from "axios";
+import {
+  SismoConnectVerifiedResult,
+  AuthType,
+} from "@sismo-core/sismo-connect-server";
 
 export const signup = async (
   req: Request,
@@ -158,6 +163,33 @@ export const githubAuthenticator = async (
       accessToken: generateJWT(user.id, email, "access"),
       refreshToken: generateJWT(user.id, email, "refresh"),
     });
+  } catch (err: any) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const sismoVerifier = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { sismoConnectResponse } = req.body;
+  const sismoConnect = sismoConnectServerConfig();
+  try {
+    const result: SismoConnectVerifiedResult = await sismoConnect.verify(
+      sismoConnectResponse,
+      {
+        auths: [{ authType: AuthType.VAULT }],
+      }
+    );
+    const vaultId = result.getUserId(AuthType.VAULT);
+    if (vaultId) {
+      console.log(vaultId);
+    } else {
+      console.log("no vault id found!");
+      res.status(400).send("No vault ID found!");
+    }
+    res.status(200).json({ vaultId: vaultId });
   } catch (err: any) {
     passToExpressErrorHandler(err, next);
   }
