@@ -1,5 +1,9 @@
 import { NextFunction } from "express";
 import JWT from "jsonwebtoken";
+import {
+  SismoConnect,
+  SismoConnectConfig,
+} from "@sismo-core/sismo-connect-server";
 
 export const generateJWT = (
   userId: number,
@@ -67,15 +71,15 @@ export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
 };
 
 interface Mapping {
-    [key: string]: {
-        [key: string]: string;
-    };
+  [key: string]: {
+    [key: string]: string;
+  };
 }
 
 // handle common mis-keys
-const SIMILAR_MAP : Mapping = {
-   'howKnown': { 'website': 'WEB_DOCUMENT', 'WEBSITE': 'WEB_DOCUMENT'},
-}
+const SIMILAR_MAP: Mapping = {
+  howKnown: { website: "WEB_DOCUMENT", WEBSITE: "WEB_DOCUMENT" },
+};
 
 export const poormansNormalizer = (obj: { [key: string]: any }) => {
   const newObj = { ...obj };
@@ -83,8 +87,19 @@ export const poormansNormalizer = (obj: { [key: string]: any }) => {
 
   newObjAsArray.forEach(([key, val]) => {
     if (key in SIMILAR_MAP && val in SIMILAR_MAP[key]) {
-       newObj[key] = SIMILAR_MAP[key][val]
+      newObj[key] = SIMILAR_MAP[key][val];
     }
   });
   return newObj;
+};
+
+export const sismoConnectServerConfig = () => {
+  const config: SismoConnectConfig = {
+    // you will need to register an appId in the Factory
+    appId: "0x204c3494bf2f02d64fd5011c47b92ca8",
+  };
+
+  // create a new Sismo Connect instance with the server configuration
+  const sismoConnect = SismoConnect({ config });
+  return sismoConnect;
 };

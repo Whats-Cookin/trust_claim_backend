@@ -25,6 +25,7 @@
     "@glazed/devtools": "^0.2.0",
     "@glazed/did-datastore": "^0.3.1",
     "@prisma/client": "^3.15.0",
+    "@sismo-core/sismo-connect-server": "^0.0.23",
     "axios": "^0.27.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
