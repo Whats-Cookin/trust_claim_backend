@@ -19,6 +19,6 @@ router.post("/signup", authSignupValidator, signup);
 router.post("/login", login);
 router.post("/refresh_token", authRefreshTokenValidator, refreshToken);
 router.post("/github", githubAuthValidator, githubAuthenticator);
-router.post("/google", googleAuthenticator);
+router.get("/google/callback", googleAuthenticator);
 
 export default router;

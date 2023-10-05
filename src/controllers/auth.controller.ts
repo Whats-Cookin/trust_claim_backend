@@ -144,8 +144,7 @@ export const googleAuthenticator = async (
   next: NextFunction
 ) => {
   try {
-    const { code } = req.body;
-    console.log(`code in backend: ${code}`);
+    const code = req.query.code as string;
 
     // an alternate way of getting goolgeUser would be to destructure also the access_token and call google's userinfo endpoint
     const { id_token } = await getGoogleAuthTokens(code);
@@ -163,13 +162,14 @@ export const googleAuthenticator = async (
       email,
       name,
       googleIdAsString,
-      AuthType.GOOGLE
+      AuthType.OAUTH
     );
 
-    res.status(200).json({
-      accessToken: generateJWT(user.id, email, "access"),
-      refreshToken: generateJWT(user.id, email, "refresh"),
-    });
+    const accessToken = generateJWT(user.id, email, "access");
+    const refreshToken = generateJWT(user.id, email, "refresh");
+    res.redirect(
+      `http://localhost:5173/googlecallback?accessToken=${accessToken}&refreshToken=${refreshToken}`
+    );
   } catch (error: any) {
     console.error(error);
     throw new Error(error.message);
