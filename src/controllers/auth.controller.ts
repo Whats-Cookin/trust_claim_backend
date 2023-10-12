@@ -21,15 +21,26 @@ export const signup = async (
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
-      throw new createError.Conflict("Email already exists");
+      throw new createError.Conflict(`User with email '${email}' already exists`);
+    }
+
+    if (password.length < 6) {
+      throw new createError.BadRequest(`Password should be at least 6 characters long`);
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
     await prisma.user.create({ data: { email, passwordHash } });
 
-    res.status(201).json({ message: "User created" });
+    // res.status(201).json({ message: "User created" });
+    res.status(201).json({ message: "User created successfully" });
   } catch (err: any) {
-    passToExpressErrorHandler(err, next);
+    // passToExpressErrorHandler(err, next);
+    console.error(err);
+
+    const message = err.message || "Internal server error";
+    const status = err.status || 500;
+
+    res.status(status).json({ message });
   }
 };
 
