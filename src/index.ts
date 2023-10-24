@@ -5,13 +5,14 @@ import morgan from "morgan";
 import createError from "http-errors";
 import apiRoutes from "./routes/apiRoutes";
 import authRoutes from "./routes/authRoutes";
+import multer from "multer";
 
 const port = process.env.PORT || 9000;
 export const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(morgan("dev"))
+app.use(morgan("dev"));
 
 app.use(
   cors({
@@ -36,5 +37,7 @@ app.use(
 );
 
 app.listen(port, () => {
-  console.log(`Listening to requests in port - ${port}`);
+  console.log(
+    `Listening to requests in port - ${process.env.PORT}, ${process.env.DATABASE_URL}`
+  );
 });

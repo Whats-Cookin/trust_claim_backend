@@ -1,5 +1,6 @@
 import { NextFunction } from "express";
 import JWT from "jsonwebtoken";
+import crypto from "crypto";
 
 export const generateJWT = (
   userId: number,
@@ -67,15 +68,15 @@ export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
 };
 
 interface Mapping {
-    [key: string]: {
-        [key: string]: string;
-    };
+  [key: string]: {
+    [key: string]: string;
+  };
 }
 
 // handle common mis-keys
-const SIMILAR_MAP : Mapping = {
-   'howKnown': { 'website': 'WEB_DOCUMENT', 'WEBSITE': 'WEB_DOCUMENT'},
-}
+const SIMILAR_MAP: Mapping = {
+  howKnown: { website: "WEB_DOCUMENT", WEBSITE: "WEB_DOCUMENT" },
+};
 
 export const poormansNormalizer = (obj: { [key: string]: any }) => {
   const newObj = { ...obj };
@@ -83,8 +84,11 @@ export const poormansNormalizer = (obj: { [key: string]: any }) => {
 
   newObjAsArray.forEach(([key, val]) => {
     if (key in SIMILAR_MAP && val in SIMILAR_MAP[key]) {
-       newObj[key] = SIMILAR_MAP[key][val]
+      newObj[key] = SIMILAR_MAP[key][val];
     }
   });
   return newObj;
 };
+
+export const randomImageName = (bytes = 32) =>
+  crypto.randomBytes(bytes).toString("hex");

@@ -125,6 +125,16 @@ model Claim {
   // for the database record itself
   createdAt     DateTime @default(now())
   lastUpdatedAt DateTime @default(now())
+
+  claimImage  ClaimImage[]
+}
+
+model ClaimImage {
+  id  Int @id @default(autoincrement())
+  imageHash String
+  claimUrl  String
+  claim Claim[]
+
 }
 
 enum IssuerIdType {
