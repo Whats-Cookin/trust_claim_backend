@@ -10,7 +10,7 @@ export const claimPostNormalizer = async (
   try {
     const howKnown = req.body.howKnown;
     if (typeof howKnown === "string") {
-        req.body.howKnown = howKnown.toUpperCase();
+      req.body.howKnown = howKnown.toUpperCase();
     }
     next();
   } catch (err: any) {
