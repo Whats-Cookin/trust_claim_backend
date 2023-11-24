@@ -180,7 +180,7 @@ export const claimsFeed = async (
 ) => {
   try {
     const { search } = req.query; // unused for now, TODO here search
-    let { page = 1, limit = 40 } = req.query; // defaults provided here // the limit is changed from 10 to 40 as a quick fix before we add pagination
+    let { page = 1, limit = 10 } = req.query; // defaults provided here
 
     // Convert them to numbers
     page = Number(page);
