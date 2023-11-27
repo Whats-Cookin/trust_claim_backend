@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
 import { Prisma } from "prisma/prisma-client";
-import { passToExpressErrorHandler, turnFalsyPropsToUndefined, poormansNormalizer } from "../utils";
+import {
+  passToExpressErrorHandler,
+  turnFalsyPropsToUndefined,
+  poormansNormalizer,
+} from "../utils";
 import createError from "http-errors";
 import { validateNoLeadingZeroes } from "ethereumjs-util";
-
 
 export const claimPost = async (
   req: Request,
@@ -39,7 +42,7 @@ export const claimPost = async (
   //       process.env.COMPOSEDB_URL,
   //       { claimId, ...rest },
   //       {
-	//   timeout: 10000,
+  //   timeout: 10000,
   //         auth: {
   //           username: process.env.COMPOSEDB_USERNAME,
   //           password: process.env.COMPOSEDB_PASSWORD,
@@ -114,7 +117,7 @@ export const claimsGet = async (
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
-    
+
     // const claims = await prisma.claim.findMany({
     //   skip: (Number(page) - 1) * Number(limit),
     //   take: 10,
@@ -127,47 +130,47 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: 'desc',
+        id: "desc",
       },
       include: {
         edgesFrom: {
           skip: (Number(page) - 1) * Number(limit),
           take: Number(limit) ? Number(limit) : undefined,
-          select :{
+          select: {
             id: true,
             claimId: true,
-            startNodeId:true,
-            endNodeId:true,
-            label:true,
-            thumbnail:true,
-            claim :true,
-            endNode:true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
             startNode: true,
-          }
+          },
         },
         edgesTo: {
           skip: (Number(page) - 1) * Number(limit),
           take: Number(limit) ? Number(limit) : undefined,
-          select :{
+          select: {
             id: true,
             claimId: true,
-            startNodeId:true,
-            endNodeId:true,
-            label:true,
-            thumbnail:true,
-            claim :true,
-            endNode:true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
             startNode: true,
-          }
+          },
         },
       },
     });
-    res.status(200).json(nodes)
-    return
+    res.status(200).json(nodes);
+    return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
-}
+};
 /*********************************************************************/
 
 export const claimsFeed = async (
@@ -176,15 +179,14 @@ export const claimsFeed = async (
   next: NextFunction
 ) => {
   try {
-
-    const { search } = req.query;  // unused for now, TODO here search
-    let { page = 1, limit = 10 } = req.query; // defaults provided here
+    const { search } = req.query; // unused for now, TODO here search
+    let { page = 1, limit = 100 } = req.query; // defaults provided here
 
     // Convert them to numbers
     page = Number(page);
     limit = Number(limit);
 
-    const offset = (page -1) * limit
+    const offset = (page - 1) * limit;
 
     // this weird syntax is for security its actually correct
     const nodes = await prisma.$queryRaw`
@@ -201,124 +203,122 @@ export const claimsFeed = async (
       OFFSET ${offset}
     `;
 
-    res.status(200).json(nodes)
-    return
+    res.status(200).json(nodes);
+    return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
-}
-
+};
 
 /*********************************************************************/
 export const nodesGet = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      const { search, page = 0, limit = 0 } = req.query;
-      const { nodeId } = req.params;
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { search, page = 0, limit = 0 } = req.query;
+    const { nodeId } = req.params;
 
-      if (nodeId) {
-        const node = await prisma.node.findUnique({
-          where: {
-            id: Number(nodeId),
-          },
-          include: {
-            edgesFrom: {
-              skip: (Number(page) - 1) * Number(limit),
-              take: Number(limit) ? Number(limit) : undefined,
-              select :{
-                id: true,
-                claimId: true,
-                startNodeId:true,
-                endNodeId:true,
-                label:true,
-                thumbnail:true,
-                claim :true,
-                endNode:true,
-                startNode: true,
-              }
-            },
-            edgesTo: {
-              skip: (Number(page) - 1) * Number(limit),
-              take: Number(limit) ? Number(limit) : undefined,
-              select :{
-                id: true,
-                claimId: true,
-                startNodeId:true,
-                endNodeId:true,
-                label:true,
-                thumbnail:true,
-                claim :true,
-                endNode:true,
-                startNode: true,
-              }
-            },
-          },
-        });
-  
-        if (!node) {
-          throw new createError.NotFound("Node does not exist");
-        }
-  
-        res.status(201).json(node);
-        return;
-      }
-  
-      let nodes = [];
-      let count = 0;
-      let query : Prisma.NodeWhereInput = {};
-      if (search) {
-        query = {
-          OR: [
-            { name: { contains: search as string, mode: "insensitive" } },
-            { descrip: { contains: search as string, mode: "insensitive" } },
-            { nodeUri: { contains: search as string, mode: "insensitive" } }
-          ],
-        };
-      } 
-      nodes = await prisma.node.findMany({
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) ? Number(limit) : undefined,
-        where: query,
+    if (nodeId) {
+      const node = await prisma.node.findUnique({
+        where: {
+          id: Number(nodeId),
+        },
         include: {
           edgesFrom: {
-            select :{
+            skip: (Number(page) - 1) * Number(limit),
+            take: Number(limit) ? Number(limit) : undefined,
+            select: {
               id: true,
               claimId: true,
-              startNodeId:true,
-              endNodeId:true,
-              label:true,
-              thumbnail:true,
-              claim :true,
-              endNode:true,
+              startNodeId: true,
+              endNodeId: true,
+              label: true,
+              thumbnail: true,
+              claim: true,
+              endNode: true,
               startNode: true,
-            }
+            },
           },
           edgesTo: {
-            select :{
+            skip: (Number(page) - 1) * Number(limit),
+            take: Number(limit) ? Number(limit) : undefined,
+            select: {
               id: true,
               claimId: true,
-              startNodeId:true,
-              endNodeId:true,
-              label:true,
-              thumbnail:true,
-              claim :true,
-              endNode:true,
+              startNodeId: true,
+              endNodeId: true,
+              label: true,
+              thumbnail: true,
+              claim: true,
+              endNode: true,
               startNode: true,
-            }
+            },
           },
         },
       });
-      
-      count = await prisma.node.count({ where: query });
 
-  
-      res.status(201).json({ nodes, count });
-    } catch (err) {
-      passToExpressErrorHandler(err, next);
+      if (!node) {
+        throw new createError.NotFound("Node does not exist");
+      }
+
+      res.status(201).json(node);
+      return;
     }
+
+    let nodes = [];
+    let count = 0;
+    let query: Prisma.NodeWhereInput = {};
+    if (search) {
+      query = {
+        OR: [
+          { name: { contains: search as string, mode: "insensitive" } },
+          { descrip: { contains: search as string, mode: "insensitive" } },
+          { nodeUri: { contains: search as string, mode: "insensitive" } },
+        ],
+      };
+    }
+    nodes = await prisma.node.findMany({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit) ? Number(limit) : undefined,
+      where: query,
+      include: {
+        edgesFrom: {
+          select: {
+            id: true,
+            claimId: true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
+            startNode: true,
+          },
+        },
+        edgesTo: {
+          select: {
+            id: true,
+            claimId: true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
+            startNode: true,
+          },
+        },
+      },
+    });
+
+    count = await prisma.node.count({ where: query });
+
+    res.status(201).json({ nodes, count });
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
 };
 
 // this is fine, later we also want to find the nodes with their metamask DID - most of them will NOT be by their issuer id
@@ -326,44 +326,44 @@ export const nodesGet = async (
 // Most would be by their DID, most users will NOT identify by our user id, but by some external universal way
 
 export const getNodeForLoggedInUser = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      const userId = (req as ModifiedRequest).userId;
-      const rawClaim: any = turnFalsyPropsToUndefined(req.body);
-      
-       // Find a single node connected to the user's claims
-      const node = await prisma.node.findMany({
-        where: {
-          edgesTo: {
-            some: {
-              claim: {
-                issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-                issuerIdType: "URL",
-                ...rawClaim,
-              },
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = (req as ModifiedRequest).userId;
+    const rawClaim: any = turnFalsyPropsToUndefined(req.body);
+
+    // Find a single node connected to the user's claims
+    const node = await prisma.node.findMany({
+      where: {
+        edgesTo: {
+          some: {
+            claim: {
+              issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
+              issuerIdType: "URL",
+              ...rawClaim,
             },
           },
         },
-        include: {
-          edgesTo: {
-            include: {
-              endNode: true,
-            },
-          },
-          edgesFrom: {
-            include: {
-              startNode: true,
-            },
+      },
+      include: {
+        edgesTo: {
+          include: {
+            endNode: true,
           },
         },
-      });
-  
-      res.status(200).json({ node });
-    } catch (err) {
-      console.error(err);
-      passToExpressErrorHandler(err, next);
-    }
+        edgesFrom: {
+          include: {
+            startNode: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({ node });
+  } catch (err) {
+    console.error(err);
+    passToExpressErrorHandler(err, next);
+  }
 };
