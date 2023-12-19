@@ -4,10 +4,14 @@ import {
   generateJWT,
   passToExpressErrorHandler,
   verifyRefreshToken,
+  getGoogleAuthTokens,
+  getOrCreateUser,
 } from "../utils";
 import createError from "http-errors";
 import bcrypt from "bcryptjs";
 import axios from "axios";
+import jwt from "jsonwebtoken";
+import { AuthType } from "@prisma/client";
 
 export const signup = async (
   req: Request,
@@ -118,41 +122,12 @@ export const githubAuthenticator = async (
     const { id: githubId, email, name } = userData;
     const githubIdAsString = String(githubId);
 
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { authType: "GITHUB", authProviderId: githubIdAsString },
-        ],
-      },
-    });
-
-    if (
-      user &&
-      ((email && !user.email) ||
-        (user.authType !== "GITHUB" &&
-          user.authProviderId !== githubIdAsString))
-    ) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          email,
-          authType: "GITHUB",
-          authProviderId: githubIdAsString,
-        },
-      });
-    }
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: email,
-          authType: "GITHUB",
-          authProviderId: githubIdAsString,
-          name,
-        },
-      });
-    }
+    const user = await getOrCreateUser(
+      email,
+      name,
+      githubIdAsString,
+      AuthType.GITHUB
+    );
 
     res.status(200).json({
       accessToken: generateJWT(user.id, email, "access"),
@@ -160,5 +135,43 @@ export const githubAuthenticator = async (
     });
   } catch (err: any) {
     passToExpressErrorHandler(err, next);
+  }
+};
+
+export const googleAuthenticator = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const code = req.query.code as string;
+
+    // an alternate way of getting goolgeUser would be to destructure also the access_token and call google's userinfo endpoint
+    const { id_token } = await getGoogleAuthTokens(code);
+    const googleUser: any = jwt.decode(id_token);
+
+    // is this ok?? if the email is not verified, we will throw 403
+    if (!googleUser.email_verified) {
+      return res.status(403).send("Google account is not verified.");
+    }
+
+    const { name, email, sub } = googleUser;
+    const googleIdAsString = String(sub);
+
+    const user = await getOrCreateUser(
+      email,
+      name,
+      googleIdAsString,
+      AuthType.OAUTH
+    );
+
+    const accessToken = generateJWT(user.id, email, "access");
+    const refreshToken = generateJWT(user.id, email, "refresh");
+    res.redirect(
+      `http://localhost:5173/googlecallback?accessToken=${accessToken}&refreshToken=${refreshToken}`
+    );
+  } catch (error: any) {
+    console.error(error);
+    throw new Error(error.message);
   }
 };
