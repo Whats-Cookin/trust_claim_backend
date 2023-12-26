@@ -14,6 +14,6 @@ router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);
 router.get("/node/:nodeId?", nodesGet);
 router.get("/my-node", getNodeForLoggedInUser);
-
+router.get("/report/:claimId?", reportGet);
 
 export default router;
