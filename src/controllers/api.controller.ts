@@ -198,7 +198,7 @@ export const claimsFeed = async (
       INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
       INNER JOIN "Claim" as c on e."claimId" = c.id
       WHERE NOT (n1."entType" = 'CLAIM' and e.label = 'source')
-      ORDER BY n1.id DESC
+      ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
