@@ -188,8 +188,7 @@ export const claimsFeed = async (
 
     const offset = (page - 1) * limit;
 
-    // this weird syntax is for security its actually correct
-    const nodes = await prisma.$queryRaw`
+    const feed_entries = await prisma.$queryRaw`
       SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, c.id as claim_id, c.statement as statement, c.stars as stars, c.score as score, c.amt as amt, c."effectiveDate" as effective_date, c."howKnown" as how_known, c.aspect as aspect, c.confidence as confidence, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link
       FROM "Node" AS n1
       INNER JOIN "Edge" AS e ON n1.id = e."startNodeId"
@@ -203,7 +202,7 @@ export const claimsFeed = async (
       OFFSET ${offset}
     `;
 
-    res.status(200).json(nodes);
+    res.status(200).json(feed_entries);
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
@@ -386,8 +385,10 @@ export const claimReport = async (
 
     const offset = (page - 1) * limit;
 
-    // this weird syntax is for security its actually correct
-    const nodes = await prisma.$queryRaw`
+    claim_as_node_uri = `https://linkedtrust.us/claims${claimId}`.
+
+    // First get direct attestations, if any
+    const attestations = await prisma.$queryRaw`
       SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, c.id as claim_id, c.statement as statement, c.stars as stars, c.score as score, c.amt as amt, c."effectiveDate" as effective_date, c."howKnown" as how_known, c.aspect as aspect, c.confidence as confidence, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link
       FROM "Node" AS n1
       INNER JOIN "Edge" AS e ON n1.id = e."startNodeId"
@@ -395,16 +396,19 @@ export const claimReport = async (
       INNER JOIN "Edge" as e2 on n2.id = e2."startNodeId"
       INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
       INNER JOIN "Claim" as c on e."claimId" = c.id
-      WHERE NOT (n1."entType" = 'CLAIM' and e.label = 'source')
 
+      where n1."nodeUri" = '${claim_as_node_uri}'
      
 
-      ORDER BY n1.id DESC
+      ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
 //
-// TODO here ^^ change the query to get claims related to the parent claim and one or two hops from it
+// TODO ALSO get other claims about the same subject ie about the subject url of the original claim
+// then ALSO get other claims about the nodes who were the source or issuer of the attestations
+// those can be separate PRs lets start with this one working and the design for it
+//
 //
     res.status(200).json(nodes);
     return;
