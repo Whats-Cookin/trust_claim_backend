@@ -1,6 +1,18 @@
-This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml
+# Linked Trust Backend
 
-## Run the application
+This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us
+
+trust_claim_backend is a Node application for adding Claims, and for presenting Nodes and Edges derived from claims
+
+To generate Nodes and Edges from Claims it is also necessary to run [trust-claim-data-pipeline](https://github.com/Whats-Cookin/trust-claim-data-pipeline)
+
+## Concepts
+
+Claim: a signed set of structured data with the raw claim or attestation, often signed on front end by the user's DID
+Node: an entity that a claim is about.  This is created in the app as a view of what a claim is about.
+Edge: a representation of a claim that relates to a Node or connects two Nodes.  Created in the app as a view of a claim.
+
+## Run the application 
 
 Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables).  section.
 
@@ -21,10 +33,21 @@ npm run build
 
 You will need docker installed in your computer. For help with installation, ask in slack.
 
-Build the docker containers and run it.
+Build the docker containers and run it.  Two options are available
+
+### Option 1: Without the data pipeline - for viewing only
 
 ```
 docker-compose up
+```
+
+### Option 2: With the data pipeline
+
+```
+cd ..
+git clone git@github.com:Whats-Cookin/trust-claim-data-pipeline.git
+cd trust_claim_backend
+docker-compose -f docker-compose-full.yml up
 ```
 
 Once the docker containers are running, install the packages and run the migration
