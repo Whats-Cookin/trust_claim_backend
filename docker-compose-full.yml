@@ -16,10 +16,9 @@ services:
     restart: unless-stopped
 
   trust-claim-backend:
-    stdin_open: true
     build: 
-      context: .
-      dockerfile: Dockerfile
+    context: .
+    dockerfile: Dockerfile
     container_name: trust-claim-backend
     depends_on:
       - postgres
@@ -34,18 +33,18 @@ services:
       # get this from https://github.com/Whats-Cookin/trust-claim-data-pipeline
       context: ../trust-claim-data-pipeline
       dockerfile: Dockerfile
-      container_name: trust-claim-data-pipeline
-      depends_on:
-        - postgres
-      ports:
-        - 5000:5000
-      environment:
-        - DB_HOST=postgres
-        - DB_NAME=claim
-        - DB_USER=postgres
-        - DB_PASSWORD=postgres
-        - DB_PORT=5432
-      restart: always  
+    container_name: trust-claim-data-pipeline
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=claim
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+    restart: always  
+    depends_on:
+      - postgres
+    ports:
+      - 5000:5000
 
 volumes:
   postgres-data:
