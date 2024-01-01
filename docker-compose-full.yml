@@ -17,8 +17,8 @@ services:
 
   trust-claim-backend:
     build: 
-    context: .
-    dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: trust-claim-backend
     depends_on:
       - postgres
