@@ -385,7 +385,7 @@ export const claimReport = async (
 
     const offset = (page - 1) * limit;
 
-    claim_as_node_uri = `https://linkedtrust.us/claims${claimId}`.
+    const claim_as_node_uri = `https://linkedtrust.us/claims/${claimId}`;
 
     // First get direct attestations, if any
     const attestations = await prisma.$queryRaw`
@@ -398,19 +398,18 @@ export const claimReport = async (
       INNER JOIN "Claim" as c on e."claimId" = c.id
 
       where n1."nodeUri" = '${claim_as_node_uri}'
-     
+
 
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
-//
-// TODO ALSO get other claims about the same subject ie about the subject url of the original claim
-// then ALSO get other claims about the nodes who were the source or issuer of the attestations
-// those can be separate PRs lets start with this one working and the design for it
-//
-//
-    res.status(200).json(nodes);
+    //
+    // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
+    // then ALSO get other claims about the nodes who were the source or issuer of the attestations
+    // those can be separate PRs lets start with this one working and the design for it
+    //
+    res.status(200).json(attestations);
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
