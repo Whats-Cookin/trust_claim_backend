@@ -375,7 +375,6 @@ export const claimReport = async (
   next: NextFunction
 ) => {
   try {
-
     const { claimId } = req.params;
     let { page = 1, limit = 100 } = req.query; // defaults provided here
 
@@ -409,6 +408,67 @@ export const claimReport = async (
     // then ALSO get other claims about the nodes who were the source or issuer of the attestations
     // those can be separate PRs lets start with this one working and the design for it
     //
+
+    res.status(200).json(attestations);
+    return;
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const claimsOfSubject = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    let { page = 1, limit = 100 } = req.query; // defaults provided here
+
+    // Convert them to numbers
+    page = Number(page);
+    limit = Number(limit);
+
+    const offset = (page - 1) * limit;
+
+    const subject = req.body.subject;
+
+    // First get direct attestations, if any
+    const attestations = await prisma.$queryRaw`
+      SELECT DISTINCT
+          n1.name AS name,
+          n1.thumbnail AS thumbnail,
+          n1."nodeUri" AS link,
+          c.id AS claim_id,
+          c.statement AS statement,
+          c.stars AS stars,
+          c.score AS score,
+          c.amt AS amt,
+          c."effectiveDate" AS effective_date,
+          c."howKnown" AS how_known,
+          c.aspect AS aspect,
+          c.confidence AS confidence,
+          e.label AS claim,
+          e2.label AS basis,
+          n3.name AS source_name,
+          n3.thumbnail AS source_thumbnail,
+          n3."nodeUri" AS source_link
+      FROM
+          "Claim" AS c
+      INNER JOIN
+          "Edge" AS e ON c.id = e."claimId"
+      INNER JOIN
+          "Node" AS n1 ON e."startNodeId" = n1.id
+      INNER JOIN
+          "Edge" AS e2 ON n1.id = e2."startNodeId"
+      INNER JOIN
+          "Node" AS n3 ON e2."endNodeId" = n3.id
+      WHERE
+          c."subject" =  ${subject}
+
+      ORDER BY c.id DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
 
     res.status(200).json(attestations);
     return;
