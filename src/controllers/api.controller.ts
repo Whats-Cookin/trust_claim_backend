@@ -7,7 +7,6 @@ import {
   poormansNormalizer,
 } from "../utils";
 import createError from "http-errors";
-import { validateNoLeadingZeroes } from "ethereumjs-util";
 
 export const claimPost = async (
   req: Request,
@@ -368,12 +367,14 @@ export const getNodeForLoggedInUser = async (
 };
 
 
-
 export const claimReport = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+  ) => {
+  interface ClaimSubject {
+    subject: string;
+  }
   try {
     const { claimId } = req.params;
     let { page = 1, limit = 100 } = req.query; // defaults provided here
@@ -402,38 +403,15 @@ export const claimReport = async (
       LIMIT ${limit}
       OFFSET ${offset}
     `;
-    
-    //
-    // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
-    // then ALSO get other claims about the nodes who were the source or issuer of the attestations
-    // those can be separate PRs lets start with this one working and the design for it
-    //
 
-    res.status(200).json(attestations);
-    return;
-  } catch (err) {
-    passToExpressErrorHandler(err, next);
-  }
-};
-
-export const claimsOfSubject = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    let { page = 1, limit = 100 } = req.query; // defaults provided here
-
-    // Convert them to numbers
-    page = Number(page);
-    limit = Number(limit);
-
-    const offset = (page - 1) * limit;
-
-    const subject = req.body.subject;
+    const subject = await prisma.$queryRaw<ClaimSubject[]>`
+      SELECT c."subject" as subject
+      FROM "Claim" AS c
+      WHERE c."id" = ${Number(claimId)}
+    `;
 
     // First get direct attestations, if any
-    const attestations = await prisma.$queryRaw`
+    const claimsOfSubj = await prisma.$queryRaw`
       SELECT DISTINCT
           n1.name AS name,
           n1.thumbnail AS thumbnail,
@@ -463,14 +441,25 @@ export const claimsOfSubject = async (
       INNER JOIN
           "Node" AS n3 ON e2."endNodeId" = n3.id
       WHERE
-          c."subject" =  ${subject}
+          c."subject" =  ${subject[0].subject}
 
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
+    
+    //
+    // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
+    // then ALSO get other claims about the nodes who were the source or issuer of the attestations
+    // those can be separate PRs lets start with this one working and the design for it
+    //
 
-    res.status(200).json(attestations);
+    res.status(200).json({
+      data: {
+        attestations,
+        claimsOfSubj,
+      }
+    });
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
