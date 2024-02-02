@@ -91,6 +91,33 @@ For docker container
 npx dotenv -e .env.dev -- npx prisma migrate dev --name {name of the migration}
 ```
 
+#### Database Indexes
+
+To match production optimizations, run these commands in your local PostgreSQL database:
+
+Enable `pg_trgm` Extension (Required for GIN Indexes):
+
+Run thos command in your local PostgreSQL database:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
+Create GIN Indexes on Claim Table:
+For subject column:
+
+```sql
+CREATE INDEX claim_subject_gin_idx ON "Claim" USING GIN (subject gin_trgm_ops);
+```
+
+For object column:
+
+```sql
+CREATE INDEX claim_object_gin_idx ON "Claim" USING GIN (object gin_trgm_ops);
+```
+
+These steps ensure your local DB mirrors production's text search optimizations.
+
 #### To check the database, use the goodness of prisma studio
 
 If not using docker containers
