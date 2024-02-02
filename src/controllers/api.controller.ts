@@ -4,10 +4,9 @@ import { Prisma } from "prisma/prisma-client";
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
-  poormansNormalizer,
+  poormansNormalizer
 } from "../utils";
 import createError from "http-errors";
-import { validateNoLeadingZeroes } from "ethereumjs-util";
 
 export const claimPost = async (
   req: Request,
@@ -23,8 +22,8 @@ export const claimPost = async (
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: "URL",
-        ...rawClaim,
-      },
+        ...rawClaim
+      }
     });
   } catch (err) {
     passToExpressErrorHandler(err, next);
@@ -57,50 +56,65 @@ export const claimPost = async (
   res.status(201).json(claim);
 };
 
-export const claimGet = async (
+export const claimGetById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { claimId } = req.params;
+    const id = Number(claimId);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid claim ID" });
+    }
+
+    const claim = await prisma.claim.findUnique({
+      where: {
+        id: id
+      }
+    });
+
+    if (!claim) {
+      throw new createError.NotFound("Not Found");
+    }
+
+    res.status(201).json(claim);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const claimSearch = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
-    const { claimId } = req.params;
-
-    if (claimId) {
-      const claim = await prisma.claim.findUnique({
-        where: {
-          id: Number(claimId),
-        },
-      });
-
-      if (!claim) {
-        throw new createError.NotFound("Not Found");
-      }
-
-      res.status(201).json(claim);
-      return;
-    }
-
     let claims = [];
     let count = 0;
+
     if (search) {
       const query: Prisma.ClaimWhereInput = {
         OR: [
           { subject: { contains: search as string, mode: "insensitive" } },
-          { object: { contains: search as string, mode: "insensitive" } },
-        ],
+          { object: { contains: search as string, mode: "insensitive" } }
+        ]
       };
+
       claims = await prisma.claim.findMany({
         where: query,
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) ? Number(limit) : undefined,
+        take: Number(limit) ? Number(limit) : undefined
       });
+
       count = await prisma.claim.count({ where: query });
     } else {
       count = await prisma.claim.count({});
       claims = await prisma.claim.findMany({
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) > 0 ? Number(limit) : undefined,
+        take: Number(limit) > 0 ? Number(limit) : undefined
       });
     }
 
@@ -130,7 +144,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: "desc",
+        id: "desc"
       },
       include: {
         edgesFrom: {
@@ -145,8 +159,8 @@ export const claimsGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
+            startNode: true
+          }
         },
         edgesTo: {
           skip: (Number(page) - 1) * Number(limit),
@@ -160,10 +174,10 @@ export const claimsGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
-        },
-      },
+            startNode: true
+          }
+        }
+      }
     });
     res.status(200).json(nodes);
     return;
@@ -222,7 +236,7 @@ export const nodesGet = async (
     if (nodeId) {
       const node = await prisma.node.findUnique({
         where: {
-          id: Number(nodeId),
+          id: Number(nodeId)
         },
         include: {
           edgesFrom: {
@@ -237,8 +251,8 @@ export const nodesGet = async (
               thumbnail: true,
               claim: true,
               endNode: true,
-              startNode: true,
-            },
+              startNode: true
+            }
           },
           edgesTo: {
             skip: (Number(page) - 1) * Number(limit),
@@ -252,10 +266,10 @@ export const nodesGet = async (
               thumbnail: true,
               claim: true,
               endNode: true,
-              startNode: true,
-            },
-          },
-        },
+              startNode: true
+            }
+          }
+        }
       });
 
       if (!node) {
@@ -274,8 +288,8 @@ export const nodesGet = async (
         OR: [
           { name: { contains: search as string, mode: "insensitive" } },
           { descrip: { contains: search as string, mode: "insensitive" } },
-          { nodeUri: { contains: search as string, mode: "insensitive" } },
-        ],
+          { nodeUri: { contains: search as string, mode: "insensitive" } }
+        ]
       };
     }
     nodes = await prisma.node.findMany({
@@ -293,8 +307,8 @@ export const nodesGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
+            startNode: true
+          }
         },
         edgesTo: {
           select: {
@@ -306,10 +320,10 @@ export const nodesGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
-        },
-      },
+            startNode: true
+          }
+        }
+      }
     });
 
     count = await prisma.node.count({ where: query });
@@ -341,23 +355,23 @@ export const getNodeForLoggedInUser = async (
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
               issuerIdType: "URL",
-              ...rawClaim,
-            },
-          },
-        },
+              ...rawClaim
+            }
+          }
+        }
       },
       include: {
         edgesTo: {
           include: {
-            endNode: true,
-          },
+            endNode: true
+          }
         },
         edgesFrom: {
           include: {
-            startNode: true,
-          },
-        },
-      },
+            startNode: true
+          }
+        }
+      }
     });
 
     res.status(200).json({ node });
@@ -367,15 +381,12 @@ export const getNodeForLoggedInUser = async (
   }
 };
 
-
-
 export const claimReport = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-
     const { claimId } = req.params;
     let { page = 1, limit = 100 } = req.query; // defaults provided here
 
@@ -403,7 +414,7 @@ export const claimReport = async (
       LIMIT ${limit}
       OFFSET ${offset}
     `;
-    
+
     //
     // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
     // then ALSO get other claims about the nodes who were the source or issuer of the attestations
