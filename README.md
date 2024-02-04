@@ -103,18 +103,25 @@ Run thos command in your local PostgreSQL database:
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
-Create GIN Indexes on Claim Table:
-For subject column:
+Create GIN Indexes on Node Table:
+For name column:
 
 ```sql
-CREATE INDEX claim_subject_gin_idx ON "Claim" USING GIN (subject gin_trgm_ops);
+CREATE INDEX idx_name ON "Node" USING GIN (name gin_trgm_ops);
 ```
 
-For object column:
+For nodeUri column:
 
 ```sql
-CREATE INDEX claim_object_gin_idx ON "Claim" USING GIN (object gin_trgm_ops);
+CREATE INDEX idx_nodeUri ON "Node" USING GIN ("nodeUri" gin_trgm_ops);
 ```
+
+For descrip column:
+
+```sql
+CREATE INDEX idx_descrip ON "Node" USING GIN ("descrip" gin_trgm_ops);
+```
+
 
 These steps ensure your local DB mirrors production's text search optimizations.
 
