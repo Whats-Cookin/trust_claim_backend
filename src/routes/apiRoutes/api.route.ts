@@ -5,7 +5,8 @@ import {
   claimPost,
   claimsGet,
   claimsFeed,
-  nodesGet,
+  getNodeById,
+  searchNodes,
   claimReport,
   getNodeForLoggedInUser,
   claimGetById,
@@ -26,7 +27,8 @@ router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);
-router.get("/node/:nodeId?", nodesGet);
+router.get("/node/search", searchNodes);
+router.get("/node/:nodeId?", getNodeById);
 router.get("/my-node", getNodeForLoggedInUser);
 router.get("/report/:claimId?", claimReport);
 
