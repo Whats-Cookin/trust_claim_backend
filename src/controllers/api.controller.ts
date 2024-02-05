@@ -224,65 +224,71 @@ export const claimsFeed = async (
 };
 
 /*********************************************************************/
-export const nodesGet = async (
+// Function to get a node by its ID
+export const getNodeById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { nodeId } = req.params;
+
+    const node = await prisma.node.findUnique({
+      where: {
+        id: Number(nodeId)
+      },
+      include: {
+        edgesFrom: {
+          select: {
+            id: true,
+            claimId: true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
+            startNode: true
+          }
+        },
+        edgesTo: {
+          select: {
+            id: true,
+            claimId: true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
+            startNode: true
+          }
+        }
+      }
+    });
+
+    if (!node) {
+      throw new createError.NotFound("Node does not exist");
+    }
+
+    res.status(201).json(node);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+// Function to search for nodes
+export const searchNodes = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
-    const { nodeId } = req.params;
-
-    if (nodeId) {
-      const node = await prisma.node.findUnique({
-        where: {
-          id: Number(nodeId)
-        },
-        include: {
-          edgesFrom: {
-            skip: (Number(page) - 1) * Number(limit),
-            take: Number(limit) ? Number(limit) : undefined,
-            select: {
-              id: true,
-              claimId: true,
-              startNodeId: true,
-              endNodeId: true,
-              label: true,
-              thumbnail: true,
-              claim: true,
-              endNode: true,
-              startNode: true
-            }
-          },
-          edgesTo: {
-            skip: (Number(page) - 1) * Number(limit),
-            take: Number(limit) ? Number(limit) : undefined,
-            select: {
-              id: true,
-              claimId: true,
-              startNodeId: true,
-              endNodeId: true,
-              label: true,
-              thumbnail: true,
-              claim: true,
-              endNode: true,
-              startNode: true
-            }
-          }
-        }
-      });
-
-      if (!node) {
-        throw new createError.NotFound("Node does not exist");
-      }
-
-      res.status(201).json(node);
-      return;
-    }
-
     let nodes = [];
     let count = 0;
     let query: Prisma.NodeWhereInput = {};
+
     if (search) {
       query = {
         OR: [
@@ -292,6 +298,7 @@ export const nodesGet = async (
         ]
       };
     }
+
     nodes = await prisma.node.findMany({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit) ? Number(limit) : undefined,

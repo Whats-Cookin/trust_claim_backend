@@ -2,11 +2,12 @@ export {
   claimPost,
   claimsGet,
   claimsFeed,
-  nodesGet,
   claimGetById,
   claimSearch,
   claimReport,
-  getNodeForLoggedInUser
+  getNodeForLoggedInUser,
+  searchNodes,
+  getNodeById
 } from "./api.controller";
 export {
   login,
