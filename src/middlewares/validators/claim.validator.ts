@@ -5,6 +5,7 @@ import { passToExpressErrorHandler } from "../../utils";
 const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
+  issuerId: Joi.string().allow(""),
   object: Joi.string().allow(""),
   statement: Joi.string().allow(""),
   aspect: Joi.string().allow(""),
@@ -44,7 +45,7 @@ const claimPostSchema = Joi.object({
       );
     }
     return true;
-  }),
+  })
 });
 
 export const claimPostValidator = async (

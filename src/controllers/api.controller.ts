@@ -4,7 +4,7 @@ import { Prisma } from "prisma/prisma-client";
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
-  poormansNormalizer,
+  poormansNormalizer
 } from "../utils";
 import createError from "http-errors";
 
@@ -22,8 +22,8 @@ export const claimPost = async (
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: "URL",
-        ...rawClaim,
-      },
+        ...rawClaim
+      }
     });
   } catch (err) {
     passToExpressErrorHandler(err, next);
@@ -56,50 +56,65 @@ export const claimPost = async (
   res.status(201).json(claim);
 };
 
-export const claimGet = async (
+export const claimGetById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { claimId } = req.params;
+    const id = Number(claimId);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid claim ID" });
+    }
+
+    const claim = await prisma.claim.findUnique({
+      where: {
+        id: id
+      }
+    });
+
+    if (!claim) {
+      throw new createError.NotFound("Not Found");
+    }
+
+    res.status(201).json(claim);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const claimSearch = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
-    const { claimId } = req.params;
-
-    if (claimId) {
-      const claim = await prisma.claim.findUnique({
-        where: {
-          id: Number(claimId),
-        },
-      });
-
-      if (!claim) {
-        throw new createError.NotFound("Not Found");
-      }
-
-      res.status(201).json(claim);
-      return;
-    }
-
     let claims = [];
     let count = 0;
+
     if (search) {
       const query: Prisma.ClaimWhereInput = {
         OR: [
           { subject: { contains: search as string, mode: "insensitive" } },
-          { object: { contains: search as string, mode: "insensitive" } },
-        ],
+          { object: { contains: search as string, mode: "insensitive" } }
+        ]
       };
+
       claims = await prisma.claim.findMany({
         where: query,
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) ? Number(limit) : undefined,
+        take: Number(limit) ? Number(limit) : undefined
       });
+
       count = await prisma.claim.count({ where: query });
     } else {
       count = await prisma.claim.count({});
       claims = await prisma.claim.findMany({
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) > 0 ? Number(limit) : undefined,
+        take: Number(limit) > 0 ? Number(limit) : undefined
       });
     }
 
@@ -129,7 +144,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: "desc",
+        id: "desc"
       },
       include: {
         edgesFrom: {
@@ -144,8 +159,8 @@ export const claimsGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
+            startNode: true
+          }
         },
         edgesTo: {
           skip: (Number(page) - 1) * Number(limit),
@@ -159,10 +174,10 @@ export const claimsGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
-        },
-      },
+            startNode: true
+          }
+        }
+      }
     });
     res.status(200).json(nodes);
     return;
@@ -209,74 +224,81 @@ export const claimsFeed = async (
 };
 
 /*********************************************************************/
-export const nodesGet = async (
+// Function to get a node by its ID
+export const getNodeById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { nodeId } = req.params;
+
+    const node = await prisma.node.findUnique({
+      where: {
+        id: Number(nodeId)
+      },
+      include: {
+        edgesFrom: {
+          select: {
+            id: true,
+            claimId: true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
+            startNode: true
+          }
+        },
+        edgesTo: {
+          select: {
+            id: true,
+            claimId: true,
+            startNodeId: true,
+            endNodeId: true,
+            label: true,
+            thumbnail: true,
+            claim: true,
+            endNode: true,
+            startNode: true
+          }
+        }
+      }
+    });
+
+    if (!node) {
+      throw new createError.NotFound("Node does not exist");
+    }
+
+    res.status(201).json(node);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+// Function to search for nodes
+export const searchNodes = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
-    const { nodeId } = req.params;
-
-    if (nodeId) {
-      const node = await prisma.node.findUnique({
-        where: {
-          id: Number(nodeId),
-        },
-        include: {
-          edgesFrom: {
-            skip: (Number(page) - 1) * Number(limit),
-            take: Number(limit) ? Number(limit) : undefined,
-            select: {
-              id: true,
-              claimId: true,
-              startNodeId: true,
-              endNodeId: true,
-              label: true,
-              thumbnail: true,
-              claim: true,
-              endNode: true,
-              startNode: true,
-            },
-          },
-          edgesTo: {
-            skip: (Number(page) - 1) * Number(limit),
-            take: Number(limit) ? Number(limit) : undefined,
-            select: {
-              id: true,
-              claimId: true,
-              startNodeId: true,
-              endNodeId: true,
-              label: true,
-              thumbnail: true,
-              claim: true,
-              endNode: true,
-              startNode: true,
-            },
-          },
-        },
-      });
-
-      if (!node) {
-        throw new createError.NotFound("Node does not exist");
-      }
-
-      res.status(201).json(node);
-      return;
-    }
-
     let nodes = [];
     let count = 0;
     let query: Prisma.NodeWhereInput = {};
+
     if (search) {
       query = {
         OR: [
           { name: { contains: search as string, mode: "insensitive" } },
           { descrip: { contains: search as string, mode: "insensitive" } },
-          { nodeUri: { contains: search as string, mode: "insensitive" } },
-        ],
+          { nodeUri: { contains: search as string, mode: "insensitive" } }
+        ]
       };
     }
+
     nodes = await prisma.node.findMany({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit) ? Number(limit) : undefined,
@@ -292,8 +314,8 @@ export const nodesGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
+            startNode: true
+          }
         },
         edgesTo: {
           select: {
@@ -305,10 +327,10 @@ export const nodesGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true,
-          },
-        },
-      },
+            startNode: true
+          }
+        }
+      }
     });
 
     count = await prisma.node.count({ where: query });
@@ -340,23 +362,23 @@ export const getNodeForLoggedInUser = async (
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
               issuerIdType: "URL",
-              ...rawClaim,
-            },
-          },
-        },
+              ...rawClaim
+            }
+          }
+        }
       },
       include: {
         edgesTo: {
           include: {
-            endNode: true,
-          },
+            endNode: true
+          }
         },
         edgesFrom: {
           include: {
-            startNode: true,
-          },
-        },
-      },
+            startNode: true
+          }
+        }
+      }
     });
 
     res.status(200).json({ node });

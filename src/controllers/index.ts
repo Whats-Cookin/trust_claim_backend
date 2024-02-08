@@ -1,7 +1,17 @@
-export { claimPost, claimGet, claimsGet, claimsFeed, nodesGet } from "./api.controller";
+export {
+  claimPost,
+  claimsGet,
+  claimsFeed,
+  claimGetById,
+  claimSearch,
+  claimReport,
+  getNodeForLoggedInUser,
+  searchNodes,
+  getNodeById
+} from "./api.controller";
 export {
   login,
   signup,
   refreshToken,
-  githubAuthenticator,
+  githubAuthenticator
 } from "./auth.controller";
