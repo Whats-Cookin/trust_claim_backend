@@ -388,11 +388,31 @@ export const getNodeForLoggedInUser = async (
   }
 };
 
+interface ReportI {
+  name: string;
+  thumbnail: string;
+  link: string;
+  claim_id: number;
+  statement: string;
+  stars: number;
+  score: number;
+  amt: number;
+  effective_date: Date;
+  how_known: string;
+  aspect: string;
+  confidence: number;
+  claim: string;
+  basis: string;
+  source_name: string;
+  source_thumbnail: string;
+  source_link: string;
+}
+
 export const claimReport = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+  ) => {
   try {
     const { claimId } = req.params;
     let { page = 1, limit = 100 } = req.query; // defaults provided here
@@ -405,8 +425,14 @@ export const claimReport = async (
 
     const claim_as_node_uri = `https://linkedtrust.us/claims/${claimId}`;
 
+    const claim = await prisma.$queryRaw<any>`
+      SELECT *
+      FROM "Claim" AS c
+      WHERE c."id" = ${Number(claimId)}
+    `;
+
     // First get direct attestations, if any
-    const attestations = await prisma.$queryRaw`
+    const attestations = await prisma.$queryRaw<ReportI[]>`
       SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, c.id as claim_id, c.statement as statement, c.stars as stars, c.score as score, c.amt as amt, c."effectiveDate" as effective_date, c."howKnown" as how_known, c.aspect as aspect, c.confidence as confidence, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link
       FROM "Node" AS n1
       INNER JOIN "Edge" AS e ON n1.id = e."startNodeId"
@@ -415,7 +441,50 @@ export const claimReport = async (
       INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
       INNER JOIN "Claim" as c on e."claimId" = c.id
 
-      where n1."nodeUri" = ${claim_as_node_uri}
+      where n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
+
+      ORDER BY c.id DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+
+    const subject = await prisma.$queryRaw<{subject: string}[]>`
+      SELECT c."subject" as subject
+      FROM "Claim" AS c
+      WHERE c."id" = ${Number(claimId)} LIMIT 1
+    `;
+
+    const claimsOfSubj = await prisma.$queryRaw<ReportI>`
+      SELECT DISTINCT
+          n1.name AS name,
+          n1.thumbnail AS thumbnail,
+          n1."nodeUri" AS link,
+          c.id AS claim_id,
+          c.statement AS statement,
+          c.stars AS stars,
+          c.score AS score,
+          c.amt AS amt,
+          c."effectiveDate" AS effective_date,
+          c."howKnown" AS how_known,
+          c.aspect AS aspect,
+          c.confidence AS confidence,
+          e.label AS claim,
+          e2.label AS basis,
+          n3.name AS source_name,
+          n3.thumbnail AS source_thumbnail,
+          n3."nodeUri" AS source_link
+      FROM
+          "Claim" AS c
+      INNER JOIN
+          "Edge" AS e ON c.id = e."claimId"
+      INNER JOIN
+          "Node" AS n1 ON e."startNodeId" = n1.id
+      INNER JOIN
+          "Edge" AS e2 ON n1.id = e2."startNodeId"
+      INNER JOIN
+          "Node" AS n3 ON e2."endNodeId" = n3.id
+      WHERE
+          c."subject" =  ${subject[0].subject} AND c."id" != ${Number(claimId)}
 
       ORDER BY c.id DESC
       LIMIT ${limit}
@@ -428,7 +497,13 @@ export const claimReport = async (
     // those can be separate PRs lets start with this one working and the design for it
     //
 
-    res.status(200).json(attestations);
+    res.status(200).json({
+      data: {
+        claim: claim[0],
+        attestations,
+        claimsOfSubj,
+      }
+    });
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
