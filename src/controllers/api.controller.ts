@@ -470,9 +470,7 @@ export const claimReport = async (
 
     const claimsOfSubj = await prisma.$queryRaw<ReportI>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" ILIKE'%' || ${
-        claim.subject
-      } || '%' AND c."id" != ${Number(claimId)}
+      WHERE c."subject" = ${claim.subject} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
