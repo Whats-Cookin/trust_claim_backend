@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from "express";
-import { prisma } from "../db/prisma";
-import { Prisma } from "prisma/prisma-client";
+import { Request, Response, NextFunction } from 'express';
+import { prisma } from '../db/prisma';
+import { Prisma } from 'prisma/prisma-client';
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer
-} from "../utils";
-import createError from "http-errors";
+} from '../utils';
+import createError from 'http-errors';
 
 export const claimPost = async (
   req: Request,
@@ -21,7 +21,7 @@ export const claimPost = async (
     claim = await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-        issuerIdType: "URL",
+        issuerIdType: 'URL',
         ...rawClaim
       }
     });
@@ -66,7 +66,7 @@ export const claimGetById = async (
     const id = Number(claimId);
 
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid claim ID" });
+      return res.status(400).json({ message: 'Invalid claim ID' });
     }
 
     const claim = await prisma.claim.findUnique({
@@ -76,7 +76,7 @@ export const claimGetById = async (
     });
 
     if (!claim) {
-      throw new createError.NotFound("Not Found");
+      throw new createError.NotFound('Not Found');
     }
 
     res.status(201).json(claim);
@@ -98,8 +98,8 @@ export const claimSearch = async (
     if (search) {
       const query: Prisma.ClaimWhereInput = {
         OR: [
-          { subject: { contains: search as string, mode: "insensitive" } },
-          { object: { contains: search as string, mode: "insensitive" } }
+          { subject: { contains: search as string, mode: 'insensitive' } },
+          { object: { contains: search as string, mode: 'insensitive' } }
         ]
       };
 
@@ -144,7 +144,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: "desc"
+        id: 'desc'
       },
       include: {
         edgesFrom: {
@@ -268,7 +268,7 @@ export const getNodeById = async (
     });
 
     if (!node) {
-      throw new createError.NotFound("Node does not exist");
+      throw new createError.NotFound('Node does not exist');
     }
 
     res.status(201).json(node);
@@ -292,9 +292,9 @@ export const searchNodes = async (
     if (search) {
       query = {
         OR: [
-          { name: { contains: search as string, mode: "insensitive" } },
-          { descrip: { contains: search as string, mode: "insensitive" } },
-          { nodeUri: { contains: search as string, mode: "insensitive" } }
+          { name: { contains: search as string, mode: 'insensitive' } },
+          { descrip: { contains: search as string, mode: 'insensitive' } },
+          { nodeUri: { contains: search as string, mode: 'insensitive' } }
         ]
       };
     }
@@ -361,7 +361,7 @@ export const getNodeForLoggedInUser = async (
           some: {
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-              issuerIdType: "URL",
+              issuerIdType: 'URL',
               ...rawClaim
             }
           }
@@ -430,33 +430,29 @@ export const claimReport = async (
         id: Number(claimId)
       }
     });
-    if (!claim) throw new createError.NotFound("Claim does not exist");
+    if (!claim) throw new createError.NotFound('Claim does not exist');
 
     const baseQuery = `
       SELECT DISTINCT
-          n1.name AS name,
-          n1.thumbnail AS thumbnail,
-          n1."nodeUri" AS link,
-          c.id AS claim_id,
-          c.statement AS statement,
-          c.stars AS stars,
-          c.score AS score,
-          c.amt AS amt,
-          c."effectiveDate" AS effective_date,
-          c."howKnown" AS how_known,
-          c.aspect AS aspect,
-          c.confidence AS confidence,
-          e.label AS claim,
-          e2.label AS basis,
-          n3.name AS source_name,
-          n3.thumbnail AS source_thumbnail,
-          n3."nodeUri" AS source_link
-      FROM "Node" AS n1
-      INNER JOIN "Edge" AS e ON n1.id = e."startNodeId"
-      INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
-      INNER JOIN "Claim" as c on e."claimId" = c.id
-      LEFT  JOIN "Edge" as e2 on n2.id = e2."startNodeId"
-      LEFT  JOIN "Node" as n3 on e2."endNodeId" = n3.id
+        n1.name AS name,
+        n1.thumbnail AS thumbnail,
+        n1."nodeUri" AS link,
+        c.id AS claim_id,
+        c.statement AS statement,
+        c.stars AS stars,
+        c.score AS score,
+        c.amt AS amt,
+        c."effectiveDate" AS "effectiveDate",
+        c."howKnown" AS "howKnown",
+        c.aspect AS aspect,
+        c.confidence AS confidence,
+        e.label AS claim,
+        source_node.name AS source_name,
+        source_node."nodeUri" AS source_link
+      FROM "Claim" AS c
+      JOIN "Edge" AS e ON c.id = e."claimId"
+      JOIN "Node" AS source_node ON e."endNodeId" = source_node.id
+      JOIN "Node" AS n1 ON e."startNodeId" = n1.id
     `;
 
     // First get direct attestations, if any
@@ -470,7 +466,9 @@ export const claimReport = async (
 
     const claimsOfSubj = await prisma.$queryRaw<ReportI>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claim.subject} AND c."id" != ${Number(claimId)}
+      WHERE c."subject" = ${claim.subject.toLocaleLowerCase()} AND c."id" != ${Number(
+      claimId
+    )}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -486,7 +484,7 @@ export const claimReport = async (
       data: {
         claim,
         attestations,
-        claimsOfSubj
+        validations: claimsOfSubj
       }
     });
     return;
