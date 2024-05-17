@@ -1,6 +1,6 @@
 # Linked Trust Backend
 
-This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us
+This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us and trustclaims.whatscookin.us
 
 trust_claim_backend is a Node application for adding Claims, and for presenting Nodes and Edges derived from claims in it
 
