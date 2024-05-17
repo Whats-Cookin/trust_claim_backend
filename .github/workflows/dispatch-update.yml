@@ -1,0 +1,17 @@
+name: Dispatch Update to Forks
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger repository_dispatch
+        run: |
+          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.PAT }}" \
+          https://api.github.com/repos/Whats-Cookin/trust_claim_backend_pipeline/dispatches \
+          -d '{"event_type":"update-fork"}'
