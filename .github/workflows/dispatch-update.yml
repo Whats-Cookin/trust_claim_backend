@@ -9,9 +9,14 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger repository_dispatch
-        run: |
-          curl -X POST -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          https://api.github.com/repos/Whats-Cookin/trust_claim_backend_pipeline/dispatches \
-          -d '{"event_type":"update-fork"}'
+      - name: Create Pull Request in Fork
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Sync with upstream
+          branch: sync-upstream
+          delete-branch: true
+          base: master
+          body: "This PR merges the latest changes from the upstream repository into your fork."
+          title: "Sync with upstream"
+          upstream-repository: https://github.com/Whats-Cookin/trust_claim_backend_pipeline.git
