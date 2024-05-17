@@ -25,6 +25,18 @@ export const claimPost = async (
         ...rawClaim
       }
     });
+
+    // update cliam subject with this format https:/live.linkedtrust.us/claims/${claimId}
+    const claimId = claim.id;
+    const claim_subject = `https:/live.linkedtrust.us/claims/${claimId}`;
+    claim = await prisma.claim.update({
+      where: {
+        id: claimId
+      },
+      data: {
+        subject: claim_subject
+      }
+    });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
