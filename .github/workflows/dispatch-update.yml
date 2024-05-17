@@ -19,4 +19,4 @@ jobs:
           base: master
           body: "This PR merges the latest changes from the upstream repository into your fork."
           title: "Sync with upstream"
-          upstream-repository: https://github.com/Whats-Cookin/trust_claim_backend_pipeline.git
+          upstream-repository: Whats-Cookin/trust_claim_backend_pipeline
