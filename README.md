@@ -2,7 +2,7 @@
 
 This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us
 
-trust_claim_backend is a Node application for adding Claims, and for presenting Nodes and Edges derived from claims
+trust_claim_backend is a Node application for adding Claims, and for presenting Nodes and Edges derived from claims in it
 
 To generate Nodes and Edges from Claims it is also necessary to run [trust-claim-data-pipeline](https://github.com/Whats-Cookin/trust-claim-data-pipeline)
 
