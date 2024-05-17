@@ -6,7 +6,7 @@ trust_claim_backend is a Node application for adding Claims, and for presenting 
 
 To generate Nodes and Edges from Claims it is also necessary to run [trust-claim-data-pipeline](https://github.com/Whats-Cookin/trust-claim-data-pipeline)
 
-## Concepts
+## Concept
 
 Claim: a signed set of structured data with the raw claim or attestation, often signed on front end by the user's DID
 Node: an entity that a claim is about.  This is created in the app as a view of what a claim is about.
