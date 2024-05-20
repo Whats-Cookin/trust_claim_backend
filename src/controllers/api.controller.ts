@@ -4,7 +4,8 @@ import { Prisma } from 'prisma/prisma-client';
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
-  poormansNormalizer
+  poormansNormalizer,
+  makeClaimSubjectURL
 } from '../utils';
 import createError from 'http-errors';
 
@@ -423,7 +424,7 @@ export const claimReport = async (
 
     const offset = (page - 1) * limit;
 
-    const claim_as_node_uri = `https://linkedtrust.us/claims/${claimId}`;
+    const claim_as_node_uri = makeClaimSubjectURL(claimId);
 
     const claim = await prisma.claim.findUnique({
       where: {
@@ -480,8 +481,15 @@ export const claimReport = async (
     // those can be separate PRs lets start with this one working and the design for it
     //
 
+    const edge = await prisma.edge.findFirst({
+      where: {
+        claimId: Number(claimId)
+      }
+    });
+
     res.status(200).json({
       data: {
+        edge,
         claim,
         attestations,
         validations: claimsOfSubj
