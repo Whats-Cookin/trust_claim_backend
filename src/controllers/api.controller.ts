@@ -27,17 +27,27 @@ export const claimPost = async (
       }
     });
 
-    // update cliam subject with this format https:/live.linkedtrust.us/claims/${claimId}
-    const claimId = claim.id;
-    const claim_subject = makeClaimSubjectURL(claimId.toString());
-    claim = await prisma.claim.update({
+    // fetch first claim on same subject and then update the new with this format
+    // https:/live.linkedtrust.us/claims/${THE_REALTED_claimId}
+    const relatedClaim = await prisma.claim.findFirst({
       where: {
-        id: claimId
-      },
-      data: {
-        subject: claim_subject
+        subject: claim.subject,
+        id: {
+          not: claim.id
+        }
       }
     });
+
+    if (relatedClaim) {
+      claim = await prisma.claim.update({
+        where: {
+          id: claim.id
+        },
+        data: {
+          subject: makeClaimSubjectURL(relatedClaim.id.toString())
+        }
+      });
+    }
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -493,8 +503,15 @@ export const claimReport = async (
     // those can be separate PRs lets start with this one working and the design for it
     //
 
+    const edge = await prisma.edge.findFirst({
+      where: {
+        claimId: Number(claimId)
+      }
+    });
+
     res.status(200).json({
       data: {
+        edge,
         claim,
         attestations,
         validations: claimsOfSubj
