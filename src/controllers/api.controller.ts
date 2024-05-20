@@ -26,28 +26,6 @@ export const claimPost = async (
         ...rawClaim
       }
     });
-
-    // fetch first claim on same subject and then update the new with this format
-    // https:/live.linkedtrust.us/claims/${THE_REALTED_claimId}
-    const relatedClaim = await prisma.claim.findFirst({
-      where: {
-        subject: claim.subject,
-        id: {
-          not: claim.id
-        }
-      }
-    });
-
-    if (relatedClaim) {
-      claim = await prisma.claim.update({
-        where: {
-          id: claim.id
-        },
-        data: {
-          subject: makeClaimSubjectURL(relatedClaim.id.toString())
-        }
-      });
-    }
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
