@@ -436,7 +436,7 @@ export const claimReport = async (
 
     const offset = (page - 1) * limit;
 
-    const claim_as_node_uri = `https://linkedtrust.us/claims/${claimId}`;
+    const claim_as_node_uri = makeClaimSubjectURL(claimId);
 
     const claim = await prisma.claim.findUnique({
       where: {
