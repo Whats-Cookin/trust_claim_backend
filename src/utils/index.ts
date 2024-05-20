@@ -89,6 +89,7 @@ export const poormansNormalizer = (obj: { [key: string]: any }) => {
   return newObj;
 };
 
-export const makeClaimSubjectURl = (claimId: string) => {
+export const makeClaimSubjectURL = (claimId: string) => {
+  // addclaims.py, ,
   return `https://live.linkedtrust.us/claims/${claimId}`;
 };

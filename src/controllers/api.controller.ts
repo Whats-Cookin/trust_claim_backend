@@ -5,7 +5,7 @@ import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer,
-  makeClaimSubjectURl
+  makeClaimSubjectURL
 } from '../utils';
 import createError from 'http-errors';
 
@@ -29,7 +29,7 @@ export const claimPost = async (
 
     // update cliam subject with this format https:/live.linkedtrust.us/claims/${claimId}
     const claimId = claim.id;
-    const claim_subject = makeClaimSubjectURl(claimId.toString());
+    const claim_subject = makeClaimSubjectURL(claimId.toString());
     claim = await prisma.claim.update({
       where: {
         id: claimId
