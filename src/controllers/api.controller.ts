@@ -448,16 +448,16 @@ export const claimReport = async (
         c.aspect AS aspect,
         c.confidence AS confidence,
         e.label AS claim,
-        source_node.name AS source_name,
-        source_node."nodeUri" AS source_link
+        c."sourceURI" AS source_name,
+        c."sourceURI" AS source_link
       FROM "Claim" AS c
       JOIN "Edge" AS e ON c.id = e."claimId"
-      JOIN "Node" AS source_node ON e."endNodeId" = source_node.id
       JOIN "Node" AS n1 ON e."startNodeId" = n1.id
     `;
 
-    // First get direct attestations, if any
-    const attestations = await prisma.$queryRaw<ReportI[]>`
+    // First get direct attestations about the claim itself, if any
+    // These are what we call validations
+    const validations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
       WHERE n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
@@ -465,11 +465,12 @@ export const claimReport = async (
       OFFSET ${offset}
     `;
 
+    // Now get any other claims about the same subject, if any
     const claimsOfSubj = await prisma.$queryRaw<ReportI>`
       ${Prisma.raw(baseQuery)}
       WHERE c."subject" = ${claim.subject.toLocaleLowerCase()} AND c."id" != ${Number(
       claimId
-    )}
+    )}  AND n1."nodeUri" = ${claim.subject.toLocaleLowerCase()}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -491,8 +492,8 @@ export const claimReport = async (
       data: {
         edge,
         claim,
-        attestations,
-        validations: claimsOfSubj
+        validations: validations,
+        attestations: claimsOfSubj
       }
     });
     return;
