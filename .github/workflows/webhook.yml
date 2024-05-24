@@ -1,0 +1,46 @@
+name: Call Webhook on Push or PR Merge to Master
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  call-webhook:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Webhook on Push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          curl -X POST http://68.183.144.184:8080/github-webhook/ \
+          -H "Content-Type: application/json" \
+          -d '{
+                "event_type": "push",
+                "repository": "${{ github.repository }}",
+                "ref": "${{ github.ref }}",
+                "commit": "${{ github.sha }}",
+                "author": "${{ github.actor }}"
+              }'
+
+      - name: Call Webhook on PR Merge
+        if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.ref == 'refs/heads/master'
+        run: |
+          curl -X POST http://68.183.144.184:8080/github-webhook/ \
+          -H "Content-Type: application/json" \
+          -d '{
+                "event_type": "pull_request",
+                "action": "closed",
+                "repository": "${{ github.repository }}",
+                "ref": "${{ github.ref }}",
+                "commit": "${{ github.sha }}",
+                "author": "${{ github.actor }}",
+                "pull_request": {
+                  "number": ${{ github.event.pull_request.number }},
+                  "title": "${{ github.event.pull_request.title }}",
+                  "url": "${{ github.event.pull_request.html_url }}"
+                }
+              }'
