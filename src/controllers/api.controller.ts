@@ -414,7 +414,6 @@ export const claimReport = async (
   res: Response,
   next: NextFunction
 ) => {
-  console.log("IN REPORT");
   try {
     const { claimId } = req.params;
     let { page = 1, limit = 100 } = req.query; // defaults provided here
@@ -427,7 +426,6 @@ export const claimReport = async (
 
     const claim_as_node_uri = makeClaimSubjectURL(claimId);
 
-    console.log("Reporting on " + claim_as_node_uri)
     const claim = await prisma.claim.findUnique({
       where: {
         id: Number(claimId)
@@ -452,38 +450,25 @@ export const claimReport = async (
         c.confidence AS confidence,
         e.label AS claim,
         c."sourceURI" AS source_name,
-        c."sourceURI" AS source_link,
-    `;
-
-    // TODO better to have array of where clauses and join them on space
-
-    // First get direct attestations about the claim itself, if any
-    // These are what we call validations
-    
-    const v_query = Prisma.sql`
-      ${Prisma.raw(baseQuery)}
-      n2.image as image
+        c."sourceURI" AS source_link
       FROM "Claim" AS c
       JOIN "Edge" AS e ON c.id = e."claimId"
       JOIN "Node" AS n1 ON e."startNodeId" = n1.id
-      LEFT JOIN "Node" AS n2 on e."endNodeId" = n2.id
-      WHERE n2."entType" = 'CLAIM'
-      AND n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
+    `;
+
+    // First get direct attestations about the claim itself, if any
+    // These are what we call validations
+    const validations = await prisma.$queryRaw<ReportI[]>`
+      ${Prisma.raw(baseQuery)}
+      WHERE n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
 
-    //const validations = await prisma.$queryRaw<ReportI[]>(v_query)
-    const validations = await prisma.$queryRaw(v_query)
-
     // Now get any other claims about the same subject, if any
-    const s_query = Prisma.sql`
+    const claimsOfSubj = await prisma.$queryRaw<ReportI>`
       ${Prisma.raw(baseQuery)}
-      n1.image as image
-      FROM "Claim" AS c
-      JOIN "Edge" AS e ON c.id = e."claimId"
-      JOIN "Node" AS n1 ON e."startNodeId" = n1.id
       WHERE c."subject" = ${claim.subject.toLocaleLowerCase()} AND c."id" != ${Number(
       claimId
     )}  AND n1."nodeUri" = ${claim.subject.toLocaleLowerCase()}
@@ -491,8 +476,6 @@ export const claimReport = async (
       LIMIT ${limit}
       OFFSET ${offset}
     `;
-    
-    const claimsOfSubj = await prisma.$queryRaw(s_query)
 
     const edge = await prisma.edge.findFirst({
       where: {
