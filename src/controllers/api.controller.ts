@@ -440,7 +440,6 @@ export const claimReport = async (
         n1.name AS name,
         n1.thumbnail AS thumbnail,
         n1."nodeUri" AS link,
-        n1.image AS image,
         c.id AS claim_id,
         c.statement AS statement,
         c.stars AS stars,
@@ -493,6 +492,12 @@ export const claimReport = async (
     `;
     
     const claimsOfSubj = await prisma.$queryRaw(s_query)
+
+    //
+    // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
+    // then ALSO get other claims about the nodes who were the source or issuer of the attestations
+    // those can be separate PRs lets start with this one working and the design for it
+    //
 
     const edge = await prisma.edge.findFirst({
       where: {
