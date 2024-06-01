@@ -1,4 +1,4 @@
-# Linked Trust Backend
+s# Linked Trust Backend
 
 This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us 
 
@@ -6,7 +6,7 @@ trust_claim_backend is a Node application for adding Claims, and for presenting 
 
 To generate Nodes and Edges from Claims it is also necessary to run [trust-claim-data-pipeline](https://github.com/Whats-Cookin/trust-claim-data-pipeline)
 
-## Concept
+## Concepts
 
 Claim: a signed set of structured data with the raw claim or attestation, often signed on front end by the user's DID
 Node: an entity that a claim is about.  This is created in the app as a view of what a claim is about.
