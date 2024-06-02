@@ -75,57 +75,243 @@ model Edge {
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims
+// model Claim {
+//   id            Int       @id @default(autoincrement())
+//   subject       String
+//   claim         String
+//   object        String?
+//   statement     String?
+//   effectiveDate DateTime?
+
+//   // additions
+//   sourceName     String
+//   sourceTypeOfSubject SourceTypeOfSubject @default(OTHER)
+//   otherSubjectUrls    OtherSubjectUrls[]
+
+//   // splat ClaimSource
+//   sourceURI       String?
+//   howKnown        HowKnown?
+//   dateObserved    DateTime?
+//   digestMultibase String?
+//   author          String?
+//   curator         String?
+
+//   // splat NormalizedRating
+//   aspect String?
+//   score  Float? // -1 to 1
+//   stars  Int?   // 0 to 5
+
+//   // splat Measure
+//   amt         Float?
+//   unit        String?
+//   howMeasured String?
+
+//   // splat Sharing
+//   intendedAudience String?
+//   respondAt        String?
+
+//   confidence Float?
+
+//   // signer of the original claim
+//   issuerId     String?
+//   issuerIdType IssuerIdType?
+
+//   // cid or other external address of signed claim
+//   claimAddress String?
+
+//   // embedded cryptographically signed version
+//   proof String?
+
+//   /////////////////  Below here nothing to do with actual claim ///////////////
+
+//   // specific to this database instance
+//   edges Edge[] @relation(name: "edgeClaim")
+
+//   // for the database record itself
+//   createdAt     DateTime @default(now())
+//   lastUpdatedAt DateTime @default(now())
+// }
+
+
 model Claim {
   id            Int       @id @default(autoincrement())
-  subject       String
-  claim         String
-  object        String?
-  statement     String?
-  effectiveDate DateTime?
 
-  // splat ClaimSource
-  sourceURI       String?
-  howKnown        HowKnown?
-  dateObserved    DateTime?
-  digestMultibase String?
-  author          String?
-  curator         String?
+  createdAt     DateTime @default(now())
+  lastUpdatedAt DateTime @default(now())
 
-  // splat NormalizedRating
-  aspect String?
-  score  Float? // -1 to 1
-  stars  Int?   // 0 to 5
 
-  // splat Measure
-  amt         Float?
-  unit        String?
-  howMeasured String?
+  sourceTypeOfSubject SourceTypeOfSubject @default(OTHER)
+  subjectMainUrl       String
 
-  // splat Sharing
-  intendedAudience String?
-  respondAt        String?
+  //! TODO --> id or hunique handle
 
-  confidence Float?
+  // additions
+  subjectName     String
+  subjectPhoto   String?
+  otherSubjectUrls    OtherSubjectUrls[]
 
+  //! Maybe To let
   // signer of the original claim
-  issuerId     String?
-  issuerIdType IssuerIdType?
-
-  // cid or other external address of signed claim
-  claimAddress String?
-
-  // embedded cryptographically signed version
-  proof String?
-
-  /////////////////  Below here nothing to do with actual claim ///////////////
+  // issuerId     String?
+  // issuerIdType IssuerIdType?
 
   // specific to this database instance
   edges Edge[] @relation(name: "edgeClaim")
 
-  // for the database record itself
-  createdAt     DateTime @default(now())
-  lastUpdatedAt DateTime @default(now())
+  // relations now
+  reports Report[]
+  ratings Rating[]
+  impacts Impact[]
+  relatedTOs RelatedTO[]
+  validations Validation[]
+
+  //!  TODO - to understand
+  // object        String?
+  // splat ClaimSource
+  // dateObserved    DateTime?
+  // digestMultibase String?
+  // author          String?
+  // curator         String?
+
+
+  // splat Measure
+  // amt         Float?
+  // unit        String?
+  // howMeasured String?
+
+  // splat Sharing
+  // intendedAudience String?
+  // respondAt        String?
+  // // cid or other external address of signed claim
+  // claimAddress String?
+
+  // // embedded cryptographically signed version
+  // proof String?
+
+  /////////////////  Below here nothing to do with actual claim ///////////////
+
 }
+
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  claimId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  statement    String
+  howKnown  HowKnown
+  confidence Float
+  sourceURI  String
+  effectiveDate DateTime?
+  issuerId     String?
+  issuerIdType IssuerIdType?
+
+
+  claim     Claim    @relation(fields: [claimId], references: [id])
+}
+
+model Rating {
+  id        Int      @id @default(autoincrement())
+  claimId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  statement String
+  confidence Float
+  howKnown   HowKnown
+  aspect    String
+  stars     Int
+  sourceURI  String
+  effectiveDate DateTime?
+  issuerId     String?
+  issuerIdType IssuerIdType?
+
+
+  claim     Claim    @relation(fields: [claimId], references: [id])
+}
+
+
+model Impact {
+  id        Int      @id @default(autoincrement())
+  claimId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  howKnown   HowKnown
+  statement String
+  confidence Float
+  // amt        Float
+  // unit       String
+  value     String
+  sourceURI  String
+  effectiveDate DateTime?
+  issuerId     String?
+  issuerIdType IssuerIdType?
+
+
+  claim     Claim    @relation(fields: [claimId], references: [id])
+}
+
+model RelatedTO {
+  id        Int      @id @default(autoincrement())
+  claimId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  howKnown   HowKnown
+  statement String
+  confidence Float
+  sourceURI  String
+  effectiveDate DateTime?
+  issuerId     String?
+  issuerIdType IssuerIdType?
+
+
+  claim     Claim    @relation(fields: [claimId], references: [id])
+}
+
+
+model Validation {
+  id        Int      @id @default(autoincrement())
+  claimId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  howKnown   HowKnown
+  statement String
+  confidence Float
+  sourceURI  String
+  effectiveDate DateTime?
+  type       String
+  issuerId     String?
+  issuerIdType IssuerIdType?
+
+
+  claim     Claim    @relation(fields: [claimId], references: [id])
+}
+
+
+
+model OtherSubjectUrls {
+  id        Int     @id @default(autoincrement())
+  claimId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  url       String
+  urlType   SourceTypeOfSubject
+
+  claim     Claim   @relation(fields: [claimId], references: [id])
+}
+
+
 
 enum IssuerIdType {
   DID
@@ -145,5 +331,38 @@ enum HowKnown {
   INTEGRATION
   RESEARCH
   OPINION
+  OTHER
+}
+
+// source of the claim subject platform
+enum SourceTypeOfSubject {
+  LINKEDIN
+  TWITTER
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  REDDIT
+  MEDIUM
+  GITHUB
+  GITLAB
+  STACKOVERFLOW
+  HACKERRANK
+  HACKEREARTH
+  KAGGLE
+  DRIBBBLE
+  BEHANCE
+  PINTEREST
+  UPWORK
+  FIVERR
+  GLASSDOOR
+  ANGELLIST
+  CRUNCHBASE
+  PRODUCTHUNT
+  GOOGLE
+  BING
+  YAHOO
+  DOCUMENT
+  WEBSITE
   OTHER
 }

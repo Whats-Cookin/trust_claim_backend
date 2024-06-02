@@ -7,7 +7,69 @@ import {
   poormansNormalizer,
   makeClaimSubjectURL
 } from '../utils';
+
 import createError from 'http-errors';
+
+
+export const searchIfSourceExists = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { sourceName } = req.body;
+    const sourceNames = await prisma.claim.findMany({
+        where: {
+          subjectName: {
+            contains: sourceName as string,
+            mode: 'insensitive'
+          }
+        }
+    });
+
+    res.status(200).json({ exists: !!sourceNames });
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+}
+
+
+export const UpdateSource = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { sourceName, sourceURI, otherSubjectUrls } = req.body;
+    const id = Number(req.params.id);
+    if (otherSubjectUrls) {
+      const source = await prisma.claim.update({
+        where: {
+          id: id
+        },
+        data: {
+          sourceURI: sourceURI as string,
+          otherSubjectUrls: otherSubjectUrls as string[]
+        }
+      });
+      res.status(200).json(source);
+      return;
+    }
+    const source = await prisma.claim.update({
+      where: {
+        sourceName: sourceName as string
+      },
+      data: {
+        sourceURI: sourceURI as string
+      }
+    });
+
+    res.status(200).json(source);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+}
+
 
 export const claimPost = async (
   req: Request,
