@@ -11,11 +11,11 @@ const claimPostSchema = Joi.object({
   aspect: Joi.string().allow(""),
   amt: Joi.alternatives().try(
     Joi.string().allow('').custom((value, helpers) => {
-      let strippedValue = value.replace(/\$|\s+/g, ''); // Strip $ and spaces
+      const strippedValue = value.replace(/\$|\s+/g, ''); // Strip $ and spaces
       if (strippedValue === '') {
         return null; // Convert empty string to null
       }
-      let numberValue = parseFloat(strippedValue);
+      const numberValue = parseFloat(strippedValue);
       if (isNaN(numberValue)) {
         throw new Error("Can't convert aspect to number");
       }
