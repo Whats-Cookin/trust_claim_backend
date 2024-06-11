@@ -5,7 +5,7 @@ import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer,
-  makeClaimSubjectURL
+  makeClaimSubjectURL,
 } from '../utils';
 import createError from 'http-errors';
 
@@ -23,8 +23,8 @@ export const claimPost = async (
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: 'URL',
-        ...rawClaim
-      }
+        ...rawClaim,
+      },
     });
   } catch (err) {
     passToExpressErrorHandler(err, next);
@@ -72,8 +72,8 @@ export const claimGetById = async (
 
     const claim = await prisma.claim.findUnique({
       where: {
-        id: id
-      }
+        id: id,
+      },
     });
 
     if (!claim) {
@@ -100,14 +100,14 @@ export const claimSearch = async (
       const query: Prisma.ClaimWhereInput = {
         OR: [
           { subject: { contains: search as string, mode: 'insensitive' } },
-          { object: { contains: search as string, mode: 'insensitive' } }
-        ]
+          { object: { contains: search as string, mode: 'insensitive' } },
+        ],
       };
 
       claims = await prisma.claim.findMany({
         where: query,
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) ? Number(limit) : undefined
+        take: Number(limit) ? Number(limit) : undefined,
       });
 
       count = await prisma.claim.count({ where: query });
@@ -115,7 +115,7 @@ export const claimSearch = async (
       count = await prisma.claim.count({});
       claims = await prisma.claim.findMany({
         skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit) > 0 ? Number(limit) : undefined
+        take: Number(limit) > 0 ? Number(limit) : undefined,
       });
     }
 
@@ -145,7 +145,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: 'desc'
+        id: 'desc',
       },
       include: {
         edgesFrom: {
@@ -160,8 +160,8 @@ export const claimsGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true
-          }
+            startNode: true,
+          },
         },
         edgesTo: {
           skip: (Number(page) - 1) * Number(limit),
@@ -175,10 +175,10 @@ export const claimsGet = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true
-          }
-        }
-      }
+            startNode: true,
+          },
+        },
+      },
     });
     res.status(200).json(nodes);
     return;
@@ -236,7 +236,7 @@ export const getNodeById = async (
 
     const node = await prisma.node.findUnique({
       where: {
-        id: Number(nodeId)
+        id: Number(nodeId),
       },
       include: {
         edgesFrom: {
@@ -249,8 +249,8 @@ export const getNodeById = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true
-          }
+            startNode: true,
+          },
         },
         edgesTo: {
           select: {
@@ -262,10 +262,10 @@ export const getNodeById = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true
-          }
-        }
-      }
+            startNode: true,
+          },
+        },
+      },
     });
 
     if (!node) {
@@ -295,8 +295,8 @@ export const searchNodes = async (
         OR: [
           { name: { contains: search as string, mode: 'insensitive' } },
           { descrip: { contains: search as string, mode: 'insensitive' } },
-          { nodeUri: { contains: search as string, mode: 'insensitive' } }
-        ]
+          { nodeUri: { contains: search as string, mode: 'insensitive' } },
+        ],
       };
     }
 
@@ -315,8 +315,8 @@ export const searchNodes = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true
-          }
+            startNode: true,
+          },
         },
         edgesTo: {
           select: {
@@ -328,10 +328,10 @@ export const searchNodes = async (
             thumbnail: true,
             claim: true,
             endNode: true,
-            startNode: true
-          }
-        }
-      }
+            startNode: true,
+          },
+        },
+      },
     });
 
     count = await prisma.node.count({ where: query });
@@ -363,23 +363,23 @@ export const getNodeForLoggedInUser = async (
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
               issuerIdType: 'URL',
-              ...rawClaim
-            }
-          }
-        }
+              ...rawClaim,
+            },
+          },
+        },
       },
       include: {
         edgesTo: {
           include: {
-            endNode: true
-          }
+            endNode: true,
+          },
         },
         edgesFrom: {
           include: {
-            startNode: true
-          }
-        }
-      }
+            startNode: true,
+          },
+        },
+      },
     });
 
     res.status(200).json({ node });
@@ -428,8 +428,8 @@ export const claimReport = async (
 
     const claim = await prisma.claim.findUnique({
       where: {
-        id: Number(claimId)
-      }
+        id: Number(claimId),
+      },
     });
     if (!claim) throw new createError.NotFound('Claim does not exist');
 
@@ -438,6 +438,7 @@ export const claimReport = async (
         n1.name AS name,
         n1.thumbnail AS thumbnail,
         n1."nodeUri" AS link,
+        n1."image" AS image,
         c.id AS claim_id,
         c.statement AS statement,
         c.stars AS stars,
@@ -484,8 +485,8 @@ export const claimReport = async (
 
     const edge = await prisma.edge.findFirst({
       where: {
-        claimId: Number(claimId)
-      }
+        claimId: Number(claimId),
+      },
     });
 
     res.status(200).json({
@@ -493,8 +494,8 @@ export const claimReport = async (
         edge,
         claim,
         validations: validations,
-        attestations: claimsOfSubj
-      }
+        attestations: claimsOfSubj,
+      },
     });
     return;
   } catch (err) {
