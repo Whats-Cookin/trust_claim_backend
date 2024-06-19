@@ -163,7 +163,6 @@ model Claim {
   ratings Rating[]
   impacts Impact[]
   relatedTOs RelatedTO[]
-  validations Validation[]
 
   //!  TODO - to understand
   // object        String?
@@ -197,6 +196,7 @@ model Report {
   id        Int      @id @default(autoincrement())
   claimId   Int
 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
@@ -208,7 +208,7 @@ model Report {
   issuerId     String?
   issuerIdType IssuerIdType?
 
-
+  validations Validation[]
   claim     Claim    @relation(fields: [claimId], references: [id])
 }
 
@@ -229,7 +229,7 @@ model Rating {
   issuerId     String?
   issuerIdType IssuerIdType?
 
-
+  validations Validation[]
   claim     Claim    @relation(fields: [claimId], references: [id])
 }
 
@@ -252,7 +252,7 @@ model Impact {
   issuerId     String?
   issuerIdType IssuerIdType?
 
-
+  validations Validation[]
   claim     Claim    @relation(fields: [claimId], references: [id])
 }
 
@@ -271,14 +271,17 @@ model RelatedTO {
   issuerId     String?
   issuerIdType IssuerIdType?
 
-
+  validations Validation[]
   claim     Claim    @relation(fields: [claimId], references: [id])
 }
 
 
 model Validation {
   id        Int      @id @default(autoincrement())
-  claimId   Int
+  reportId   Int?
+  ratingId   Int?
+  impactId   Int?
+  relatedTOId   Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -292,8 +295,10 @@ model Validation {
   issuerId     String?
   issuerIdType IssuerIdType?
 
-
-  claim     Claim    @relation(fields: [claimId], references: [id])
+  report     Report?  @relation(fields: [reportId], references: [id])
+  rating     Rating?  @relation(fields: [ratingId], references: [id])
+  impact     Impact?  @relation(fields: [impactId], references: [id])
+  relatedTO  RelatedTO?  @relation(fields: [relatedTOId], references: [id])
 }
 
 
