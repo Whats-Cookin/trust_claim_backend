@@ -1,6 +1,6 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
-  "compilerOptions": {
+  "extends": "./node_modules/@tsconfig/node16/tsconfig.json",
+"compilerOptions": {
     "outDir": "build",
     "resolveJsonModule": true
   },
