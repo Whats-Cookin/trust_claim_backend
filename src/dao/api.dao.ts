@@ -22,7 +22,7 @@ interface ReportI {
   source_thumbnail: string;
   source_link: string;
 }
-
+// Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
     return await prisma.claim.create({
@@ -73,6 +73,7 @@ export class ClaimDao {
   };
 }
 
+// Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
   getNodes = async (page: number, limit: number) => {
     return await prisma.node.findMany({
