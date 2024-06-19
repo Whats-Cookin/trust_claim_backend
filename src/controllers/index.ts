@@ -4,10 +4,6 @@ export {
   claimsFeed,
   claimGetById,
   claimSearch,
-  claimReport,
-  getNodeForLoggedInUser,
-  searchNodes,
-  getNodeById
 } from "./api.controller";
 export {
   login,
@@ -15,3 +11,10 @@ export {
   refreshToken,
   githubAuthenticator
 } from "./auth.controller";
+
+export {
+  claimReport,
+  getNodeForLoggedInUser,
+  searchNodes,
+  getNodeById
+} from "./node.controller";
