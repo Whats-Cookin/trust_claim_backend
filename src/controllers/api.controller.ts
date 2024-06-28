@@ -1,31 +1,63 @@
-import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../db/prisma';
-import { Prisma } from 'prisma/prisma-client';
+import { Request, Response, NextFunction } from "express";
+import { prisma } from "../db/prisma";
+import { Prisma } from "prisma/prisma-client";
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer,
   makeClaimSubjectURL,
-} from '../utils';
-import createError from 'http-errors';
+} from "../utils";
+import createError from "http-errors";
 
 export const claimPost = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  let claim;
+  let claim: any; // temp till making an interface
   try {
     const userId = (req as ModifiedRequest).userId;
-    let rawClaim: any = turnFalsyPropsToUndefined(req.body);
+    const { images, ...bodyReq } = req.body;
+    let rawClaim: any = turnFalsyPropsToUndefined(bodyReq);
     rawClaim = poormansNormalizer(rawClaim);
+
+    // Convert effectiveDate to Date object
+    if (rawClaim.effectiveDate) {
+      rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
+    }
+
+    console.log(rawClaim);
+    console.log(images);
+
     claim = await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-        issuerIdType: 'URL',
+        issuerIdType: "URL",
         ...rawClaim,
       },
     });
+
+    let claimImages: any[] = [];
+    if (images) {
+      claimImages = await Promise.all(
+        images.map(async (img: any) => {
+          if (img.effectiveDate) {
+            img.effectiveDate = new Date(img.effectiveDate);
+          }
+
+          const image = await prisma.image.create({
+            data: {
+              claimId: claim.id,
+              owner: `http://trustclaims.whatscookin.us/users/${userId}`,
+              ...img,
+            },
+          });
+          return image;
+        })
+      );
+    }
+
+    claim.images = claimImages;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -57,6 +89,10 @@ export const claimPost = async (
   res.status(201).json(claim);
 };
 
+// a little mvp
+// a symbol for the body email
+// a little progress about the claim attached to the images
+
 export const claimGetById = async (
   req: Request,
   res: Response,
@@ -67,7 +103,7 @@ export const claimGetById = async (
     const id = Number(claimId);
 
     if (isNaN(id)) {
-      return res.status(400).json({ message: 'Invalid claim ID' });
+      return res.status(400).json({ message: "Invalid claim ID" });
     }
 
     const claim = await prisma.claim.findUnique({
@@ -77,10 +113,16 @@ export const claimGetById = async (
     });
 
     if (!claim) {
-      throw new createError.NotFound('Not Found');
+      throw new createError.NotFound("Not Found");
     }
 
-    res.status(201).json(claim);
+    const images = await prisma.image.findMany({
+      where: {
+        claimId: claim.id,
+      },
+    });
+
+    res.status(201).json({ claim, images });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -95,12 +137,13 @@ export const claimSearch = async (
     const { search, page = 0, limit = 0 } = req.query;
     let claims = [];
     let count = 0;
+    let images = [] ;
 
     if (search) {
       const query: Prisma.ClaimWhereInput = {
         OR: [
-          { subject: { contains: search as string, mode: 'insensitive' } },
-          { object: { contains: search as string, mode: 'insensitive' } },
+          { subject: { contains: search as string, mode: "insensitive" } },
+          { object: { contains: search as string, mode: "insensitive" } },
         ],
       };
 
@@ -110,6 +153,14 @@ export const claimSearch = async (
         take: Number(limit) ? Number(limit) : undefined,
       });
 
+      images = await prisma.image.findMany({
+        where: {
+          claimId: {
+            in: claims.map((c) => c.id),
+          },
+        },
+      });
+
       count = await prisma.claim.count({ where: query });
     } else {
       count = await prisma.claim.count({});
@@ -117,9 +168,16 @@ export const claimSearch = async (
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit) > 0 ? Number(limit) : undefined,
       });
+      images = await prisma.image.findMany({
+        where: {
+          claimId: {
+            in: claims.map((c) => c.id),
+          },
+        },
+      });
     }
 
-    res.status(201).json({ claims, count });
+    res.status(201).json({ claims, count, images });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -145,7 +203,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: 'desc',
+        id: "desc",
       },
       include: {
         edgesFrom: {
@@ -217,6 +275,8 @@ export const claimsFeed = async (
       OFFSET ${offset}
     `;
 
+    console.log(feed_entries)
+
     res.status(200).json(feed_entries);
     return;
   } catch (err) {
@@ -269,7 +329,7 @@ export const getNodeById = async (
     });
 
     if (!node) {
-      throw new createError.NotFound('Node does not exist');
+      throw new createError.NotFound("Node does not exist");
     }
 
     res.status(201).json(node);
@@ -293,9 +353,9 @@ export const searchNodes = async (
     if (search) {
       query = {
         OR: [
-          { name: { contains: search as string, mode: 'insensitive' } },
-          { descrip: { contains: search as string, mode: 'insensitive' } },
-          { nodeUri: { contains: search as string, mode: 'insensitive' } },
+          { name: { contains: search as string, mode: "insensitive" } },
+          { descrip: { contains: search as string, mode: "insensitive" } },
+          { nodeUri: { contains: search as string, mode: "insensitive" } },
         ],
       };
     }
@@ -362,7 +422,7 @@ export const getNodeForLoggedInUser = async (
           some: {
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-              issuerIdType: 'URL',
+              issuerIdType: "URL",
               ...rawClaim,
             },
           },
@@ -431,7 +491,7 @@ export const claimReport = async (
         id: Number(claimId),
       },
     });
-    if (!claim) throw new createError.NotFound('Claim does not exist');
+    if (!claim) throw new createError.NotFound("Claim does not exist");
 
     const baseQuery = `
       SELECT DISTINCT
@@ -489,10 +549,17 @@ export const claimReport = async (
       },
     });
 
+    const images = await prisma.image.findMany({
+      where: {
+        claimId: Number(claimId),
+      },
+    });
+
     res.status(200).json({
       data: {
         edge,
         claim,
+        images,
         validations: validations,
         attestations: claimsOfSubj,
       },

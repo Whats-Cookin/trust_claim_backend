@@ -28,6 +28,14 @@ const claimPostSchema = Joi.object({
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
   claimAddress: Joi.string().allow(""),
+  images: Joi.array().items(Joi.object({
+    url: Joi.string().required(),
+    metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
+    effectiveDate: Joi.date().allow(null),
+    digestMultibase: Joi.string().allow(null),
+    signature: Joi.string().required(),
+    owner: Joi.string().required()
+  })),
   stars: Joi.number().custom((value, helpers) => {
     const ancestor = helpers.state.ancestors?.[0];
 
