@@ -1,13 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../db/prisma';
-import { Prisma } from 'prisma/prisma-client';
+import { Request, Response, NextFunction } from "express";
+import { prisma } from "../db/prisma";
+import { Prisma } from "prisma/prisma-client";
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer,
   makeClaimSubjectURL,
-} from '../utils';
-import createError from 'http-errors';
+} from "../utils";
+import createError from "http-errors";
 
 export const claimPost = async (
   req: Request,
@@ -22,7 +22,7 @@ export const claimPost = async (
     claim = await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-        issuerIdType: 'URL',
+        issuerIdType: "URL",
         ...rawClaim,
       },
     });
@@ -67,7 +67,7 @@ export const claimGetById = async (
     const id = Number(claimId);
 
     if (isNaN(id)) {
-      return res.status(400).json({ message: 'Invalid claim ID' });
+      return res.status(400).json({ message: "Invalid claim ID" });
     }
 
     const claim = await prisma.claim.findUnique({
@@ -77,7 +77,7 @@ export const claimGetById = async (
     });
 
     if (!claim) {
-      throw new createError.NotFound('Not Found');
+      throw new createError.NotFound("Not Found");
     }
 
     res.status(201).json(claim);
@@ -99,8 +99,8 @@ export const claimSearch = async (
     if (search) {
       const query: Prisma.ClaimWhereInput = {
         OR: [
-          { subject: { contains: search as string, mode: 'insensitive' } },
-          { object: { contains: search as string, mode: 'insensitive' } },
+          { subject: { contains: search as string, mode: "insensitive" } },
+          { object: { contains: search as string, mode: "insensitive" } },
         ],
       };
 
@@ -145,7 +145,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: 'desc',
+        id: "desc",
       },
       include: {
         edgesFrom: {
@@ -269,7 +269,7 @@ export const getNodeById = async (
     });
 
     if (!node) {
-      throw new createError.NotFound('Node does not exist');
+      throw new createError.NotFound("Node does not exist");
     }
 
     res.status(201).json(node);
@@ -293,9 +293,9 @@ export const searchNodes = async (
     if (search) {
       query = {
         OR: [
-          { name: { contains: search as string, mode: 'insensitive' } },
-          { descrip: { contains: search as string, mode: 'insensitive' } },
-          { nodeUri: { contains: search as string, mode: 'insensitive' } },
+          { name: { contains: search as string, mode: "insensitive" } },
+          { descrip: { contains: search as string, mode: "insensitive" } },
+          { nodeUri: { contains: search as string, mode: "insensitive" } },
         ],
       };
     }
@@ -362,7 +362,7 @@ export const getNodeForLoggedInUser = async (
           some: {
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-              issuerIdType: 'URL',
+              issuerIdType: "URL",
               ...rawClaim,
             },
           },
@@ -431,7 +431,7 @@ export const claimReport = async (
         id: Number(claimId),
       },
     });
-    if (!claim) throw new createError.NotFound('Claim does not exist');
+    if (!claim) throw new createError.NotFound("Claim does not exist");
 
     const baseQuery = `
       SELECT DISTINCT
@@ -453,7 +453,7 @@ export const claimReport = async (
         c."sourceURI" AS source_link
       FROM "Claim" AS c
       JOIN "Edge" AS e ON c.id = e."claimId"
-      JOIN "Node" AS n1 ON e."startNodeId" = n1.id
+      JOIN "Node" AS n1 ON e."endNodeId" = n1.id OR e."startNodeId" = n1.id
     `;
 
     // First get direct attestations about the claim itself, if any
