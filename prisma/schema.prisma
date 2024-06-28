@@ -127,6 +127,21 @@ model Claim {
   lastUpdatedAt DateTime @default(now())
 }
 
+
+model Image {
+  id             Int       @id @default(autoincrement())
+  claimId        Int     //should it be? @unique
+
+  url            String
+  digestMultibase String?
+  metadata       Json?
+  effectiveDate  DateTime
+  createdDate    DateTime  @default(now())
+  owner          String
+  signature      String
+}
+
+
 enum IssuerIdType {
   DID
   ETH
