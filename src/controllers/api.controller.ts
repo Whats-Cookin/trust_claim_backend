@@ -407,6 +407,7 @@ interface ReportI {
   source_name: string;
   source_thumbnail: string;
   source_link: string;
+  image: string;
 }
 
 export const claimReport = async (
@@ -434,26 +435,26 @@ export const claimReport = async (
     if (!claim) throw new createError.NotFound('Claim does not exist');
 
     const baseQuery = `
-      SELECT DISTINCT
-        n1.name AS name,
-        n1.thumbnail AS thumbnail,
-        n1."nodeUri" AS link,
-        n1."image" AS image,
-        c.id AS claim_id,
-        c.statement AS statement,
-        c.stars AS stars,
-        c.score AS score,
-        c.amt AS amt,
-        c."effectiveDate" AS "effectiveDate",
-        c."howKnown" AS "howKnown",
-        c.aspect AS aspect,
-        c.confidence AS confidence,
-        e.label AS claim,
-        c."sourceURI" AS source_name,
-        c."sourceURI" AS source_link
-      FROM "Claim" AS c
-      JOIN "Edge" AS e ON c.id = e."claimId"
-      JOIN "Node" AS n1 ON e."startNodeId" = n1.id
+        SELECT DISTINCT
+          n1.name AS name,
+          n1.thumbnail AS thumbnail,
+          n1."nodeUri" AS link,
+          n1."image" AS image,
+          c.id AS claim_id,
+          c.statement AS statement,
+          c.stars AS stars,
+          c.score AS score,
+          c.amt AS amt,
+          c."effectiveDate" AS "effectiveDate",
+          c."howKnown" AS "howKnown",
+          c.aspect AS aspect,
+          c.confidence AS confidence,
+          e.label AS claim,
+          c."sourceURI" AS source_name,
+          c."sourceURI" AS source_link
+        FROM "Claim" AS c
+        JOIN "Edge" AS e ON c.id = e."claimId"
+        JOIN "Node" AS n1 ON e."endNodeId" = n1.id
     `;
 
     // First get direct attestations about the claim itself, if any
@@ -467,11 +468,9 @@ export const claimReport = async (
     `;
 
     // Now get any other claims about the same subject, if any
-    const claimsOfSubj = await prisma.$queryRaw<ReportI>`
+    const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claim.subject.toLocaleLowerCase()} AND c."id" != ${Number(
-      claimId
-    )}  AND n1."nodeUri" = ${claim.subject.toLocaleLowerCase()}
+      WHERE c."subject" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -489,12 +488,21 @@ export const claimReport = async (
       },
     });
 
+    const NodeOfClaim = await prisma.node.findFirst({
+      where: {
+        nodeUri: claim.subject,
+      },
+    });
+
     res.status(200).json({
       data: {
         edge,
-        claim,
+        claim: {
+          ...claim,
+          image: NodeOfClaim?.image,
+        },
         validations: validations,
-        attestations: claimsOfSubj,
+        attestations,
       },
     });
     return;
