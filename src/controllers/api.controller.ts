@@ -407,6 +407,7 @@ interface ReportI {
   source_name: string;
   source_thumbnail: string;
   source_link: string;
+  image: string;
 }
 
 export const claimReport = async (
@@ -467,11 +468,9 @@ export const claimReport = async (
     `;
 
     // Now get any other claims about the same subject, if any
-    const claimsOfSubj = await prisma.$queryRaw<ReportI>`
+    const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claim.subject.toLocaleLowerCase()} AND c."id" != ${Number(
-      claimId
-    )}  AND n1."nodeUri" = ${claim.subject.toLocaleLowerCase()}
+      WHERE c."subject" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -489,12 +488,21 @@ export const claimReport = async (
       },
     });
 
+    const NodeOfClaim = await prisma.node.findFirst({
+      where: {
+        nodeUri: claim.subject,
+      },
+    });
+
     res.status(200).json({
       data: {
         edge,
-        claim,
+        claim: {
+          ...claim,
+          image: NodeOfClaim?.image,
+        },
         validations: validations,
-        attestations: claimsOfSubj,
+        attestations,
       },
     });
     return;
