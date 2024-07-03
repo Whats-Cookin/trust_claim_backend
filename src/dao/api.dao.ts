@@ -1,4 +1,4 @@
-import { Prisma } from "prisma/prisma-client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
@@ -25,19 +25,80 @@ interface ReportI {
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
+    const { name, images, ...rest } = rawClaim;
+    console.log("====imgs===", images);
+    console.log(name);
+    console.log(userId);
+    console.log("===rest===", rest);
     return await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
         issuerIdType: "URL",
-        ...rawClaim,
+        ...rest,
+      },
+    });
+  };
+
+  createImages = async (claimId: number, userId: any, images: any[]) => {
+    let claimImages: any[] = [];
+
+    if (images && images.length > 0) {
+      claimImages = await Promise.all(
+        images.map(async (img: any) => {
+          if (img.effectiveDate) {
+            img.effectiveDate = new Date(img.effectiveDate);
+          }
+
+          const image = await prisma.image.create({
+            data: {
+              claimId: claimId,
+              owner: `http://trustclaims.whatscookin.us/users/${userId}`,
+              ...img,
+            },
+          });
+          return image;
+        })
+      );
+    }
+
+    return claimImages;
+  };
+
+  createClaimData = async (id: number, name: string) => {
+    return await prisma.claimData.create({
+      data: {
+        claimId: id,
+        name: name,
       },
     });
   };
 
   getClaimById = async (id: number) => {
-    return await prisma.claim.findUnique({
+    const claim = await prisma.claim.findUnique({
       where: {
         id: id,
+      },
+    });
+    const claimData = await this.getClaimData(id);
+
+    const claimImages = await this.getClaimImages(id);
+
+    console.log(claimData);
+    return { claim, claimData, claimImages };
+  };
+
+  getClaimData = async (claimId: number) => {
+    return await prisma.claimData.findUnique({
+      where: {
+        claimId: claimId,
+      },
+    });
+  };
+
+  getClaimImages = async (claimId: number) => {
+    return await prisma.image.findMany({
+      where: {
+        claimId,
       },
     });
   };
@@ -56,9 +117,19 @@ export class ClaimDao {
       take: Number(limit) ? Number(limit) : undefined,
     });
 
+    const claimData = [];
+
+    for (const claim of claims) {
+      const data = await this.getClaimData(claim.id);
+      const images = await this.getClaimImages(claim.id);
+      claimData.push({ data, claim, images });
+    }
+
+    console.log(claimData);
+
     const count = await prisma.claim.count({ where: query });
 
-    return { claims, count };
+    return { claimData, count };
   };
 
   getAllClaims = async (page: number, limit: number) => {
@@ -67,9 +138,17 @@ export class ClaimDao {
       take: limit > 0 ? limit : undefined,
     });
 
+    const claimData = [];
+
+    for (const claim of claims) {
+      const data = await this.getClaimData(claim.id);
+      const images = await this.getClaimImages(claim.id);
+      claimData.push({ data, claim, images });
+    }
+
     const count = await prisma.claim.count({});
 
-    return { claims, count };
+    return { claimData, count };
   };
 }
 

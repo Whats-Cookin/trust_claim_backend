@@ -1,6 +1,5 @@
-version: '3.3'
+version: "3.3"
 services:
-
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -16,7 +15,7 @@ services:
     restart: unless-stopped
 
   trust-claim-backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: trust-claim-backend
@@ -40,7 +39,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
-    restart: always  
+    restart: always
     depends_on:
       - postgres
     ports:
