@@ -93,6 +93,9 @@ export const claimSearch = async (
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
+
+    // this may also need decodeURIComponent, we should encapsulate this check 
+    
     let claims = [];
     let count = 0;
 
@@ -212,7 +215,7 @@ export const claimsFeed = async (
       INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
       INNER JOIN "Claim" as c on e."claimId" = c.id
       WHERE NOT (n1."entType" = 'CLAIM' and e.label = 'source')
-      ORDER BY c.id DESC
+      ORDER BY c."effectiveDate" DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
@@ -285,17 +288,30 @@ export const searchNodes = async (
   next: NextFunction
 ) => {
   try {
+
+    /* TODO TODO TODO : why are we using a search when we hav ethe claim id ?????????? */
+    /* this function can exist but it should not be called when we already know the claim id */
+    /* it is currently being called from front end to see graph view of a known claim */
+    /* front end shoudl change to pull by id, we need a new route to retrieve by id  or specific subject */
+    
     const { search, page = 0, limit = 0 } = req.query;
+
+    let clean_search = ''
+    if (typeof search === 'string') {
+      // for some reason they are getting double-encoded 
+      clean_search = decodeURIComponent(search);
+    } 
+
     let nodes = [];
     let count = 0;
     let query: Prisma.NodeWhereInput = {};
 
-    if (search) {
+    if (clean_search) {
       query = {
         OR: [
-          { name: { contains: search as string, mode: 'insensitive' } },
-          { descrip: { contains: search as string, mode: 'insensitive' } },
-          { nodeUri: { contains: search as string, mode: 'insensitive' } },
+          { name: { contains: clean_search, mode: 'insensitive' } },
+          { descrip: { contains: clean_search, mode: 'insensitive' } },
+          { nodeUri: { contains: clean_search, mode: 'insensitive' } },
         ],
       };
     }
@@ -434,12 +450,16 @@ export const claimReport = async (
     });
     if (!claim) throw new createError.NotFound('Claim does not exist');
 
+    // this is to retrieve claims about the original claim, and claims about the subject
+    // we will need the node on either end, for matching and for data
+    // the n1 node is the thing we are searching for claims about
+    // the n2 node is the claims we found
     const baseQuery = `
         SELECT DISTINCT
-          n1.name AS name,
-          n1.thumbnail AS thumbnail,
-          n1."nodeUri" AS link,
-          n1."image" AS image,
+          n2.name AS name,
+          n2.thumbnail AS thumbnail,
+          n2."nodeUri" AS link,
+          n2."image" AS image,
           c.id AS claim_id,
           c.statement AS statement,
           c.stars AS stars,
@@ -454,7 +474,8 @@ export const claimReport = async (
           c."sourceURI" AS source_link
         FROM "Claim" AS c
         JOIN "Edge" AS e ON c.id = e."claimId"
-        JOIN "Node" AS n1 ON e."endNodeId" = n1.id
+        JOIN "Node" AS n1 ON e."startNodeId" = n1.id
+        JOIN "Node" AS n2 ON e."endNodeId" = n2.id
     `;
 
     // First get direct attestations about the claim itself, if any
@@ -468,18 +489,17 @@ export const claimReport = async (
     `;
 
     // Now get any other claims about the same subject, if any
+    // the subject of the claim is claim.subject, not the url of the claim itself
     const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
+      WHERE c."subject" = ${claim.subject} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
 
     //
-    // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
-    // then ALSO get other claims about the nodes who were the source or issuer of the attestations
-    // those can be separate PRs lets start with this one working and the design for it
+    // later we might want a second level call where we ALSO get other claims about the nodes who were the source or issuer of the attestations
     //
 
     const edge = await prisma.edge.findFirst({
@@ -488,9 +508,11 @@ export const claimReport = async (
       },
     });
 
+    // the Node of the Claim is the one representing the claim, not the subject
+    // we may later want to put an image of the subject instead, we'll decide in design
     const NodeOfClaim = await prisma.node.findFirst({
       where: {
-        nodeUri: claim.subject,
+        nodeUri: claim_as_node_uri,
       },
     });
 
