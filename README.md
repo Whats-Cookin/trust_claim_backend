@@ -1,4 +1,4 @@
-s# Linked Trust Backend
+# Linked Trust Backend
 
 This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us 
 

@@ -93,6 +93,9 @@ export const claimSearch = async (
 ) => {
   try {
     const { search, page = 0, limit = 0 } = req.query;
+
+    // this may also need decodeURIComponent, we should encapsulate this check 
+    
     let claims = [];
     let count = 0;
 
@@ -285,17 +288,30 @@ export const searchNodes = async (
   next: NextFunction
 ) => {
   try {
+
+    /* TODO TODO TODO : why are we using a search when we hav ethe claim id ?????????? */
+    /* this function can exist but it should not be called when we already know the claim id */
+    /* it is currently being called from front end to see graph view of a known claim */
+    /* front end shoudl change to pull by id, we need a new route to retrieve by id  or specific subject */
+    
     const { search, page = 0, limit = 0 } = req.query;
+
+    let clean_search = ''
+    if (typeof search === 'string') {
+      // for some reason they are getting double-encoded 
+      clean_search = decodeURIComponent(search);
+    } 
+
     let nodes = [];
     let count = 0;
     let query: Prisma.NodeWhereInput = {};
 
-    if (search) {
+    if (clean_search) {
       query = {
         OR: [
-          { name: { contains: search as string, mode: 'insensitive' } },
-          { descrip: { contains: search as string, mode: 'insensitive' } },
-          { nodeUri: { contains: search as string, mode: 'insensitive' } },
+          { name: { contains: clean_search, mode: 'insensitive' } },
+          { descrip: { contains: clean_search, mode: 'insensitive' } },
+          { nodeUri: { contains: clean_search, mode: 'insensitive' } },
         ],
       };
     }
