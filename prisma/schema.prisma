@@ -141,7 +141,7 @@ model Validation {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
-  constex          String
+  contex          String
   validatorEmail   String
   claimId          Int
   validationStatus ValidationStatus @default(PENDING)
