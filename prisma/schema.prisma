@@ -137,22 +137,25 @@ model CandidUserInfo {
   profileURL String
 }
 
-model Validation {
+model ValidationRequest {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
-  constex          String
-  validatorEmail   String
-  claimId          Int
-  validationStatus ValidationStatus @default(PENDING)
-  response         Boolean?         @default(false)
-  validationDate   DateTime?
-  statement        String?
+  constex           String
+  validatorEmail    String
+  claimId           Int
+  validationClaimId Int // this id belongs to the claim created for the vlaidation
+  validationStatus  ValidationStatus @default(PENDING)
+  response          Boolean?         @default(false)
+  validationDate    DateTime?
+  statement         String?
 }
 
 enum ValidationStatus {
   PENDING
   COMPLETED
+  REJECTED
+  ABANDONED
 }
 
 enum IssuerIdType {
