@@ -154,6 +154,37 @@ model Image {
   claimData ClaimData @relation(fields: [claimId], references: [id])
 }
 
+
+// this is for validator service
+model CandidUserInfo {
+  id         Int    @id @default(autoincrement())
+  claimId    Int?   @unique
+  firstName  String
+  lastName   String
+  email      String
+  profileURL String
+}
+
+model ValidationRequest {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  contex          String
+  validatorEmail   String
+  claimId          Int
+  validationStatus ValidationStatus @default(PENDING)
+  response         Boolean?         @default(false)
+  validationDate   DateTime?
+  statement        String?
+}
+
+enum ValidationStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+  ABANDONED
+}
+
 enum IssuerIdType {
   DID
   ETH
