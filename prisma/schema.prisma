@@ -127,6 +127,34 @@ model Claim {
   lastUpdatedAt DateTime @default(now())
 }
 
+// this model is to connect between the claim and the data that supports it
+// like the name of the claim, the image, the source, etc.
+// maybe to add another atts in future like the urls that can be related to the claim, like the website, the social media, etc.
+model ClaimData {
+  id      Int @id @default(autoincrement())
+  claimId Int @unique
+
+  name  String
+  image Image[]
+}
+
+// this model is to store the image of the claim
+model Image {
+  id      Int @id @default(autoincrement())
+  claimId Int //should it be? @unique
+
+  url             String
+  digestMultibase String?
+  metadata        Json?
+  effectiveDate   DateTime
+  createdDate     DateTime @default(now())
+  owner           String
+  signature       String
+
+  claimData ClaimData @relation(fields: [claimId], references: [id])
+}
+
+
 // this is for validator service
 model CandidUserInfo {
   id         Int    @id @default(autoincrement())
@@ -177,3 +205,4 @@ enum HowKnown {
   OPINION
   OTHER
 }
+
