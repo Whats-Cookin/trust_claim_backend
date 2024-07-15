@@ -48,7 +48,7 @@ export const searchNodes = async (
       count = searchResult.count;
     }
 
-    res.status(201).json({ nodes, count });
+    res.status(200).json({ nodes, count });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
