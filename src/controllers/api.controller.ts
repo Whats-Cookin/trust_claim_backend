@@ -1,13 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../db/prisma';
-import { Prisma } from 'prisma/prisma-client';
+import { Request, Response, NextFunction } from "express";
+import { prisma } from "../db/prisma";
+import { Prisma } from "prisma/prisma-client";
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer,
   makeClaimSubjectURL,
-} from '../utils';
-import createError from 'http-errors';
+} from "../utils";
+import createError from "http-errors";
 
 export const claimPost = async (
   req: Request,
@@ -22,7 +22,7 @@ export const claimPost = async (
     claim = await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-        issuerIdType: 'URL',
+        issuerIdType: "URL",
         ...rawClaim,
       },
     });
@@ -67,7 +67,7 @@ export const claimGetById = async (
     const id = Number(claimId);
 
     if (isNaN(id)) {
-      return res.status(400).json({ message: 'Invalid claim ID' });
+      return res.status(400).json({ message: "Invalid claim ID" });
     }
 
     const claim = await prisma.claim.findUnique({
@@ -77,7 +77,7 @@ export const claimGetById = async (
     });
 
     if (!claim) {
-      throw new createError.NotFound('Not Found');
+      throw new createError.NotFound("Not Found");
     }
 
     res.status(201).json(claim);
@@ -94,16 +94,16 @@ export const claimSearch = async (
   try {
     const { search, page = 0, limit = 0 } = req.query;
 
-    // this may also need decodeURIComponent, we should encapsulate this check 
-    
+    // this may also need decodeURIComponent, we should encapsulate this check
+
     let claims = [];
     let count = 0;
 
     if (search) {
       const query: Prisma.ClaimWhereInput = {
         OR: [
-          { subject: { contains: search as string, mode: 'insensitive' } },
-          { object: { contains: search as string, mode: 'insensitive' } },
+          { subject: { contains: search as string, mode: "insensitive" } },
+          { object: { contains: search as string, mode: "insensitive" } },
         ],
       };
 
@@ -148,7 +148,7 @@ export const claimsGet = async (
       skip: (Number(page) - 1) * Number(limit),
       take: 10,
       orderBy: {
-        id: 'desc',
+        id: "desc",
       },
       include: {
         edgesFrom: {
@@ -197,15 +197,11 @@ export const claimsFeed = async (
   next: NextFunction
 ) => {
   try {
-    // const { search } = req.query; // unused for now, TODO here search
-    let { page = 1, limit = 100 } = req.query; // defaults provided here
+    const { page = 1, limit = 100, search = "" } = req.query;
 
-    // Convert them to numbers
-    page = Number(page);
-    limit = Number(limit);
+    const offset = (Number(page) - 1) * Number(limit);
 
-    const offset = (page - 1) * limit;
-
+    // SQL query with search functionality
     const feed_entries = await prisma.$queryRaw`
       SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, c.id as claim_id, c.statement as statement, c.stars as stars, c.score as score, c.amt as amt, c."effectiveDate" as effective_date, c."howKnown" as how_known, c.aspect as aspect, c.confidence as confidence, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link
       FROM "Node" AS n1
@@ -215,13 +211,17 @@ export const claimsFeed = async (
       INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
       INNER JOIN "Claim" as c on e."claimId" = c.id
       WHERE NOT (n1."entType" = 'CLAIM' and e.label = 'source')
+      AND (
+        c.statement ILIKE ${`%${search}%`} OR
+        n1.name ILIKE ${`%${search}%`} OR
+        n3."nodeUri" ILIKE ${`%${search}%`}
+      )
       ORDER BY c."effectiveDate" DESC
-      LIMIT ${limit}
+      LIMIT ${Number(limit)}
       OFFSET ${offset}
     `;
 
     res.status(200).json(feed_entries);
-    return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -272,7 +272,7 @@ export const getNodeById = async (
     });
 
     if (!node) {
-      throw new createError.NotFound('Node does not exist');
+      throw new createError.NotFound("Node does not exist");
     }
 
     res.status(201).json(node);
@@ -288,19 +288,18 @@ export const searchNodes = async (
   next: NextFunction
 ) => {
   try {
-
     /* TODO TODO TODO : why are we using a search when we hav ethe claim id ?????????? */
     /* this function can exist but it should not be called when we already know the claim id */
     /* it is currently being called from front end to see graph view of a known claim */
     /* front end shoudl change to pull by id, we need a new route to retrieve by id  or specific subject */
-    
+
     const { search, page = 0, limit = 0 } = req.query;
 
-    let clean_search = ''
-    if (typeof search === 'string') {
-      // for some reason they are getting double-encoded 
+    let clean_search = "";
+    if (typeof search === "string") {
+      // for some reason they are getting double-encoded
       clean_search = decodeURIComponent(search);
-    } 
+    }
 
     let nodes = [];
     let count = 0;
@@ -309,9 +308,9 @@ export const searchNodes = async (
     if (clean_search) {
       query = {
         OR: [
-          { name: { contains: clean_search, mode: 'insensitive' } },
-          { descrip: { contains: clean_search, mode: 'insensitive' } },
-          { nodeUri: { contains: clean_search, mode: 'insensitive' } },
+          { name: { contains: clean_search, mode: "insensitive" } },
+          { descrip: { contains: clean_search, mode: "insensitive" } },
+          { nodeUri: { contains: clean_search, mode: "insensitive" } },
         ],
       };
     }
@@ -378,7 +377,7 @@ export const getNodeForLoggedInUser = async (
           some: {
             claim: {
               issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
-              issuerIdType: 'URL',
+              issuerIdType: "URL",
               ...rawClaim,
             },
           },
@@ -448,7 +447,7 @@ export const claimReport = async (
         id: Number(claimId),
       },
     });
-    if (!claim) throw new createError.NotFound('Claim does not exist');
+    if (!claim) throw new createError.NotFound("Claim does not exist");
 
     // this is to retrieve claims about the original claim, and claims about the subject
     // we will need the node on either end, for matching and for data
