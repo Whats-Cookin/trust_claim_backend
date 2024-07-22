@@ -169,7 +169,7 @@ model ValidationRequest {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
-  contex          String
+  context          String
   validatorEmail   String
   claimId          Int
   validationStatus ValidationStatus @default(PENDING)
