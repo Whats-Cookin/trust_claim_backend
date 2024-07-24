@@ -26,6 +26,7 @@ interface ReportI {
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
     const { name, images, ...rest } = rawClaim;
+    console.log("======== ", rest);
     const createdClaim = await prisma.claim.create({
       data: {
         issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
@@ -37,39 +38,39 @@ export class ClaimDao {
     return createdClaim;
   };
 
-//   createImages = async (claimId: number, userId: any, images: any[]) => {
-//     let claimImages: any[] = [];
+  createImages = async (claimId: number, userId: any, images: any[]) => {
+    let claimImages: any[] = [];
 
-//     if (images && images.length > 0) {
-//       claimImages = await Promise.all(
-//         images.map(async (img: any) => {
-//           if (img.effectiveDate) {
-//             img.effectiveDate = new Date(img.effectiveDate);
-//           }
+    if (images && images.length > 0) {
+      claimImages = await Promise.all(
+        images.map(async (img: any) => {
+          if (img.effectiveDate) {
+            img.effectiveDate = new Date(img.effectiveDate);
+          }
 
-//           const image = await prisma.image.create({
-//             data: {
-//               claimId: claimId,
-//               owner: `http://trustclaims.whatscookin.us/users/${userId}`,
-//               ...img,
-//             },
-//           });
-//           return image;
-//         })
-//       );
-//     }
+          const image = await prisma.image.create({
+            data: {
+              claimId: claimId,
+              owner: `http://trustclaims.whatscookin.us/users/${userId}`,
+              ...img,
+            },
+          });
+          return image;
+        })
+      );
+    }
 
-//     return claimImages;
-//   };
+    return claimImages;
+  };
 
-//   createClaimData = async (id: number, name: string) => {
-//     return await prisma.claimData.create({
-//       data: {
-//         claimId: id,
-//         name: name,
-//       },
-//     });
-//   };
+  createClaimData = async (id: number, name: string) => {
+    return await prisma.claimData.create({
+      data: {
+        claimId: id,
+        name: name,
+      },
+    });
+  };
 
   getClaimById = async (id: number) => {
     const claim = await prisma.claim.findUnique({
@@ -77,30 +78,29 @@ export class ClaimDao {
         id: id,
       },
     });
-    // const claimData = await this.getClaimData(id);
+    const claimData = await this.getClaimData(id);
 
-    // const claimImages = await this.getClaimImages(id);
+    const claimImages = await this.getClaimImages(id);
 
-    // console.log(claimData);
-    // return { claim, claimData, claimImages };
-    return claim;
+    console.log(claimData);
+    return { claim, claimData, claimImages };
   };
 
-//   getClaimData = async (claimId: number) => {
-//     return await prisma.claimData.findUnique({
-//       where: {
-//         claimId: claimId,
-//       },
-//     });
-//   };
+  getClaimData = async (claimId: number) => {
+    return await prisma.claimData.findUnique({
+      where: {
+        claimId: claimId,
+      },
+    });
+  };
 
-//   getClaimImages = async (claimId: number) => {
-//     return await prisma.image.findMany({
-//       where: {
-//         claimId,
-//       },
-//     });
-//   };
+  getClaimImages = async (claimId: number) => {
+    return await prisma.image.findMany({
+      where: {
+        claimId,
+      },
+    });
+  };
 
   searchClaims = async (search: string, page: number, limit: number) => {
     const query: Prisma.ClaimWhereInput = {
@@ -116,40 +116,42 @@ export class ClaimDao {
       take: Number(limit) ? Number(limit) : undefined,
     });
 
-    // const claimData = [];
+    const claimData = [];
 
-    // for (const claim of claims) {
-    //   const data = await this.getClaimData(claim.id);
-    //   const images = await this.getClaimImages(claim.id);
-    //   claimData.push({ data, claim, images });
-    // }
+    for (const claim of claims) {
+      const data = await this.getClaimData(claim.id);
+      const images = await this.getClaimImages(claim.id);
+      claimData.push({ data, claim, images });
+    }
 
-    // console.log(claimData);
+    console.log(claimData);
 
     const count = await prisma.claim.count({ where: query });
 
-    // return { claimData, count };
-    return { claims, count };
+    return { claimData, count };
+    // return { claims, count };
   };
 
   getAllClaims = async (page: number, limit: number) => {
+    // Fetch claims with pagination
     const claims = await prisma.claim.findMany({
       skip: (page - 1) * limit,
       take: limit > 0 ? limit : undefined,
     });
-
-    // const claimData = [];
-
-    // for (const claim of claims) {
-    //   const data = await this.getClaimData(claim.id);
-    //   const images = await this.getClaimImages(claim.id);
-    //   claimData.push({ data, claim, images });
-    // }
+    const claimData = [];
+  
+    for (const claim of claims) {
+      // Fetch claim data and images concurrently
+      const [data, images] = await Promise.all([
+        this.getClaimData(claim.id),
+        this.getClaimImages(claim.id)
+      ]);
+      claimData.push({ data, claim, images });
+    }
 
     const count = await prisma.claim.count({});
 
-    // return { claimData, count };
-    return { claims, count };
+    return { claimData, count };
   };
 }
 
