@@ -26,10 +26,9 @@ interface ReportI {
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
     const { name, images, ...rest } = rawClaim;
-    console.log("======== ", rest);
     const createdClaim = await prisma.claim.create({
       data: {
-        issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
+        issuerId: `${process.env.BASE_URL}/users/${userId}`,
         issuerIdType: "URL",
         ...rest,
       },
@@ -51,7 +50,7 @@ export class ClaimDao {
           const image = await prisma.image.create({
             data: {
               claimId: claimId,
-              owner: `http://trustclaims.whatscookin.us/users/${userId}`,
+              owner: `${process.env.BASE_URL}/users/${userId}`,
               ...img,
             },
           });
@@ -82,7 +81,6 @@ export class ClaimDao {
 
     const claimImages = await this.getClaimImages(id);
 
-    console.log(claimData);
     return { claim, claimData, claimImages };
   };
 
@@ -124,12 +122,9 @@ export class ClaimDao {
       claimData.push({ data, claim, images });
     }
 
-    console.log(claimData);
-
     const count = await prisma.claim.count({ where: query });
 
     return { claimData, count };
-    // return { claims, count };
   };
 
   getAllClaims = async (page: number, limit: number) => {
@@ -305,7 +300,7 @@ export class NodeDao {
         edgesTo: {
           some: {
             claim: {
-              issuerId: `http://trustclaims.whatscookin.us/users/${userId}`,
+              issuerId: `${process.env.BASE_URL}/users/${userId}`,
               issuerIdType: 'URL',
               ...rawClaim,
             },

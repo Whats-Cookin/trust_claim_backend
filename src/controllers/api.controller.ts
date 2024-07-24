@@ -25,7 +25,6 @@ export const claimPost = async (
     let rawClaim: any = turnFalsyPropsToUndefined(req.body);
     rawClaim = poormansNormalizer(rawClaim);
     rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
-    console.log("======== ", rawClaim);
     claim = await claimDao.createClaim(userId, rawClaim);
     claimData = await claimDao.createClaimData(claim.id, rawClaim.name);
     claimImages = await claimDao.createImages(
@@ -38,7 +37,6 @@ export const claimPost = async (
   }
 
   res.status(201).json({ claim, claimData, claimImages });
-  // res.status(201).json(claim);
 };
 
 export const claimGetById = async (
@@ -75,11 +73,8 @@ export const getAllClaims = async (
     const claims = await prisma.claim.findMany();
     const claimsData = [];
     for (const claim of claims) {
-      // console.log(claim.id);
       const data = await claimDao.getClaimData(claim.id as any);
       const images = await claimDao.getClaimImages(claim.id as any);
-      // console.log(data);
-      // console.log(claim);
       claimsData.push({ data, claim, images });
     }
     const count = await prisma.claim.count({});
