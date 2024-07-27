@@ -130,18 +130,19 @@ model Claim {
 // this model is to connect between the claim and the data that supports it
 // like the name of the claim, the image, the source, etc.
 // maybe to add another atts in future like the urls that can be related to the claim, like the website, the social media, etc.
-model ClaimData {
+model  ClaimData {
   id      Int @id @default(autoincrement())
   claimId Int @unique
 
   name  String
-  image Image[]
+  // image Image[]
 }
 
 // this model is to store the image of the claim
 model Image {
   id      Int @id @default(autoincrement())
-  claimId Int //should it be? @unique
+  claimId Int  // @unique
+  // claimDataId Int
 
   url             String
   digestMultibase String?
@@ -151,7 +152,7 @@ model Image {
   owner           String
   signature       String
 
-  claimData ClaimData @relation(fields: [claimId], references: [id])
+  // claimData ClaimData @relation(fields: [claimDataId], references: [id])
 }
 
 

@@ -25,18 +25,18 @@ const claimPostSchema = Joi.object({
       }),
     Joi.number()
   ),
-  // name: Joi.string().required(),
+  name: Joi.string().required(),
   howKnown: Joi.string().allow(""),
-  // images: Joi.array().items(
-  //   Joi.object({
-  //     url: Joi.string().required(),
-  //     metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
-  //     effectiveDate: Joi.date().allow(null),
-  //     digestMultibase: Joi.string().allow(null),
-  //     signature: Joi.string().required(),
-  //     owner: Joi.string().required(),
-  //   })
-  // ),
+  images: Joi.array().items(
+    Joi.object({
+      url: Joi.string().required(),
+      metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
+      effectiveDate: Joi.date().allow(null),
+      digestMultibase: Joi.string().allow(null),
+      signature: Joi.string().required(),
+      owner: Joi.string().required(),
+    })
+  ),
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
