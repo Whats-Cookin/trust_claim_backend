@@ -10,20 +10,33 @@ const claimPostSchema = Joi.object({
   statement: Joi.string().allow(""),
   aspect: Joi.string().allow(""),
   amt: Joi.alternatives().try(
-    Joi.string().allow('').custom((value, helpers) => {
-      let strippedValue = value.replace(/\$|\s+/g, ''); // Strip $ and spaces
-      if (strippedValue === '') {
-        return null; // Convert empty string to null
-      }
-      let numberValue = parseFloat(strippedValue);
-      if (isNaN(numberValue)) {
-        throw new Error("Can't convert aspect to number");
-      }
-      return numberValue; // Return the converted number
-    }),
+    Joi.string()
+      .allow("")
+      .custom((value, helpers) => {
+        const strippedValue = value.replace(/\$|\s+/g, ""); // Strip $ and spaces
+        if (strippedValue === "") {
+          return null; // Convert empty string to null
+        }
+        const numberValue = parseFloat(strippedValue);
+        if (isNaN(numberValue)) {
+          throw new Error("Can't convert aspect to number");
+        }
+        return numberValue; // Return the converted number
+      }),
     Joi.number()
   ),
+  name: Joi.string().required(),
   howKnown: Joi.string().allow(""),
+  images: Joi.array().items(
+    Joi.object({
+      url: Joi.string().required(),
+      metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
+      effectiveDate: Joi.date().allow(null),
+      digestMultibase: Joi.string().allow(null),
+      signature: Joi.string().required(),
+      owner: Joi.string().required(),
+    })
+  ),
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
@@ -45,7 +58,7 @@ const claimPostSchema = Joi.object({
       );
     }
     return true;
-  })
+  }),
 });
 
 export const claimPostValidator = async (

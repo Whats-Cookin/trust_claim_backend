@@ -10,9 +10,10 @@ import {
   claimReport,
   getNodeForLoggedInUser,
   claimGetById,
-  claimSearch
+  claimSearch,
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
+import { getAllClaims } from "../../controllers/api.controller";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.post(
 );
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
+router.get("/claims-all", getAllClaims);
 router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);
 router.get("/node/search", searchNodes);
