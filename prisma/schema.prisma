@@ -155,28 +155,30 @@ model Image {
   // claimData ClaimData @relation(fields: [claimDataId], references: [id])
 }
 
-
 // this is for validator service
 model CandidUserInfo {
-  id         Int    @id @default(autoincrement())
-  claimId    Int?   @unique
-  firstName  String
-  lastName   String
-  email      String
-  profileURL String
+  id               Int     @id @default(autoincrement())
+  claimId          Int?    @unique
+  firstName        String?
+  lastName         String?
+  candid_entity_id String
+  email            String
+  profileURL       String
 }
 
 model ValidationRequest {
-  id         Int    @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
 
-  context          String
-  validatorEmail   String
-  claimId          Int
-  validationStatus ValidationStatus @default(PENDING)
-  response         Boolean?         @default(false)
-  validationDate   DateTime?
-  statement        String?
+  context           String
+  validatorName     String
+  validatorEmail    String
+  claimId           Int              @unique // the id of the candid user claim (the root claim)
+  validationClaimId Int?             @unique // the id of validation claim
+  validationStatus  ValidationStatus @default(PENDING)
+  response          ResponseStatus?
+  validationDate    DateTime?
+  statement         String?
 }
 
 enum ValidationStatus {
@@ -193,6 +195,13 @@ enum IssuerIdType {
   URL
 }
 
+enum ResponseStatus {
+  GREEN // approved
+  YELLOW // may wish to follow up
+  GREY // we do not have any information that they should actively be rejected
+  RED // should be rejected without further action.
+}
+
 enum HowKnown {
   FIRST_HAND
   SECOND_HAND
@@ -206,4 +215,3 @@ enum HowKnown {
   OPINION
   OTHER
 }
-
