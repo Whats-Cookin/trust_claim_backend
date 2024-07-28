@@ -107,16 +107,6 @@ export class ClaimDao {
         { object: { contains: search, mode: "insensitive" } },
         { claim: { contains: search, mode: "insensitive" } },
         { statement: { contains: search, mode: "insensitive" } },
-        { sourceURI: { contains: search, mode: "insensitive" } },
-        { author: { contains: search, mode: "insensitive" } },
-        { curator: { contains: search, mode: "insensitive" } },
-        { aspect: { contains: search, mode: "insensitive" } },
-        { unit: { contains: search, mode: "insensitive" } },
-        { howMeasured: { contains: search, mode: "insensitive" } },
-        { intendedAudience: { contains: search, mode: "insensitive" } },
-        { respondAt: { contains: search, mode: "insensitive" } },
-        { issuerId: { contains: search, mode: "insensitive" } },
-        { claimAddress: { contains: search, mode: "insensitive" } },
       ],
     };
 
@@ -300,20 +290,13 @@ export class NodeDao {
         c.statement ILIKE ${`%${search}%`} OR
         c."sourceURI" ILIKE ${`%${search}%`} OR
         c."subject" ILIKE ${`%${search}%`} OR
-        c."object" ILIKE ${`%${search}%`} OR
-        c."author" ILIKE ${`%${search}%`} OR
-        c."curator" ILIKE ${`%${search}%`} OR
-        c."aspect" ILIKE ${`%${search}%`} OR
         n1.name ILIKE ${`%${search}%`} OR
-        n3."nodeUri" ILIKE ${`%${search}%`} OR
         n3.name ILIKE ${`%${search}%`} OR
         n3."descrip" ILIKE ${`%${search}%`} OR
         cd.name ILIKE ${`%${search}%`} OR
-        e.label ILIKE ${`%${search}%`} OR
-        e2.label ILIKE ${`%${search}%`}
-        i.url ILIKE ${`%${search}%`}
-        i.metadata ILIKE ${`%${search}%`}
-        i.owner ILIKE ${`%${search}%`}
+        i.url ILIKE ${`%${search}%`} OR
+        i.metadata ILIKE ${`%${search}%`} OR
+        i.owner ILIKE ${`%${search}%`} OR
       )
       ORDER BY c."effectiveDate" DESC
       LIMIT ${limit}
