@@ -148,15 +148,13 @@ export const claimsFeed = async (
 ) => {
   try {
     // const { search } = req.query; // unused for now, TODO here search
-    let { page = 1, limit = 100 } = req.query; // defaults provided here
+    const { page = 1, limit = 100, search = "" } = req.query; // defaults provided here
 
     // Convert them to numbers
-    page = Number(page);
-    limit = Number(limit);
 
-    const offset = (page - 1) * limit;
+    const offset = (Number(page) - 1) * Number(limit);
 
-    const feed_entries = await nodeDao.getFeedEntries(offset, limit);
+    const feed_entries = await nodeDao.getFeedEntries(offset, Number(limit), String(search));
     res.status(200).json(feed_entries);
     return;
   } catch (err) {

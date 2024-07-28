@@ -255,13 +255,13 @@ export class NodeDao {
     });
   };
 
-  getFeedEntries = async (offset: number, limit: number) => {
+  getFeedEntries = async (offset: number, limit: number, search: string) => {
     const feedEntries = await prisma.$queryRaw<FeedEntry[]>`
       WITH ranked_claims AS (
         SELECT
           c.*,
           ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c."effectiveDate" DESC) as rn
-        FROM "Claim" c
+        FROM "Claim" c, "Image" i, "ClaimData" cd
       )
       SELECT
         n1.name as name,
@@ -296,7 +296,25 @@ export class NodeDao {
       LEFT JOIN "ClaimData" as cd ON c.id = cd."claimId"
       LEFT JOIN "Image" as i ON c.id = i."claimId"
       WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')
-        AND c.rn = 1
+      AND (
+        c.statement ILIKE ${`%${search}%`} OR
+        c."sourceURI" ILIKE ${`%${search}%`} OR
+        c."subject" ILIKE ${`%${search}%`} OR
+        c."object" ILIKE ${`%${search}%`} OR
+        c."author" ILIKE ${`%${search}%`} OR
+        c."curator" ILIKE ${`%${search}%`} OR
+        c."aspect" ILIKE ${`%${search}%`} OR
+        n1.name ILIKE ${`%${search}%`} OR
+        n3."nodeUri" ILIKE ${`%${search}%`} OR
+        n3.name ILIKE ${`%${search}%`} OR
+        n3."descrip" ILIKE ${`%${search}%`} OR
+        cd.name ILIKE ${`%${search}%`} OR
+        e.label ILIKE ${`%${search}%`} OR
+        e2.label ILIKE ${`%${search}%`}
+        i.url ILIKE ${`%${search}%`}
+        i.metadata ILIKE ${`%${search}%`}
+        i.owner ILIKE ${`%${search}%`}
+      )
       ORDER BY c."effectiveDate" DESC
       LIMIT ${limit}
       OFFSET ${offset}
