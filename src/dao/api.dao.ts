@@ -185,11 +185,34 @@ export class ClaimDao {
   };
 }
 
+interface FeedEntry {
+  name: string;
+  thumbnail: string | null;
+  link: string;
+  description: string | null;
+  claim_id: number;
+  statement: string | null;
+  stars: number | null;
+  score: number | null;
+  amt: number | null;
+  effective_date: Date | null;
+  how_known: string | null;
+  aspect: string | null;
+  confidence: number | null;
+  claim: string;
+  basis: string | null;
+  source_name: string | null;
+  source_thumbnail: string | null;
+  source_link: string | null;
+  source_description: string | null;
+  claim_name: string | null;
+  image_url: string | null;
+  image_digest: string | null;
+  image_metadata: any | null;
+}
+
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
-
-
-
   getNodes = async (page: number, limit: number) => {
     return await prisma.node.findMany({
       skip: (Number(page) - 1) * Number(limit),
@@ -233,19 +256,53 @@ export class NodeDao {
   };
 
   getFeedEntries = async (offset: number, limit: number) => {
-    return await prisma.$queryRaw`
-    SELECT n1.name as name, n1.thumbnail as thumbnail, n1."nodeUri" as link, c.id as claim_id, c.statement as statement, c.stars as stars, c.score as score, c.amt as amt, c."effectiveDate" as effective_date, c."howKnown" as how_known, c.aspect as aspect, c.confidence as confidence, e.label as claim, e2.label as basis, n3.name as source_name, n3.thumbnail as source_thumbnail, n3."nodeUri" as source_link
-    FROM "Node" AS n1
-    INNER JOIN "Edge" AS e ON n1.id = e."startNodeId"
-    INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
-    INNER JOIN "Edge" as e2 on n2.id = e2."startNodeId"
-    INNER JOIN "Node" as n3 on e2."endNodeId" = n3.id
-    INNER JOIN "Claim" as c on e."claimId" = c.id
-    WHERE NOT (n1."entType" = 'CLAIM' and e.label = 'source')
-    ORDER BY c."effectiveDate" DESC
-    LIMIT ${limit}
-    OFFSET ${offset}
-  `;
+    const feedEntries = await prisma.$queryRaw<FeedEntry[]>`
+      WITH ranked_claims AS (
+        SELECT
+          c.*,
+          ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c."effectiveDate" DESC) as rn
+        FROM "Claim" c
+      )
+      SELECT
+        n1.name as name,
+        n1.thumbnail as thumbnail,
+        n1."nodeUri" as link,
+        n1."descrip" as description,
+        c.id as claim_id,
+        c.statement as statement,
+        c.stars as stars,
+        c.score as score,
+        c.amt as amt,
+        c."effectiveDate" as effective_date,
+        c."howKnown" as how_known,
+        c.aspect as aspect,
+        c.confidence as confidence,
+        e.label as claim,
+        e2.label as basis,
+        n3.name as source_name,
+        n3.thumbnail as source_thumbnail,
+        n3."nodeUri" as source_link,
+        n3."descrip" as source_description,
+        cd.name as claim_name,
+        i.url as image_url,
+        i.digestMultibase as image_digest,
+        i.metadata as image_metadata
+      FROM ranked_claims c
+      INNER JOIN "Edge" AS e ON c.id = e."claimId"
+      INNER JOIN "Node" AS n1 ON e."startNodeId" = n1.id
+      INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
+      LEFT JOIN "Edge" as e2 ON n2.id = e2."startNodeId"
+      LEFT JOIN "Node" as n3 ON e2."endNodeId" = n3.id
+      LEFT JOIN "ClaimData" as cd ON c.id = cd."claimId"
+      LEFT JOIN "Image" as i ON c.id = i."claimId"
+      WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')
+        AND c.rn = 1
+      ORDER BY c."effectiveDate" DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+
+    return feedEntries;
   };
 
   getNodeById = async (nodeId: number) => {
@@ -384,8 +441,6 @@ export const GetClaimReport = async (
     relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
   }
 
-
-
   if (!claimToGet) throw new createError.NotFound("Claim does not exist");
 
   const baseQuery = `
@@ -426,7 +481,9 @@ export const GetClaimReport = async (
   // the subject of the claim is claim.subject, not the url of the claim itself
   const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(claimId)}
+      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(
+    claimId
+  )}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -454,10 +511,11 @@ export const GetClaimReport = async (
     },
   });
 
-  const claim = { claim: claimToGet,
+  const claim = {
+    claim: claimToGet,
     images: images,
     claimData: claimData,
-    relatedNodes: relatedNodes
+    relatedNodes: relatedNodes,
   };
 
   return {
