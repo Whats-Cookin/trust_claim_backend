@@ -1,6 +1,6 @@
 # Linked Trust Backend
 
-This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us and [dev server](https://live.linkedtrust.us)
+This is an implementation of the OpenTrustClaims schema from https://github.com/blueskyCommunity/OpenTrustClaims/blob/main/open_trust_claim.yaml, and is the backend powering https://live.linkedtrust.us 
 
 trust_claim_backend is a Node application for adding Claims, and for presenting Nodes and Edges derived from claims in it
 
@@ -12,17 +12,7 @@ Claim: a signed set of structured data with the raw claim or attestation, often 
 Node: an entity that a claim is about.  This is created in the app as a view of what a claim is about.
 Edge: a representation of a claim that relates to a Node or connects two Nodes.  Created in the app as a view of a claim.
 
-## CICD Pipeline with Jenkins
-
-<a name="test, build and deploy"></a> The frontend is fully working with Jenkins CI/CD Integration
-The logs can be found on [jenkins last build](http://68.183.144.184:8080/job/Trustclaim_backend/lastBuild/)
-And for Auth Details to the pipeline, kindly refer to vault [jenkins logins](https://vault.whatscookin.us/app/passwords/view/63d7e1a5-0fab-45a6-b880-cd55530d7d1d), this creds would help you to gain access into the CI/CD pipeline and figure out why the test didn't run as it should, and also review the console outputs to figure out what the issue might be.
-
-For SSH Access into the dev server, kindly refer to this creds in the vault [dev server ssh creds](https://vault.whatscookin.us/app/passwords/view/cbe52954-3f7a-4e5d-9bb7-039389acc42c) this would help you ssh into the dev serverm while inside, the files would be in the `/data/trust_claim_backend` directory and configured with nginx
-
-*NB: The production version of this is available on [live.linkedtrust.us](live.linkedtrust.us)*
-
-## Run the application locally
+## Run the application 
 
 Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables).  section.
 
@@ -185,13 +175,13 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/claim"
 
 Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
-<a name="Review"></a>
-## To review the server files
+<a name="deploy"></a>
+## PoC Deployment
 
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
 
 ```
-Check vault for ssh creds, url is inserted above
+ssh -l ubuntu -i [key] trustclaims.whatscookin.us
 ```
 
 cd into the project
@@ -200,11 +190,10 @@ cd into the project
 cd /data/trust_claim_backend
 ```
 
-inspect the running file 
+Pull the latest master branch from github
 
 ```
-pm2 status index
-pm2 logs index
+git pull origin master
 ```
 
 Run this command to check for possible changes in packages, and install changed packages.
@@ -220,7 +209,7 @@ sudo su postgres
 pg_dump claim > /postgres/backup_filename.sql
 ```
 
-Then run the following 2 commands to generate artifacts and deploy migrations [This is already implemented in the CI/CD pipeline, but for local, it's needed].
+Then run the following 2 commands to generate artifacts and deploy migrations.
 
 ```
 npx prisma generate
