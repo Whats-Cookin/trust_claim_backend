@@ -79,7 +79,7 @@ export const getAllClaims = async (
     }
     const count = await prisma.claim.count({});
 
-    res.status(201).json({claimsData, count});
+    res.status(201).json({ claimsData, count });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -91,7 +91,7 @@ export const claimSearch = async (
   next: NextFunction
 ) => {
   try {
-    const { search, page = 0, limit = 0 } = req.query;
+    const { search, page = 1, limit = 10 } = req.query;
 
     let claims = [];
     let count;
@@ -105,24 +105,24 @@ export const claimSearch = async (
       claims = searchResult.claimData;
       count = searchResult.count;
     } else {
-      count = await prisma.claim.count({});
+      count = await prisma.claim.count();
       const claimsData = await prisma.claim.findMany({
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit) > 0 ? Number(limit) : undefined,
       });
       for (const claim of claimsData) {
-        const data = await claimDao.getClaimData(claim.id as any);
-        const images = await claimDao.getClaimImages(claim.id as any);
-        claims.push({ data, claim, images });
+        const data = await claimDao.getClaimData(claim.id);
+        const images = await claimDao.getClaimImages(claim.id);
+        const relatedNodes = await claimDao.getRelatedNodes(claim.id);
+        claims.push({ data, claim, images, relatedNodes });
       }
     }
 
-    res.status(201).json({ claims, count });
+    res.status(200).json({ claims, count });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
 };
-
 
 export const claimsGet = async (
   req: Request,
