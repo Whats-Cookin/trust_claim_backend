@@ -34,7 +34,7 @@ export const searchNodes = async (
   next: NextFunction
 ) => {
   try {
-    const { search, page = 0, limit = 0 } = req.query;
+    const { search, page = 1, limit = 10 } = req.query;
     let nodes;
     let count;
 
