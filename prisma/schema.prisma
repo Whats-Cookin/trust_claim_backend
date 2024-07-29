@@ -172,7 +172,7 @@ model ValidationRequest {
   context           String
   validatorName     String
   validatorEmail    String
-  claimId           Int              @unique // the id of the candid user claim (the root claim)
+  claimId           Int              // the id of the candid user claim (the root claim)
   validationClaimId Int?             @unique // the id of validation claim
   validationStatus  ValidationStatus @default(PENDING)
   response          ResponseStatus?
