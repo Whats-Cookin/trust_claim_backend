@@ -22,6 +22,7 @@ interface ReportI {
   source_thumbnail: string;
   source_link: string;
 }
+
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
@@ -246,13 +247,29 @@ export class NodeDao {
   };
 
   getFeedEntries = async (offset: number, limit: number, search: string) => {
-    const feedEntries = await prisma.$queryRaw<FeedEntry[]>`
-      WITH ranked_claims AS (
-        SELECT
-          c.*,
-          ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c."effectiveDate" DESC) as rn
-        FROM "Claim" c, "Image" i, "ClaimData" cd
+
+    const baseWhereClause = `WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')`;
+
+    const searchWhereClause = `
+      AND (
+        c.statement ILIKE ${Prisma.sql`%${search}%`} OR
+        c."sourceURI" ILIKE ${Prisma.sql`%${search}%`} OR
+        c."subject" ILIKE ${Prisma.sql`%${search}%`} OR
+        n1.name ILIKE ${Prisma.sql`%${search}%`} OR
+        n3.name ILIKE ${Prisma.sql`%${search}%`} OR
+        n3."descrip" ILIKE ${Prisma.sql`%${search}%`} OR
+        cd.name ILIKE ${Prisma.sql`%${search}%`} OR
+        i.url ILIKE ${Prisma.sql`%${search}%`} OR
+        i.metadata ILIKE ${Prisma.sql`%${search}%`} OR
+        i.owner ILIKE ${Prisma.sql`%${search}%`}
       )
+    `;
+
+    const whereClause = search 
+      ? Prisma.sql`${Prisma.raw(baseWhereClause + searchWhereClause)}`
+      : Prisma.sql`${Prisma.raw(baseWhereClause)}`;
+
+    const rawQ = Prisma.sql`
       SELECT
         n1.name as name,
         n1.thumbnail as thumbnail,
@@ -275,9 +292,9 @@ export class NodeDao {
         n3."descrip" as source_description,
         cd.name as claim_name,
         i.url as image_url,
-        i.digestMultibase as image_digest,
+        i."digestMultibase" as image_digest,
         i.metadata as image_metadata
-      FROM ranked_claims c
+      FROM "Claim" c
       INNER JOIN "Edge" AS e ON c.id = e."claimId"
       INNER JOIN "Node" AS n1 ON e."startNodeId" = n1.id
       INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
@@ -285,24 +302,14 @@ export class NodeDao {
       LEFT JOIN "Node" as n3 ON e2."endNodeId" = n3.id
       LEFT JOIN "ClaimData" as cd ON c.id = cd."claimId"
       LEFT JOIN "Image" as i ON c.id = i."claimId"
-      WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')
-      AND (
-        c.statement ILIKE ${`%${search}%`} OR
-        c."sourceURI" ILIKE ${`%${search}%`} OR
-        c."subject" ILIKE ${`%${search}%`} OR
-        n1.name ILIKE ${`%${search}%`} OR
-        n3.name ILIKE ${`%${search}%`} OR
-        n3."descrip" ILIKE ${`%${search}%`} OR
-        cd.name ILIKE ${`%${search}%`} OR
-        i.url ILIKE ${`%${search}%`} OR
-        i.metadata ILIKE ${`%${search}%`} OR
-        i.owner ILIKE ${`%${search}%`} OR
-      )
+      ${whereClause}
       ORDER BY c."effectiveDate" DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
 
+    console.log("Feed entries raw query: " + rawQ.sql + "\n with values \n" + rawQ.values)
+    const feedEntries = await prisma.$queryRaw<FeedEntry[]>`${rawQ}`;
     return feedEntries;
   };
 

@@ -89,6 +89,9 @@ Database is handled with the help of prisma orm.
 
 #### Apply migration
 
+*** NOTE NOTE NOTE : the migrations in prod server are currently NOT working automatically 8/1/2024 ***
+*** the migration in the prisma/migrations folder was applied manually ***
+
 If migration is not for docker container then run
 
 ```
