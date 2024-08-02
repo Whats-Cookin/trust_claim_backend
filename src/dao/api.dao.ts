@@ -78,6 +78,7 @@ export class ClaimDao {
         id: id,
       },
     });
+
     const claimData = await this.getClaimData(id);
 
     const claimImages = await this.getClaimImages(id);
@@ -247,70 +248,71 @@ export class NodeDao {
   };
 
   getFeedEntries = async (offset: number, limit: number, search: string) => {
+    try {
+      const baseWhereClause = `WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')`;
 
-    const baseWhereClause = `WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')`;
+      const searchWhereClause = search
+        ? `
+        AND (
+          c.statement ILIKE ${Prisma.sql`%${search}%`} OR
+          c."sourceURI" ILIKE ${Prisma.sql`%${search}%`} OR
+          c."subject" ILIKE ${Prisma.sql`%${search}%`} OR
+          n1.name ILIKE ${Prisma.sql`%${search}%`} OR
+          n3.name ILIKE ${Prisma.sql`%${search}%`} OR
+          n3."descrip" ILIKE ${Prisma.sql`%${search}%`}
+        )
+      `
+        : "";
 
-    const searchWhereClause = `
-      AND (
-        c.statement ILIKE ${Prisma.sql`%${search}%`} OR
-        c."sourceURI" ILIKE ${Prisma.sql`%${search}%`} OR
-        c."subject" ILIKE ${Prisma.sql`%${search}%`} OR
-        n1.name ILIKE ${Prisma.sql`%${search}%`} OR
-        n3.name ILIKE ${Prisma.sql`%${search}%`} OR
-        n3."descrip" ILIKE ${Prisma.sql`%${search}%`} OR
-        cd.name ILIKE ${Prisma.sql`%${search}%`} OR
-        i.url ILIKE ${Prisma.sql`%${search}%`} OR
-        i.metadata ILIKE ${Prisma.sql`%${search}%`} OR
-        i.owner ILIKE ${Prisma.sql`%${search}%`}
-      )
-    `;
+      const whereClause = Prisma.sql`${Prisma.raw(
+        baseWhereClause + searchWhereClause
+      )}`;
 
-    const whereClause = search 
-      ? Prisma.sql`${Prisma.raw(baseWhereClause + searchWhereClause)}`
-      : Prisma.sql`${Prisma.raw(baseWhereClause)}`;
+      const rawQ = Prisma.sql`
+        SELECT
+          n1.name as name,
+          n1.thumbnail as thumbnail,
+          n1."nodeUri" as link,
+          n1."descrip" as description,
+          c.id as claim_id,
+          c.statement as statement,
+          c.stars as stars,
+          c.score as score,
+          c.amt as amt,
+          c."effectiveDate" as effective_date,
+          c."howKnown" as how_known,
+          c.aspect as aspect,
+          c.confidence as confidence,
+          e.label as claim,
+          e2.label as basis,
+          n3.name as source_name,
+          n3.thumbnail as source_thumbnail,
+          n3."nodeUri" as source_link,
+          n3."descrip" as source_description
+        FROM "Claim" c
+        INNER JOIN "Edge" AS e ON c.id = e."claimId"
+        INNER JOIN "Node" AS n1 ON e."startNodeId" = n1.id
+        INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
+        LEFT JOIN "Edge" as e2 ON n2.id = e2."startNodeId"
+        LEFT JOIN "Node" as n3 ON e2."endNodeId" = n3.id
+        ${whereClause}
+        ORDER BY c."effectiveDate" DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
 
-    const rawQ = Prisma.sql`
-      SELECT
-        n1.name as name,
-        n1.thumbnail as thumbnail,
-        n1."nodeUri" as link,
-        n1."descrip" as description,
-        c.id as claim_id,
-        c.statement as statement,
-        c.stars as stars,
-        c.score as score,
-        c.amt as amt,
-        c."effectiveDate" as effective_date,
-        c."howKnown" as how_known,
-        c.aspect as aspect,
-        c.confidence as confidence,
-        e.label as claim,
-        e2.label as basis,
-        n3.name as source_name,
-        n3.thumbnail as source_thumbnail,
-        n3."nodeUri" as source_link,
-        n3."descrip" as source_description,
-        cd.name as claim_name,
-        i.url as image_url,
-        i."digestMultibase" as image_digest,
-        i.metadata as image_metadata
-      FROM "Claim" c
-      INNER JOIN "Edge" AS e ON c.id = e."claimId"
-      INNER JOIN "Node" AS n1 ON e."startNodeId" = n1.id
-      INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
-      LEFT JOIN "Edge" as e2 ON n2.id = e2."startNodeId"
-      LEFT JOIN "Node" as n3 ON e2."endNodeId" = n3.id
-      LEFT JOIN "ClaimData" as cd ON c.id = cd."claimId"
-      LEFT JOIN "Image" as i ON c.id = i."claimId"
-      ${whereClause}
-      ORDER BY c."effectiveDate" DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `;
-
-    console.log("Feed entries raw query: " + rawQ.sql + "\n with values \n" + rawQ.values)
-    const feedEntries = await prisma.$queryRaw<FeedEntry[]>`${rawQ}`;
-    return feedEntries;
+      console.log(
+        "Feed entries raw query: " +
+          rawQ.sql +
+          "\n with values \n" +
+          rawQ.values
+      );
+      const feedEntries = await prisma.$queryRaw<FeedEntry[]>`${rawQ}`;
+      return feedEntries;
+    } catch (error) {
+      console.error("Error fetching feed entries:", error);
+      throw new Error("Failed to fetch feed entries");
+    }
   };
 
   getNodeById = async (nodeId: number) => {
