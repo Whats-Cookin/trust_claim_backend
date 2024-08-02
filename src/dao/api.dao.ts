@@ -102,12 +102,19 @@ export class ClaimDao {
   };
 
   searchClaims = async (search: string, page: number, limit: number) => {
+
+    let clean_search = ''
+    if (typeof search === 'string') {
+      // for some reason they are getting double-encoded 
+      clean_search = decodeURIComponent(search);
+    }
+
     const query: Prisma.ClaimWhereInput = {
       OR: [
-        { subject: { contains: search, mode: "insensitive" } },
-        { object: { contains: search, mode: "insensitive" } },
-        { claim: { contains: search, mode: "insensitive" } },
-        { statement: { contains: search, mode: "insensitive" } },
+        { subject: { contains: clean_search, mode: "insensitive" } },
+        { object: { contains: clean_search, mode: "insensitive" } },
+        { claim: { contains: clean_search, mode: "insensitive" } },
+        { statement: { contains: clean_search, mode: "insensitive" } },
       ],
     };
 
@@ -248,7 +255,12 @@ export class NodeDao {
 
   getFeedEntries = async (offset: number, limit: number, search: string) => {
 
-    const baseWhereClause = `WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')`;
+    if (typeof search === 'string') {
+      // for some reason they are getting double-encoded 
+      search = decodeURIComponent(search);
+    }
+
+    const baseWhereClause = `WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source') AND NOT (c."effectiveDate" is null) and NOT (n1.name is null or n1.name = '') `;
 
     const searchWhereClause = `
       AND (
@@ -350,6 +362,12 @@ export class NodeDao {
   };
 
   searchNodes = async (search: string, page: number, limit: number) => {
+    // TODO This is so ugly all ove rthe place please fix
+    // ALSO please from the feed do not use search when going to the graph use the id thank you
+    if (typeof search === 'string') {
+      // for some reason they are getting double-encoded 
+      search = decodeURIComponent(search);
+    }
     const query: Prisma.NodeWhereInput = {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
