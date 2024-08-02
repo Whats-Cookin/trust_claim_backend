@@ -34,7 +34,13 @@ export const searchNodes = async (
   next: NextFunction
 ) => {
   try {
-    const { search, page = 1, limit = 10 } = req.query;
+    let { search, page = 1, limit = 10 } = req.query;
+    // TODO this is all over the place now, please refactor
+    // ALSO PLEASE PLEASE from feed use the id to build the graph NOT a search PLEASE thank you
+    if (typeof search === 'string') {
+      // for some reason they are getting double-encoded 
+      search = decodeURIComponent(search);
+    }
     let nodes;
     let count;
 
