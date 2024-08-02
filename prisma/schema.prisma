@@ -23,6 +23,7 @@ model User {
 
 enum AuthType {
   PASSWORD
+  OAUTH
   GITHUB
 }
 
