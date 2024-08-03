@@ -302,6 +302,8 @@ export class NodeDao {
         INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
         LEFT JOIN "Edge" as e2 ON n2.id = e2."startNodeId"
         LEFT JOIN "Node" as n3 ON e2."endNodeId" = n3.id
+        LEFT JOIN "Image" as i ON c.id = i."claimId"
+        LEFT JOIN "ClaimData" as cd ON c.id = cd."claimId"
         ${Prisma.raw(whereClause)}
         ORDER BY c."effectiveDate" DESC
         LIMIT ${limit}
