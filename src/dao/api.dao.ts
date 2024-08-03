@@ -78,7 +78,6 @@ export class ClaimDao {
         id: id,
       },
     });
-
     const claimData = await this.getClaimData(id);
 
     const claimImages = await this.getClaimImages(id);
@@ -249,24 +248,32 @@ export class NodeDao {
 
   getFeedEntries = async (offset: number, limit: number, search: string) => {
     try {
-      const baseWhereClause = `WHERE NOT (n1."entType" = 'CLAIM' AND e.label = 'source')`;
+      if (typeof search === "string") {
+        search = decodeURIComponent(search);
+      }
+
+      const baseWhereClause = `
+        WHERE n1."entType" != 'CLAIM'
+          AND e.label != 'source'
+          AND c."effectiveDate" IS NOT NULL
+          AND n1.name IS NOT NULL
+          AND n1.name != ''
+      `;
 
       const searchWhereClause = search
         ? `
-        AND (
-          c.statement ILIKE ${Prisma.sql`%${search}%`} OR
-          c."sourceURI" ILIKE ${Prisma.sql`%${search}%`} OR
-          c."subject" ILIKE ${Prisma.sql`%${search}%`} OR
-          n1.name ILIKE ${Prisma.sql`%${search}%`} OR
-          n3.name ILIKE ${Prisma.sql`%${search}%`} OR
-          n3."descrip" ILIKE ${Prisma.sql`%${search}%`}
-        )
-      `
+            AND (
+              c.statement ILIKE '%${search}%' OR
+              c."sourceURI" ILIKE '%${search}%' OR
+              c."subject" ILIKE '%${search}%' OR
+              n1.name ILIKE '%${search}%' OR
+              n3.name ILIKE '%${search}%' OR
+              n3."descrip" ILIKE '%${search}%'
+            )
+          `
         : "";
 
-      const whereClause = Prisma.sql`${Prisma.raw(
-        baseWhereClause + searchWhereClause
-      )}`;
+      const whereClause = baseWhereClause + searchWhereClause;
 
       const rawQ = Prisma.sql`
         SELECT
@@ -295,20 +302,33 @@ export class NodeDao {
         INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
         LEFT JOIN "Edge" as e2 ON n2.id = e2."startNodeId"
         LEFT JOIN "Node" as n3 ON e2."endNodeId" = n3.id
-        ${whereClause}
+        ${Prisma.raw(whereClause)}
         ORDER BY c."effectiveDate" DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
 
-      console.log(
-        "Feed entries raw query: " +
-          rawQ.sql +
-          "\n with values \n" +
-          rawQ.values
-      );
-      const feedEntries = await prisma.$queryRaw<FeedEntry[]>`${rawQ}`;
-      return feedEntries;
+      const feedEntries = await prisma.$queryRaw<FeedEntry[]>(rawQ);
+
+      const claimIdMap = new Map<number, FeedEntry>();
+      feedEntries.forEach((entry) => {
+        if (!claimIdMap.has(entry.claim_id)) {
+          claimIdMap.set(entry.claim_id, entry);
+        }
+      });
+
+      const uniqueEntriesByClaimId = Array.from(claimIdMap.values());
+
+      const nameMap = new Map<string, FeedEntry>();
+      uniqueEntriesByClaimId.forEach((entry) => {
+        if (!nameMap.has(entry.name)) {
+          nameMap.set(entry.name, entry);
+        }
+      });
+
+      const uniqueEntriesByName = Array.from(nameMap.values());
+
+      return uniqueEntriesByName;
     } catch (error) {
       console.error("Error fetching feed entries:", error);
       throw new Error("Failed to fetch feed entries");
