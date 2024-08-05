@@ -159,6 +159,9 @@ model Image {
 // this is for validator service
 model CandidUserInfo {
   id               Int     @id @default(autoincrement())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   claimId          Int?    @unique
   firstName        String?
   lastName         String?
@@ -168,16 +171,18 @@ model CandidUserInfo {
 }
 
 model ValidationRequest {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id                Int              @id @default(autoincrement())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   context           String
   validatorName     String
   validatorEmail    String
-  claimId           Int              // the id of the candid user claim (the root claim)
-  validationClaimId Int?             @unique // the id of validation claim
+  claimId           Int
+  validationClaimId Int?             @unique
   validationStatus  ValidationStatus @default(PENDING)
   response          ResponseStatus?
+  rating            Int?
   validationDate    DateTime?
   statement         String?
 }
