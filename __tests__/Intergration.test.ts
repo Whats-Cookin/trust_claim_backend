@@ -83,7 +83,7 @@ describe("Integration tests", () => {
 
     it("should get all claims if no query params provided", async () => {
       // const response = await request(app).get("/api/claim"); // not working
-      const response = await request(app).get("/api/claims-all");
+      const response = await request(app).get("/api/claimsfeed2");
 
       expect(response.status).toBe(201);
       expect(response.body.claimsData.length).toBeGreaterThan(0);
