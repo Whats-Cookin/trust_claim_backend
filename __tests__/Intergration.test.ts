@@ -83,7 +83,7 @@ describe("Integration tests", () => {
 
     it("should get all claims if no query params provided", async () => {
       // const response = await request(app).get("/api/claim"); // not working
-      const response = await request(app).get("/api/claims-all");
+      const response = await request(app).get("/api/claimsfeed2");
 
       expect(response.status).toBe(201);
       expect(response.body.claimsData.length).toBeGreaterThan(0);
@@ -127,7 +127,7 @@ describe("Integration tests", () => {
       const response = await request(app).get(
         `/api/claim/search?search=${searchQuery}`
       ); // Corrected route
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(200);
       expect(response.body.claims.length).toBeGreaterThan(0);
       expect(response.body.count).toBeGreaterThan(0);
       expect(response.body.claims[0].images).toBeDefined();
