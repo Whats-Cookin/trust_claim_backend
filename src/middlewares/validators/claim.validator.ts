@@ -6,13 +6,13 @@ import { passToExpressErrorHandler } from "../../utils";
 const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
-  issuerId: Joi.string().allow(""),
-  object: Joi.string().allow(""),
-  statement: Joi.string().allow(""),
-  aspect: Joi.string().allow(""),
+  issuerId: Joi.string().optional(),
+  object: Joi.string().optional(),
+  statement: Joi.string().optional(),
+  aspect: Joi.string().optional(),
   amt: Joi.alternatives().try(
     Joi.string()
-      .allow("")
+      .optional()
       .custom((value, helpers) => {
         const strippedValue = value.replace(/\$|\s+/g, ""); // Strip $ and spaces
         if (strippedValue === "") {
@@ -27,7 +27,7 @@ const claimPostSchema = Joi.object({
     Joi.number()
   ),
   name: Joi.string().required(),
-  howKnown: Joi.string().allow(""),
+  howKnown: Joi.string().optional(),
   images: Joi.array().items(
     Joi.object({
       url: Joi.string().required(),
@@ -35,13 +35,13 @@ const claimPostSchema = Joi.object({
       effectiveDate: Joi.date().allow(null),
       digestMultibase: Joi.string().allow(null),
       signature: Joi.string().required(),
-      owner: Joi.string().allow(""),
+      owner: Joi.string().optional(),
     })
   ).allow(null),
-  sourceURI: Joi.string().allow(""),
+  sourceURI: Joi.string().optional(),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
-  claimAddress: Joi.string().allow(""),
+  claimAddress: Joi.string().optional(),
   stars: Joi.number().custom((value, helpers) => {
     const ancestor = helpers.state.ancestors?.[0];
 
