@@ -1,3 +1,4 @@
+
 import Joi from "joi";
 import { Request, Response, NextFunction } from "express";
 import { passToExpressErrorHandler } from "../../utils";
@@ -34,9 +35,9 @@ const claimPostSchema = Joi.object({
       effectiveDate: Joi.date().allow(null),
       digestMultibase: Joi.string().allow(null),
       signature: Joi.string().required(),
-      owner: Joi.string().required(),
+      owner: Joi.string().allow(""),
     })
-  ),
+  ).allow(null),
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
   confidence: Joi.number().min(0.0).max(1.0),
@@ -60,6 +61,7 @@ const claimPostSchema = Joi.object({
     return true;
   }),
 });
+
 
 export const claimPostValidator = async (
   req: Request,
