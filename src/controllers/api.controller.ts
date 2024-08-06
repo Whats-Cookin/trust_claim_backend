@@ -24,14 +24,14 @@ export const claimPost = async (
     const userId = (req as ModifiedRequest).userId;
     let rawClaim: any = turnFalsyPropsToUndefined(req.body);
     rawClaim = poormansNormalizer(rawClaim);
-    if (!(rawClaim.effectiveDate instanceof Date)) rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
+    rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
     claim = await claimDao.createClaim(userId, rawClaim);
     claimData = await claimDao.createClaimData(claim.id, rawClaim.name);
     claimImages = await claimDao.createImages(
       claim.id,
       userId,
       rawClaim.images
-    );
+  );
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
