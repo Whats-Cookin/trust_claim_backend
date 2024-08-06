@@ -31,7 +31,7 @@ export const claimPost = async (
       claim.id,
       userId,
       rawClaim.images
-    );
+  );
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
