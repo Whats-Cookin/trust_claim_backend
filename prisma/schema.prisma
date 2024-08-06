@@ -168,6 +168,7 @@ model CandidUserInfo {
   candid_entity_id String
   email            String
   profileURL       String
+  response         ResponseStatus?
 }
 
 model ValidationRequest {
@@ -181,7 +182,6 @@ model ValidationRequest {
   claimId           Int
   validationClaimId Int?             @unique
   validationStatus  ValidationStatus @default(PENDING)
-  response          ResponseStatus?
   rating            Int?
   validationDate    DateTime?
   statement         String?
