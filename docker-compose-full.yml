@@ -11,13 +11,10 @@ services:
       - POSTGRES_DB=claim
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      # TODO: add to docs to get the backup ask on Slack
-      # Share the backup with the container if needed to populate manually
-      # To restore run `pg_restore -x --no-owner -U postgres -d claim claim.backup` inside the container
       # - ../claim.backup:/claim.backup
     restart: unless-stopped
     networks:
-      - default
+      - trust-claim
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -33,7 +30,7 @@ services:
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     networks:
-      - default
+      - trust-claim
     profiles:
       - pgadmin
 
@@ -53,7 +50,7 @@ services:
       - path: .env
         required: true
     networks:
-      - default
+      - trust-claim
 
   trust-claim-data-pipeline:
     build:
@@ -73,11 +70,11 @@ services:
     ports:
       - 5000:5000
     networks:
-      - default
+      - trust-claim
 
 volumes:
   postgres-data:
   pgadmin-data:
 
 networks:
-  default:
+  trust-claim:
