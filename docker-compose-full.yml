@@ -1,6 +1,4 @@
-version: '3.3'
 services:
-
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -13,10 +11,34 @@ services:
       - POSTGRES_DB=claim
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # TODO: add to docs to get the backup ask on Slack
+      # Share the backup with the container if needed to populate manually
+      # To restore run `pg_restore -x --no-owner -U postgres -d claim claim.backup` inside the container
+      # - ../claim.backup:/claim.backup
     restart: unless-stopped
+    networks:
+      - default
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin4
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - 8888:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: postgres@example.com
+      PGADMIN_DEFAULT_PASSWORD: postgres
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - default
+    profiles:
+      - pgadmin
 
   trust-claim-backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: trust-claim-backend
@@ -27,6 +49,11 @@ services:
     volumes:
       - ./build:/app/build
     restart: always
+    env_file:
+      - path: .env
+        required: true
+    networks:
+      - default
 
   trust-claim-data-pipeline:
     build:
@@ -40,11 +67,17 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
-    restart: always  
+    restart: always
     depends_on:
       - postgres
     ports:
       - 5000:5000
+    networks:
+      - default
 
 volumes:
   postgres-data:
+  pgadmin-data:
+
+networks:
+  default:
