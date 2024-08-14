@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    hostname: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=claim
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # - ../claim.backup:/claim.backup
+    restart: unless-stopped
+    networks:
+      - trust-claim-dev
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin4
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - 8888:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: postgres@example.com
+      PGADMIN_DEFAULT_PASSWORD: postgres
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - trust-claim-dev
+
+  trust-claim-backend-dev:
+    init: true
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    container_name: trust-claim-backend-dev
+    depends_on:
+      - postgres
+      - trust-claim-data-pipeline
+    ports:
+      - 9000:9000
+    restart: always
+    env_file:
+      - path: .env
+        required: true
+    networks:
+      - trust-claim-dev
+    develop:
+      watch:
+        - action: rebuild
+          path: package.json
+          target: /usr/src/app/package.json
+        - action: rebuild
+          path: package-lock.json
+          target: /usr/src/app/package-lock.json
+        - action: rebuild
+          path: tsconfig.json
+          target: /usr/src/app/tsconfig.json
+        - action: rebuild
+          path: prisma
+          target: /usr/src/app/prisma
+
+        - action: sync
+          path: src
+          target: /usr/src/app/src
+
+  trust-claim-data-pipeline:
+    build:
+      # get this from https://github.com/Whats-Cookin/trust-claim-data-pipeline
+      context: ../trust-claim-data-pipeline
+      dockerfile: Dockerfile
+    container_name: trust-claim-data-pipeline
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=claim
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - 5000:5000
+    networks:
+      - trust-claim-dev
+
+volumes:
+  postgres-data:
+  pgadmin-data:
+
+networks:
+  trust-claim-dev:
