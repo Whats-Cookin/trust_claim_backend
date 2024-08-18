@@ -28,7 +28,6 @@ FROM base AS prod-packages
 
 WORKDIR /usr/src/app
 
-
 RUN --mount=type=cache,target=/usr/src/app/node_modules \
   npm install --only=production
 

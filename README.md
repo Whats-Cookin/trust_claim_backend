@@ -48,7 +48,7 @@ Build the docker containers and run it. Two options are available
 ### Option 1: Without the data pipeline - for viewing only
 
 ```bash
-docker compose up
+docker compose --profile prod up
 ```
 
 ### Option 2: With the data pipeline
@@ -58,17 +58,17 @@ cd ..
 git clone git@github.com:Whats-Cookin/trust-claim-data-pipeline.git
 cd trust_claim_backend
 
-docker compose -f docker-compose-full.yml up
-# Or to run with pgadmin (email and password in `docker-compose-full.yml`)
-# on connecting to the database the host will be "postgres" the postgres container name
-docker compose -f docker-compose-full.yml --profile pgadmin up
+# Run in development mode
+docker compose --profile dev up
+# Run in production mode
+# docker compose --profile prod up
 ```
 
 > [!TIP]
 > Ask in Slack for the `claim.backup` file to populate the database.
 >
 > Add the file to the parent directory of the project, uncomment the `- ../claim.backup:/claim.backup`
-> line in `docker-compose-full.yml` and rebuild the image `docker compose -f docker-compose-full.yml build`.
+> line in `docker-compose.yml` and rebuild the image `docker compose build`.
 >
 > Jump in the postgres container with `docker exec -it postgres bash` and run `pg_restore -x --no-owner -U postgres -d claim claim.backup` to populate the database.
 

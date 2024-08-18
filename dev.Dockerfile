@@ -1,7 +1,7 @@
 FROM node:22-bookworm
 
 RUN --mount=type=cache,target=/usr/src/app/node_modules \
-  npm i -g prisma
+  npm i -g prisma nodemon
 
 WORKDIR /usr/src/app
 
@@ -19,5 +19,4 @@ COPY src src
 
 EXPOSE 9000
 
-CMD ["npm", "run", "dev"]
-# CMD ["tsc", "-w"]
+CMD ["nodemon", "-w", "'src/**/*'", "src/index.ts"]
