@@ -59,7 +59,7 @@ git clone git@github.com:Whats-Cookin/trust-claim-data-pipeline.git
 cd trust_claim_backend
 
 # Run in development mode
-docker compose --profile dev up
+docker compose --profile dev up --watch
 # Run in production mode
 # docker compose --profile prod up
 ```
