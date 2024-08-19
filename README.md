@@ -176,8 +176,8 @@ Create a `.env` file in project root. If running with docker an additional `.env
 ```
 PORT=9000
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
-ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
-REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+ACCESS_SECRET=**add_your_secret_keys_here**
+REFRESH_SECRET=**add_your_secret_keys_here**
 ```
 
 In `.env.dev`, change `DATABASE_URL` like below, everything else can be exactly like `.env`.
@@ -301,8 +301,8 @@ ensure you have a .env file
 ```
 PORT=9000
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/claim"
-ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
-REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+ACCESS_SECRET=**add_your_secret_keys_here**
+REFRESH_SECRET=**add_your_secret_keys_here**
 ```
 
 then run 
