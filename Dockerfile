@@ -5,13 +5,13 @@ RUN apt-get install -y openssl
 WORKDIR /app
 
 COPY package.json ./
-COPY package-lock.json ./
+COPY yarn.lock ./
 
 COPY ./prisma ./prisma
 
 COPY ./.env ./
 
-RUN npm install
+RUN yarn
 RUN npx prisma generate
 
 EXPOSE 9000
