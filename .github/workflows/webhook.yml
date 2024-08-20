@@ -1,4 +1,4 @@
-name: Call Webhook on Push or PR Merge to Master
+name: Call Webhook on Push or PR Merge to Dev
 
 on:
   push:
