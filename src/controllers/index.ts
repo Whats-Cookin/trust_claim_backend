@@ -9,7 +9,8 @@ export {
   login,
   signup,
   refreshToken,
-  githubAuthenticator
+  githubAuthenticator,
+  googleAuthenticator
 } from "./auth.controller";
 
 export {
