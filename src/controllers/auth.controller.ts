@@ -4,6 +4,7 @@ import {
   generateJWT,
   passToExpressErrorHandler,
   verifyRefreshToken,
+  decodeGoogleCredential,
 } from "../utils";
 import createError from "http-errors";
 import bcrypt from "bcryptjs";
@@ -150,6 +151,65 @@ export const githubAuthenticator = async (
           authType: "GITHUB",
           authProviderId: githubIdAsString,
           name,
+        },
+      });
+    }
+
+    res.status(200).json({
+      accessToken: generateJWT(user.id, email, "access"),
+      refreshToken: generateJWT(user.id, email, "refresh"),
+    });
+  } catch (err: any) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+export const googleAuthenticator = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { googleAuthCode } = req.body;
+
+    const { name, email, googleId } = decodeGoogleCredential(googleAuthCode);
+    let user;
+
+    const alreadyExistingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { authType: "GOOGLE", authProviderId: googleId }],
+      },
+    });
+
+    if (
+      alreadyExistingUser &&
+      ((email && !alreadyExistingUser.email) ||
+        (alreadyExistingUser.authType !== "GOOGLE" &&
+          alreadyExistingUser.authProviderId !== googleId) ||
+        alreadyExistingUser.name !== name)
+    ) {
+      user = await prisma.user.update({
+        where: { id: alreadyExistingUser.id },
+        data: {
+          name,
+          email,
+          authType: "GOOGLE",
+          authProviderId: googleId,
+        },
+      });
+    } else if (alreadyExistingUser) {
+      res.status(200).json({
+        accessToken: generateJWT(alreadyExistingUser.id, email, "access"),
+        refreshToken: generateJWT(alreadyExistingUser.id, email, "refresh"),
+      });
+      return;
+    } else {
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          authType: "GOOGLE",
+          authProviderId: googleId,
         },
       });
     }
