@@ -5,22 +5,22 @@ FROM node:22-alpine${ALPINE_VERSION} AS base
 WORKDIR /usr/src/app
 
 COPY package.json ./
-COPY package-lock.json ./
+COPY yarn.lock ./
 
 
-## 
+###
 FROM base AS builder
 
 WORKDIR /usr/src/app
 
 RUN --mount=type=cache,target=/usr/src/app/node_modules \
-  npm ci
+  yarn --frozen-lockfile
 
 COPY ./prisma ./prisma
 COPY ./src ./src
 COPY ./tsconfig.json .
 
-RUN npx prisma generate && npm run build
+RUN npx prisma generate && yarn build
 
 
 ###
@@ -29,7 +29,7 @@ FROM base AS prod-packages
 WORKDIR /usr/src/app
 
 RUN --mount=type=cache,target=/usr/src/app/node_modules \
-  npm install --only=production
+  yarn --production
 
 COPY ./prisma ./prisma
 

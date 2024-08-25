@@ -76,18 +76,17 @@ services:
     develop:
       watch:
         - action: rebuild
-          path: trust_claim_backend/package.json
+          path: ./package.json
           target: /usr/src/app/package.json
         - action: rebuild
-          path: trust_claim_backend/package-lock.json
-          target: /usr/src/app/package-lock.json
+          path: ./yarn.lock
+          target: /usr/src/app/yarn.lock
         - action: rebuild
-          path: trust_claim_backend/tsconfig.json
+          path: ./tsconfig.json
           target: /usr/src/app/tsconfig.json
         - action: rebuild
-          path: trust_claim_backend/prisma
+          path: ./prisma
           target: /usr/src/app/prisma
-
         - action: sync
           path: src
           target: /usr/src/app/src
