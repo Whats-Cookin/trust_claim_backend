@@ -177,14 +177,14 @@ export const googleAuthenticator = async (
 
     const alreadyExistingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email }, { authType: "GOOGLE", authProviderId: googleId }],
+        OR: [{ email }, { authType: "OAUTH", authProviderId: googleId }],
       },
     });
 
     if (
       alreadyExistingUser &&
       ((email && !alreadyExistingUser.email) ||
-        (alreadyExistingUser.authType !== "GOOGLE" &&
+        (alreadyExistingUser.authType !== "OAUTH" &&
           alreadyExistingUser.authProviderId !== googleId) ||
         alreadyExistingUser.name !== name)
     ) {
@@ -193,7 +193,7 @@ export const googleAuthenticator = async (
         data: {
           name,
           email,
-          authType: "GOOGLE",
+          authType: "OAUTH",
           authProviderId: googleId,
         },
       });
@@ -208,7 +208,7 @@ export const googleAuthenticator = async (
         data: {
           name,
           email,
-          authType: "GOOGLE",
+          authType: "OAUTH",
           authProviderId: googleId,
         },
       });
