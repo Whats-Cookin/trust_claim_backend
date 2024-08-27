@@ -56,3 +56,22 @@ export const githubAuthValidator = async (
     passToExpressErrorHandler(err, next);
   }
 };
+
+const googleAuthSchema = Joi.object({
+  googleAuthCode: Joi.string().required(),
+}); 
+
+export const googleAuthValidator = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  try {
+    
+    await googleAuthSchema.validateAsync(req.body);
+    next();
+  } catch (err: any) {
+    err.statusCode = 400;
+    passToExpressErrorHandler(err, next);
+  }
+};

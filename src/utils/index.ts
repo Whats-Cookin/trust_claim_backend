@@ -1,22 +1,22 @@
-import { NextFunction } from 'express';
-import JWT from 'jsonwebtoken';
+import { NextFunction } from "express";
+import JWT from "jsonwebtoken";
 
 export const generateJWT = (
   userId: number,
   email: string,
-  tokenType: 'access' | 'refresh'
+  tokenType: "access" | "refresh"
 ): string => {
   try {
     let secretVar: string;
     let expiresIn: string | undefined;
     switch (tokenType) {
-      case 'access':
-        secretVar = 'ACCESS_SECRET';
-        expiresIn = '1d';
+      case "access":
+        secretVar = "ACCESS_SECRET";
+        expiresIn = "1d";
         break;
-      case 'refresh':
-        secretVar = 'REFRESH_SECRET';
-        expiresIn = '1y';
+      case "refresh":
+        secretVar = "REFRESH_SECRET";
+        expiresIn = "1y";
         break;
     }
 
@@ -24,8 +24,8 @@ export const generateJWT = (
     const payload = { email };
     const options = {
       expiresIn,
-      issuer: 'trustclaims.whatscookin.us',
-      audience: String(userId)
+      issuer: "trustclaims.whatscookin.us",
+      audience: String(userId),
     };
 
     const token = JWT.sign(payload, secret, options);
@@ -49,7 +49,7 @@ export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   if (!err.statusCode) {
     err.statusCode = 500;
     console.log(err.message);
-    err.message = 'Could not process the request, check inputs and try again';
+    err.message = "Could not process the request, check inputs and try again";
   }
   next(err);
 };
@@ -74,7 +74,7 @@ interface Mapping {
 
 // handle common mis-keys
 const SIMILAR_MAP: Mapping = {
-  howKnown: { website: 'WEB_DOCUMENT', WEBSITE: 'WEB_DOCUMENT' }
+  howKnown: { website: "WEB_DOCUMENT", WEBSITE: "WEB_DOCUMENT" },
 };
 
 export const poormansNormalizer = (obj: { [key: string]: any }) => {
@@ -91,4 +91,14 @@ export const poormansNormalizer = (obj: { [key: string]: any }) => {
 
 export const makeClaimSubjectURL = (claimId: string) => {
   return `https://live.linkedtrust.us/claims/${claimId}`;
+};
+
+export const decodeGoogleCredential = (accessToken: string) => {
+  const { name, email, sub } = JWT.decode(accessToken) as GoogleCredentialDecoded;
+
+  return {
+    name,
+    email,
+    googleId: sub 
+  };
 };
