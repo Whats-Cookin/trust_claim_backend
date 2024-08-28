@@ -147,13 +147,11 @@ export const claimsFeed = async (
   next: NextFunction,
 ) => {
   try {
-    let { page = 1, limit = 0, search = "" } = req.query; // defaults provided here
+    let { page = 1, limit = 100, search = "" } = req.query;
 
     page = parseInt(page.toString());
     limit = parseInt(limit.toString());
     search = decodeURIComponent(search.toString());
-
-    const offset = (page - 1) * limit;
 
     if (
       Number.isNaN(page) ||
@@ -167,6 +165,8 @@ export const claimsFeed = async (
     if (limit > 10000) {
       throw new createError.UnprocessableEntity("The limit value is too high");
     }
+
+    const offset = (page - 1) * limit;
 
     const feed_entries = await nodeDao.getFeedEntries(offset, limit, search);
     res.status(200).json(feed_entries);
