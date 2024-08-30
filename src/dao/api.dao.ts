@@ -108,23 +108,33 @@ export class ClaimDao {
         { object: { contains: search, mode: "insensitive" } },
         { claim: { contains: search, mode: "insensitive" } },
         { statement: { contains: search, mode: "insensitive" } },
+        { sourceURI: { contains: search, mode: "insensitive" } },
       ],
     };
 
     const claims = await prisma.claim.findMany({
       where: query,
       skip: (Number(page) - 1) * Number(limit),
-      take: Number(limit) ? Number(limit) : undefined,
+      take: Number(limit),
     });
 
-    const claimData = [];
+    const claimIds = claims.map((claim) => claim.id);
 
-    for (const claim of claims) {
-      const data = await this.getClaimData(claim.id);
-      const images = await this.getClaimImages(claim.id);
-      const relatedNodes = await this.getRelatedNodes(claim.id);
-      claimData.push({ data, claim, images, relatedNodes });
-    }
+    const [allClaimData, allImages, allRelatedNodes] = await Promise.all([
+      prisma.claimData.findMany({ where: { claimId: { in: claimIds } } }),
+      prisma.image.findMany({ where: { claimId: { in: claimIds } } }),
+      prisma.node.findMany({ where: { id: { in: claimIds } } }), // Assuming nodes are linked by claimId
+    ]);
+
+    const claimData = claims.map((claim) => {
+      const data = allClaimData.find((cd) => cd.claimId === claim.id);
+      const images = allImages.filter((img) => img.claimId === claim.id);
+      const relatedNodes = allRelatedNodes.filter(
+        (node) => node.id === claim.id
+      );
+
+      return { data, claim, images, relatedNodes };
+    });
 
     const count = await prisma.claim.count({ where: query });
 
@@ -295,7 +305,8 @@ export class NodeDao {
           n3.name as source_name,
           n3.thumbnail as source_thumbnail,
           n3."nodeUri" as source_link,
-          n3."descrip" as source_description
+          n3."descrip" as source_description,
+          c."issuerId" as issuer_id
         FROM "Claim" c
         INNER JOIN "Edge" AS e ON c.id = e."claimId"
         INNER JOIN "Node" AS n1 ON e."startNodeId" = n1.id
@@ -330,6 +341,7 @@ export class NodeDao {
 
       const uniqueEntriesByName = Array.from(nameMap.values());
 
+      console.log(uniqueEntriesByName[10]);
       return uniqueEntriesByName;
     } catch (error) {
       console.error("Error fetching feed entries:", error);
