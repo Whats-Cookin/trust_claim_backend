@@ -15,7 +15,7 @@ const nodeDao = new NodeDao();
 export const claimPost = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   let claim;
   let claimData;
@@ -30,7 +30,7 @@ export const claimPost = async (
     claimImages = await claimDao.createImages(
       claim.id,
       userId,
-      rawClaim.images
+      rawClaim.images,
     );
   } catch (err) {
     passToExpressErrorHandler(err, next);
@@ -42,7 +42,7 @@ export const claimPost = async (
 export const claimGetById = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { claimId } = req.params;
@@ -67,7 +67,7 @@ export const claimGetById = async (
 export const getAllClaims = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const claims = await prisma.claim.findMany();
@@ -88,7 +88,7 @@ export const getAllClaims = async (
 export const claimSearch = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { search, page = 1, limit = 10 } = req.query;
@@ -100,7 +100,7 @@ export const claimSearch = async (
       const searchResult = await claimDao.searchClaims(
         search as string,
         Number(page),
-        Number(limit)
+        Number(limit),
       );
       claims = searchResult.claimData;
       count = searchResult.count;
@@ -127,7 +127,7 @@ export const claimSearch = async (
 export const claimsGet = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { page = 0, limit = 0 } = req.query;
@@ -144,17 +144,31 @@ export const claimsGet = async (
 export const claimsFeed = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    // const { search } = req.query; // unused for now, TODO here search
-    const { page = 1, limit = 100, search = "" } = req.query; // defaults provided here
+    let { page = 1, limit = 100, search = "" } = req.query;
 
-    // Convert them to numbers
+    page = parseInt(page.toString());
+    limit = parseInt(limit.toString());
+    search = decodeURIComponent(search.toString());
 
-    const offset = (Number(page) - 1) * Number(limit);
+    if (
+      Number.isNaN(page) ||
+      Number.isNaN(limit) ||
+      limit < 0 ||
+      page - 1 < 0
+    ) {
+      throw new createError.UnprocessableEntity("Invalid query string value");
+    }
 
-    const feed_entries = await nodeDao.getFeedEntries(offset, Number(limit), String(search));
+    if (limit > 10000) {
+      throw new createError.UnprocessableEntity("The limit value is too high");
+    }
+
+    const offset = (page - 1) * limit;
+
+    const feed_entries = await nodeDao.getFeedEntries(offset, limit, search);
     res.status(200).json(feed_entries);
     return;
   } catch (err) {
