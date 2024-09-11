@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, urlencoded } from "express";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
@@ -10,7 +10,7 @@ const nodeDao = new NodeDao();
 export const getNodeById = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { nodeId } = req.params;
@@ -31,18 +31,20 @@ export const getNodeById = async (
 export const searchNodes = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { search, page = 1, limit = 10 } = req.query;
     let nodes;
     let count;
 
+    const _search = decodeURIComponent(search?.toString() || "");
+
     if (search) {
       const searchResult = await nodeDao.searchNodes(
-        search as string,
+        _search,
         Number(page),
-        Number(limit)
+        Number(limit),
       );
       nodes = searchResult.nodes;
       count = searchResult.count;
@@ -61,7 +63,7 @@ export const searchNodes = async (
 export const getNodeForLoggedInUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const userId = (req as ModifiedRequest).userId;
@@ -79,7 +81,7 @@ export const getNodeForLoggedInUser = async (
 export const claimReport = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { claimId } = req.params;
@@ -107,3 +109,4 @@ export const claimReport = async (
     passToExpressErrorHandler(err, next);
   }
 };
+
