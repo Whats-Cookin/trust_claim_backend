@@ -285,6 +285,7 @@ export class NodeDao {
             WHERE n1."entType" != 'CLAIM'
               AND e.label != 'source'
               AND c."effectiveDate" IS NOT NULL
+              AND c.statement IS NOT NULL
               AND n1.name IS NOT NULL
               AND n1.name != ''
               ${Prisma.raw(
