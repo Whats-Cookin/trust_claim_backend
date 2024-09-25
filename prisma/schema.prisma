@@ -25,7 +25,6 @@ enum AuthType {
   PASSWORD
   OAUTH
   GITHUB
-  GOOGLE
 }
 
 enum EntityType {

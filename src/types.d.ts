@@ -13,6 +13,12 @@ declare global {
     iss: string;
   }
 
+  export interface GoogleCredentialDecoded {
+    name: string;
+    email: string;
+    sub: string;
+  }
+
   export interface ModifiedRequest extends Request {
     isAuthenticated: boolean;
     userId: number;
