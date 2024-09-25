@@ -4,7 +4,7 @@
   "description": "Backend support for trust claims",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"tsc -w\" \"nodemon build/index.js\"",
+    "dev": "nodemon -w 'src/**/*' src/index.ts",
     "inspect": "concurrently \"tsc -w\" \"nodemon --inspect build/index.js\"",
     "dev:watch": "tsc -w",
     "build": "tsc",
@@ -67,7 +67,6 @@
     "jest": "^29.5.0",
     "jest-mock-extended": "^2.0.4",
     "nodemon": "^2.0.16",
-    "prisma": "^5.17.0",
     "renamer": "^4.0.0",
     "supertest": "^6.3.3",
     "swagger-jsdoc": "^6.2.8",
