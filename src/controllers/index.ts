@@ -4,18 +4,20 @@ export {
   claimsFeed,
   claimGetById,
   claimSearch,
+  createClaimV2,
 } from "./api.controller";
 export {
   login,
   signup,
   refreshToken,
   githubAuthenticator,
-  googleAuthenticator
+  googleAuthenticator,
 } from "./auth.controller";
 
 export {
   claimReport,
   getNodeForLoggedInUser,
   searchNodes,
-  getNodeById
+  getNodeById,
 } from "./node.controller";
+
