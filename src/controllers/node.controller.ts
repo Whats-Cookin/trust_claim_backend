@@ -3,6 +3,7 @@ import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
 import { NodeDao, GetClaimReport } from "../dao/api.dao";
+import { populateReportImagesSignedUrls } from "./api.controller";
 
 const nodeDao = new NodeDao();
 /*********************************************************************/
@@ -101,12 +102,11 @@ export const claimReport = async (
     // those can be separate PRs lets start with this one working and the design for it
     //
 
-    res.status(200).json({
-      data: result,
-    });
+    await populateReportImagesSignedUrls(result);
+
+    res.status(200).json({ data: result });
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
 };
-

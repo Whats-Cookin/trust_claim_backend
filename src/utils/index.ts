@@ -4,7 +4,7 @@ import JWT from "jsonwebtoken";
 export const generateJWT = (
   userId: number,
   email: string,
-  tokenType: "access" | "refresh"
+  tokenType: "access" | "refresh",
 ): string => {
   try {
     let secretVar: string;
@@ -39,7 +39,7 @@ export const generateJWT = (
 export const verifyRefreshToken = (refreshToken: string) => {
   const decoded = JWT.verify(
     refreshToken,
-    process.env.REFRESH_SECRET as string as string
+    process.env.REFRESH_SECRET as string as string,
   );
   const { email, aud: userId } = decoded as JWTDecoded;
   return { email, userId };
@@ -54,17 +54,20 @@ export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   next(err);
 };
 
-export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
-  const newObj = { ...obj };
-  const newObjAsArray = Object.entries(newObj);
+export function turnFalsyPropsToUndefined<T extends Record<keyof any, unknown>>(
+  obj: T,
+): Partial<T> {
+  const newObj = structuredClone(obj);
 
-  newObjAsArray.forEach(([key, val]) => {
+  for (const [key, val] of Object.entries(newObj)) {
     if (!val) {
+      // @ts-expect-error ignore type for the new object
       newObj[key] = undefined;
     }
-  });
+  }
+
   return newObj;
-};
+}
 
 interface Mapping {
   [key: string]: {
@@ -94,11 +97,13 @@ export const makeClaimSubjectURL = (claimId: string) => {
 };
 
 export const decodeGoogleCredential = (accessToken: string) => {
-  const { name, email, sub } = JWT.decode(accessToken) as GoogleCredentialDecoded;
+  const { name, email, sub } = JWT.decode(
+    accessToken,
+  ) as GoogleCredentialDecoded;
 
   return {
     name,
     email,
-    googleId: sub 
+    googleId: sub,
   };
 };

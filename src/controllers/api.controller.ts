@@ -1,13 +1,28 @@
+import path from "node:path";
 import { Request, Response, NextFunction } from "express";
+import type { Image, Edge, Node } from "@prisma/client";
+import createError from "http-errors";
+import { ulid } from "ulid";
+
 import { prisma } from "../db/prisma";
 import {
   passToExpressErrorHandler,
   turnFalsyPropsToUndefined,
   poormansNormalizer,
 } from "../utils";
-import createError from "http-errors";
 
-import { ClaimDao, NodeDao } from "../dao/api.dao";
+import { ClaimDao, NodeDao, Report } from "../dao/api.dao";
+import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
+import {
+  CreateClaimV2Dto,
+  validateImages,
+} from "../middlewares/validators/claim.validator";
+import { parseImagesFromClaimDto } from "../utils/images";
+import {
+  getS3SignedUrl,
+  getS3SignedUrlIfExisted,
+  uploadImageToS3,
+} from "../utils/aws-s3";
 
 const claimDao = new ClaimDao();
 const nodeDao = new NodeDao();
@@ -38,6 +53,55 @@ export const claimPost = async (
 
   res.status(201).json({ claim, claimData, claimImages });
 };
+
+export async function createClaimV2(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const _req = req as ProtectedMulterRequest;
+  const { userId } = _req;
+
+  const dto = _req.body as CreateClaimV2Dto;
+
+  try {
+    if (!validateImages(_req.files, dto)) {
+      throw new createError.UnprocessableEntity("invalid images metadata");
+    }
+
+    const claim = await claimDao.createClaimV2(userId, dto);
+    const claimData = await claimDao.createClaimData(claim.id, dto.name);
+
+    const awsImages = await Promise.all(
+      _req.files.map(async (f) => {
+        const filename = `${ulid()}${path.extname(f.originalname)}`;
+        await uploadImageToS3(filename, f);
+        return { filename };
+      }),
+    );
+
+    const images = parseImagesFromClaimDto(
+      dto,
+      awsImages.map((x) => x.filename),
+    );
+
+    const createdImages = await claimDao.createImagesV2(
+      claim.id,
+      userId,
+      images,
+    );
+
+    await populateImagesSignedUrls(createdImages);
+
+    return res.status(201).json({
+      claim,
+      claimData,
+      claimImages: createdImages,
+    });
+  } catch (e) {
+    passToExpressErrorHandler(e, next);
+  }
+}
 
 export const claimGetById = async (
   req: Request,
@@ -175,3 +239,47 @@ export const claimsFeed = async (
     passToExpressErrorHandler(err, next);
   }
 };
+
+async function populateImagesSignedUrls(imgs: Image[]) {
+  for (let i = 0; i < imgs.length; i++) {
+    imgs[i].url = await getS3SignedUrl(imgs[i].url);
+  }
+}
+
+export async function populateReportImagesSignedUrls(report: Report) {
+  if (report.edge) await populateEdgeImagesSignedUrls(report.edge);
+
+  report.claim.image = await getS3SignedUrlIfExisted(report.claim.image);
+
+  for (let i = 0; i < report.claim.relatedNodes.length; i++) {
+    await populateImagesSignedUrls(report.claim.images);
+  }
+
+  await populateImagesSignedUrls(report.claim.images);
+
+  for (let i = 0; i < report.claim.relatedNodes.length; i++) {
+    await populateNodeImagesSignedUrls(report.claim.relatedNodes[i]);
+  }
+  for (let i = 0; i < report.validations.length; i++) {
+    await populateNodeImagesSignedUrls(report.validations[i]);
+  }
+  for (let i = 0; i < report.attestations.length; i++) {
+    await populateNodeImagesSignedUrls(report.attestations[i]);
+  }
+}
+
+async function populateEdgeImagesSignedUrls(
+  edge: Edge & { startNode: Node; endNode: Node },
+) {
+  edge.thumbnail = await getS3SignedUrlIfExisted(edge.thumbnail);
+  await populateNodeImagesSignedUrls(edge.startNode);
+  await populateNodeImagesSignedUrls(edge.endNode);
+}
+
+async function populateNodeImagesSignedUrls(node: {
+  image?: string | null;
+  thumbnail?: string | null;
+}) {
+  node.image = await getS3SignedUrlIfExisted(node.image);
+  node.thumbnail = await getS3SignedUrlIfExisted(node.thumbnail);
+}

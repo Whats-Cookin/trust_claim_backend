@@ -1,11 +1,21 @@
-import { Prisma } from "@prisma/client";
+import {
+  Prisma,
+  type Image,
+  type Claim,
+  type Edge,
+  type Node,
+  type ClaimData,
+} from "@prisma/client";
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
+import { CreateClaimV2Dto } from "../middlewares/validators";
+import { ImageDto } from "../middlewares/validators/claim.validator";
 
 interface ReportI {
   name: string;
   thumbnail: string;
+  image: string;
   link: string;
   claim_id: number;
   statement: string;
@@ -23,6 +33,19 @@ interface ReportI {
   source_link: string;
 }
 
+export type Report = {
+  edge: Edge & { startNode: Node; endNode: Node };
+  claim: {
+    claim: Claim;
+    claimData: ClaimData;
+    relatedNodes: Node[];
+    images: Image[];
+    image: string | null;
+  };
+  validations: ReportI[];
+  attestations: ReportI[];
+};
+
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
@@ -38,7 +61,49 @@ export class ClaimDao {
     return createdClaim;
   };
 
-  createImages = async (claimId: number, userId: any, images: any[]) => {
+  async createClaimV2(userId: number, claim: CreateClaimV2Dto) {
+    const createdClaim = await prisma.claim.create({
+      data: {
+        issuerId: `${process.env.BASE_URL}/users/${userId}`,
+        issuerIdType: "URL",
+        subject: claim.subject,
+        amt: claim.amt,
+        claim: claim.claim,
+        object: claim.object,
+        statement: claim.statement,
+        aspect: claim.aspect,
+        howKnown: claim.howKnown,
+        sourceURI: claim.sourceURI,
+        effectiveDate: claim.effectiveDate,
+        confidence: claim.confidence,
+        stars: claim.stars,
+      },
+    });
+
+    return createdClaim;
+  }
+
+  async createImagesV2(
+    claimId: number,
+    userId: number,
+    images: ImageDto[],
+  ): Promise<Image[]> {
+    if (!images.length) return [];
+
+    return prisma.$transaction(
+      images.map((x) =>
+        prisma.image.create({
+          data: {
+            ...x,
+            claimId: claimId,
+            owner: `${process.env.BASE_URL}/users/${userId}`,
+          },
+        }),
+      ),
+    );
+  }
+
+  createImages = async (claimId: number, userId: number, images: any[]) => {
     let claimImages: any[] = [];
 
     if (images && images.length > 0) {
@@ -558,5 +623,5 @@ export const GetClaimReport = async (
     },
     validations,
     attestations,
-  };
+  } as Report;
 };
