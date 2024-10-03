@@ -8,7 +8,7 @@ servers:
     description: Local server
   - url: https://dev.linkedtrust.us
     description: Development server
-  - url: https://dev.linkedtrust.us
+  - url: https://live.linkedtrust.us
     description: Production server
 
 paths:
