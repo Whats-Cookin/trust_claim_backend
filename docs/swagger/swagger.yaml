@@ -1,0 +1,340 @@
+openapi: 3.1.0
+info:
+  title: Trust Claim
+  description: ""
+  version: 1.0.0
+servers:
+  - url: http://localhost:9000
+    description: Local server
+  - url: https://dev.linkedtrust.us
+    description: Development server
+  - url: https://dev.linkedtrust.us
+    description: Production server
+paths:
+  "/auth/login":
+    post:
+      tags:
+        - Authentication
+      description: Login the user (generate new refresh and access tokens)
+      summary: Login the user (generate new refresh and access tokens)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/requestBodies/Auth"
+      responses:
+        "200":
+          description: Logged in successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Authentication"
+        "401":
+          description: Invalid email/password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+  "/auth/signup":
+    post:
+      tags:
+        - Authentication
+      description: Signup the user
+      summary: Signup the user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/requestBodies/Auth"
+      responses:
+        "201":
+          description: Signed up the user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Message"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+        "500":
+          description: Invalid email/password or internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+  "/auth/refresh_token":
+    post:
+      tags:
+        - Authentication
+      description: Refresh the access token using the refresh token
+      summary: Refresh the access token using the refresh token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/requestBodies/RefreshToken"
+      responses:
+        "200":
+          description: Refreshed the token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Authentication"
+        "500":
+          description: Invalid body/invalid or expired token/internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+  "/api/claimsfeed2":
+    get:
+      tags:
+        - Claims
+      description: List the claims
+      summary: List the claims
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            example: 15
+        - name: search
+          in: query
+          schema:
+            type: string
+            example: magdi yacoub
+            nullable: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Claims"
+  "/api/claim":
+    post:
+      tags:
+        - Claims
+      description: Create Claim
+      summary: Create Claim
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/requestBodies/CreateClaim"
+      responses:
+        "201":
+          description: Created the claim successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Claim"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+        "500":
+          description: Invalid body/internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+  "/api/report/{claimId}": {}
+components:
+  schemas:
+    Claims:
+      type: array
+      items:
+        "$ref": "#/components/schemas/Claim"
+    Claim:
+      type: object
+      required:
+        - name
+        - link
+        - claim_id
+        - statement
+        - effective_date
+        - how_known
+        - claim
+      properties:
+        name:
+          type: string
+        thumbnail:
+          type: string
+        link:
+          type: string
+        description:
+          type: string
+        claim_id:
+          type: integer
+        statement:
+          type: string
+        stars:
+          type: integer
+        score:
+          type: integer
+        amt:
+          type: integer
+        effective_date:
+          type: string
+          format: date-time
+        how_known:
+          type: string
+        aspect:
+          type: string
+        confidence:
+          type: integer
+        claim:
+          type: string
+        basis:
+          type: string
+        source_name:
+          type: string
+        source_thumbnail:
+          type: string
+        source_link:
+          type: string
+        source_description:
+          type: string
+  requestBodies:
+    Auth:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+          format: password
+    RefreshToken:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+    CreateClaim:
+      type: object
+      required:
+        - subject
+        - claim
+        - name
+      properties:
+        subject:
+          type: string
+        claim:
+          type: string
+        object:
+          type: string
+          nullable: true
+        statement:
+          type: string
+          nullable: true
+        aspect:
+          type: string
+          nullable: true
+        amt:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        howKnown:
+          type: string
+          nullable: true
+          enum:
+            - FIRST_HAND
+            - SECOND_HAND
+            - WEB_DOCUMENT
+            - VERIFIED_LOGIN
+            - BLOCKCHAIN
+            - SIGNED_DOCUMENT
+            - PHYSICAL_DOCUMENT
+            - INTEGRATION
+            - RESEARCH
+            - OPINION
+            - OTHER
+        images:
+          type: array
+          required:
+            - url
+            - signature
+            - owner
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              metadata:
+                type: object
+                nullable: true
+                properties:
+                  captian:
+                    type: string
+                  description:
+                    type: string
+              effectiveDate:
+                type: string
+                format: date-time
+                nullable: true
+              digestMultibase:
+                type: string
+                nullable: true
+              signature:
+                type: string
+              owner:
+                type: string
+        sourceURI:
+          type: string
+          nullable: true
+        effectiveDate:
+          type: string
+          format: date-time
+          nullable: true
+        confidence:
+          type: integer
+          nullable: true
+        claimAddress:
+          type: string
+          nullable: true
+        stars:
+          type: integer
+          nullable: true
+  responses:
+    Authentication:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+  - Claims
+  - Authentication
