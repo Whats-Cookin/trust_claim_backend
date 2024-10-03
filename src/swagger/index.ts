@@ -5,7 +5,10 @@ import { type Router } from "express";
 import swaggerUi from "swagger-ui-express";
 
 export function registerSwagger(router: Router) {
-  const yamlDoc = readFileSync("./docs/swagger/swagger.yaml", { encoding: "utf-8" });
+  const yamlDoc = readFileSync(
+    process.env.NODE_ENV === "development" ? "./docs/swagger/swagger.yaml" : "../docs/swagger/swagger.yaml",
+    { encoding: "utf-8" },
+  );
   const swaggerDocument = yaml.parse(yamlDoc);
 
   router.use("/docs", swaggerUi.serve);
