@@ -39,6 +39,7 @@
     "key-did-resolver": "^2.0.4",
     "morgan": "^1.10.0",
     "uint8arrays": "^3.0.0",
+    "yaml": "^2.5.1",
     "zod": "^3.21.4"
   },
   "engines": {
@@ -71,7 +72,7 @@
     "renamer": "^4.0.0",
     "supertest": "^6.3.3",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.2",
+    "swagger-ui-express": "^5.0.1",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
     "tslib": "^2.5.0",

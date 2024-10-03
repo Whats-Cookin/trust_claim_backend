@@ -17,13 +17,7 @@ import { getAllClaims } from "../../controllers/api.controller";
 
 const router = Router();
 
-router.post(
-  "/claim",
-  jwtVerify,
-  claimPostNormalizer,
-  claimPostValidator,
-  claimPost
-);
+router.post("/claim", jwtVerify, claimPostNormalizer, claimPostValidator, claimPost);
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claims-all", getAllClaims);

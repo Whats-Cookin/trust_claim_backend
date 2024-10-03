@@ -5,22 +5,22 @@ import morgan from "morgan";
 import createError from "http-errors";
 import apiRoutes from "./routes/apiRoutes";
 import authRoutes from "./routes/authRoutes";
+import { registerSwagger } from "./swagger";
 
 const port = process.env.PORT || 9000;
 export const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(morgan("dev"))
+app.use(morgan("dev"));
 
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+app.use(cors({ origin: "*" }));
 
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
+
+registerSwagger(app);
+
 // if nothing matches, this should be before the express error handler
 app.use((_req, _res, next) => {
   next(new createError.NotFound());
@@ -32,7 +32,7 @@ app.use(
     const status: number = err.statusCode || 500;
     const { message, data } = err;
     res.status(status).json({ message, data });
-  }
+  },
 );
 
 app.listen(port, () => {
