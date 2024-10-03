@@ -16,10 +16,10 @@ app.use(morgan("dev"));
 
 app.use(cors({ origin: "*" }));
 
+registerSwagger(apiRoutes);
+
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
-
-registerSwagger(app);
 
 // if nothing matches, this should be before the express error handler
 app.use((_req, _res, next) => {
