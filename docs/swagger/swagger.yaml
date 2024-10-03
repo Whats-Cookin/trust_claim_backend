@@ -10,6 +10,7 @@ servers:
     description: Development server
   - url: https://dev.linkedtrust.us
     description: Production server
+
 paths:
   "/auth/login":
     post:
@@ -35,6 +36,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/responses/Error"
+
   "/auth/signup":
     post:
       tags:
@@ -65,6 +67,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/responses/Error"
+
   "/auth/refresh_token":
     post:
       tags:
@@ -89,6 +92,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/responses/Error"
+
   "/api/claimsfeed2":
     get:
       tags:
@@ -137,7 +141,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/Claim"
+                "$ref": "#/components/schemas/CreatedClaim"
         "401":
           description: Unauthorized
           content:
@@ -150,7 +154,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/responses/Error"
-  "/api/report/{claimId}": {}
+
 components:
   schemas:
     Claims:
@@ -160,6 +164,7 @@ components:
     Claim:
       type: object
       required:
+        - id
         - name
         - link
         - claim_id
@@ -168,6 +173,8 @@ components:
         - how_known
         - claim
       properties:
+        id:
+          type: integer
         name:
           type: string
         thumbnail:
@@ -207,6 +214,53 @@ components:
           type: string
         source_description:
           type: string
+    Image:
+      type: object
+      properties:
+        id:
+          type: integer
+        claimId:
+          type: integer
+        url:
+          type: string
+        digetedMultibase:
+          type: string
+        metadata:
+          type: object
+          properties:
+            captian:
+              type: string
+            description:
+              type: string
+        effectiveDate:
+          type: string
+          format: date-time
+        createdDate:
+          type: string
+          format: date-time
+        owner:
+          type: string
+        signature:
+          type: string
+    CreatedClaim:
+      type: object
+      properties:
+        claim:
+          $ref: "#/components/schemas/Claim"
+        claimData:
+          type: object
+          properties:
+            id:
+              type: integer
+            claimId:
+              type: integer
+            name:
+              type: string
+        claimImages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Image"
+
   requestBodies:
     Auth:
       type: object
@@ -330,11 +384,13 @@ components:
       properties:
         message:
           type: string
+
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
 tags:
   - Claims
   - Authentication
