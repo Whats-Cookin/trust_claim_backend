@@ -5,10 +5,10 @@ import { passToExpressErrorHandler } from "../../utils";
 const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
-  issuerId: Joi.string().allow(""),
-  object: Joi.string().allow(""),
+  issuerId: Joi.string().allow("", null),
+  object: Joi.string().allow("", null),
   statement: Joi.string().allow(""),
-  aspect: Joi.string().allow(""),
+  aspect: Joi.string().allow("", null),
   amt: Joi.alternatives().try(
     Joi.string()
       .allow("")
@@ -26,15 +26,15 @@ const claimPostSchema = Joi.object({
     Joi.number()
   ),
   name: Joi.string().required(),
-  howKnown: Joi.string().allow(""),
+  howKnown: Joi.string().allow("", null),
   images: Joi.array().items(
     Joi.object({
       url: Joi.string().required(),
       metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
       effectiveDate: Joi.date().allow(null),
       digestMultibase: Joi.string().allow(null),
-      signature: Joi.string().required(),
-      owner: Joi.string().required(),
+      signature: Joi.string().allow(null),
+      owner: Joi.string().allow(null),
     })
   ),
   sourceURI: Joi.string().allow(""),
