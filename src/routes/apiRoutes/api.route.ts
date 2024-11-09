@@ -24,21 +24,8 @@ import { upload } from "../../middlewares/upload/multer.upload";
 
 const router = Router();
 
-router.post(
-  "/claim",
-  jwtVerify,
-  claimPostNormalizer,
-  joiValidator(claimPostSchema),
-  claimPost,
-);
-router.post(
-  "/claim/v2",
-  upload,
-  jwtVerify,
-  zodValidator(CreateClaimV2Dto),
-  createClaimV2,
-);
-
+router.post("/claim", jwtVerify, claimPostNormalizer, joiValidator(claimPostSchema), claimPost);
+router.post("/claim/v2", upload, jwtVerify, zodValidator(CreateClaimV2Dto), createClaimV2);
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claims-all", getAllClaims);

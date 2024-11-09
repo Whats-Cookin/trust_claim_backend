@@ -7,11 +7,7 @@ import { NotEmpty } from "../../types/utils";
 import { HowKnown } from "@prisma/client";
 
 export function joiValidator(schema: Joi.Schema) {
-  return async function claimPostValidator(
-    req: Request,
-    _res: Response,
-    next: NextFunction,
-  ) {
+  return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
     try {
       await schema.validateAsync(req.body);
       next();
@@ -23,11 +19,7 @@ export function joiValidator(schema: Joi.Schema) {
 }
 
 export function zodValidator(schema: z.Schema) {
-  return async function claimPostValidator(
-    req: Request,
-    _res: Response,
-    next: NextFunction,
-  ) {
+  return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
     try {
       req.body = await schema.parse(req.body);
       next();
@@ -41,10 +33,10 @@ export function zodValidator(schema: z.Schema) {
 export const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
-  issuerId: Joi.string().allow(""),
-  object: Joi.string().allow(""),
+  issuerId: Joi.string().allow("", null),
+  object: Joi.string().allow("", null),
   statement: Joi.string().allow(""),
-  aspect: Joi.string().allow(""),
+  aspect: Joi.string().allow("", null),
   amt: Joi.alternatives().try(
     Joi.string()
       .allow("")
@@ -62,15 +54,15 @@ export const claimPostSchema = Joi.object({
     Joi.number(),
   ),
   name: Joi.string().required(),
-  howKnown: Joi.string().allow(""),
+  howKnown: Joi.string().allow("", null),
   images: Joi.array().items(
     Joi.object({
       url: Joi.string().required(),
       metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
       effectiveDate: Joi.date().allow(null),
       digestMultibase: Joi.string().allow(null),
-      signature: Joi.string().required(),
-      owner: Joi.string().required(),
+      signature: Joi.string().allow(null),
+      owner: Joi.string().allow(null),
     }),
   ),
   sourceURI: Joi.string().allow(""),
@@ -129,24 +121,14 @@ export const CreateClaimV2Dto = z
     claimAddress: z.string().optional(),
     stars: z.coerce.number().min(0).optional(),
 
-    imagesDescription: z
-      .array(z.string().nullable())
-      .or(z.string().nullable())
-      .optional(),
-    imagesCaption: z
-      .array(z.string().nullable())
-      .or(z.string().nullable())
-      .optional(),
-    imagesEffectiveDate: z
-      .array(z.coerce.date())
-      .or(z.coerce.date())
-      .optional(),
-    // // TODO: what is this?
+    imagesDescription: z.array(z.string().nullable()).or(z.string().nullable()).optional(),
+    imagesCaption: z.array(z.string().nullable()).or(z.string().nullable()).optional(),
+    imagesEffectiveDate: z.array(z.coerce.date()).or(z.coerce.date()).optional(),
+    // // TODO: what are these fields are for?
     // imagesDigestMultibase: z
     //   .array(z.string().nullable())
     //   .or(z.string().nullable())
     //   .optional(),
-    // // TODO: what is this?
     // imagesSignature: z
     //   .array(z.string().nullable())
     //   .or(z.string().nullable())
@@ -163,13 +145,9 @@ export const CreateClaimV2Dto = z
   });
 export type CreateClaimV2Dto = z.infer<typeof CreateClaimV2Dto>;
 
-export function validateImages(
-  files: Express.Multer.File[],
-  dto: CreateClaimV2Dto,
-): boolean {
+export function validateImages(files: Express.Multer.File[], dto: CreateClaimV2Dto): boolean {
   if (!dto.imagesEffectiveDate && !files.length) return true;
-  if (!Array.isArray(dto.imagesEffectiveDate) && files.length === 1)
-    return true;
+  if (!Array.isArray(dto.imagesEffectiveDate) && files.length === 1) return true;
   return (dto.imagesEffectiveDate as Date[]).length === files.length;
 }
 
@@ -194,9 +172,7 @@ function validateImagesMetadata(data: Record<string, unknown>): boolean {
   const len = !dfltKey ? 0 : !Array.isArray(dfltKey) ? 1 : dfltKey.length;
 
   return (
-    imageData.every(
-      (x) => Array.isArray(x) && (x as string | string[]).length === len,
-    ) ||
+    imageData.every((x) => Array.isArray(x) && (x as string | string[]).length === len) ||
     imageData.every((x) => typeof x === "string") ||
     imageData.every((x) => x !== undefined)
   );

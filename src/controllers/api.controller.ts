@@ -5,48 +5,34 @@ import createError from "http-errors";
 import { ulid } from "ulid";
 
 import { prisma } from "../db/prisma";
-import {
-  passToExpressErrorHandler,
-  turnFalsyPropsToUndefined,
-  poormansNormalizer,
-} from "../utils";
+import { passToExpressErrorHandler, turnFalsyPropsToUndefined, poormansNormalizer } from "../utils";
 
 import { ClaimDao, NodeDao, Report } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
-import {
-  CreateClaimV2Dto,
-  validateImages,
-} from "../middlewares/validators/claim.validator";
+import { CreateClaimV2Dto, validateImages } from "../middlewares/validators/claim.validator";
 import { parseImagesFromClaimDto } from "../utils/images";
-import {
-  getS3SignedUrl,
-  getS3SignedUrlIfExisted,
-  uploadImageToS3,
-} from "../utils/aws-s3";
+import { getS3SignedUrl, getS3SignedUrlIfExisted, uploadImageToS3 } from "../utils/aws-s3";
 
 const claimDao = new ClaimDao();
 const nodeDao = new NodeDao();
 
-export const claimPost = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const claimPost = async (req: Request, res: Response, next: NextFunction) => {
   let claim;
   let claimData;
-  let claimImages;
+  let claimImages = [];
+
   try {
     const userId = (req as ModifiedRequest).userId;
     let rawClaim: any = turnFalsyPropsToUndefined(req.body);
     rawClaim = poormansNormalizer(rawClaim);
     rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
+
     claim = await claimDao.createClaim(userId, rawClaim);
     claimData = await claimDao.createClaimData(claim.id, rawClaim.name);
-    claimImages = await claimDao.createImages(
-      claim.id,
-      userId,
-      rawClaim.images,
-    );
+
+    if (rawClaim.images && rawClaim.images.length > 0) {
+      claimImages = await claimDao.createImages(claim.id, userId, rawClaim.images);
+    }
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -54,11 +40,7 @@ export const claimPost = async (
   res.status(201).json({ claim, claimData, claimImages });
 };
 
-export async function createClaimV2(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export async function createClaimV2(req: Request, res: Response, next: NextFunction) {
   const _req = req as ProtectedMulterRequest;
   const { userId } = _req;
 
@@ -85,11 +67,7 @@ export async function createClaimV2(
       awsImages.map((x) => x.filename),
     );
 
-    const createdImages = await claimDao.createImagesV2(
-      claim.id,
-      userId,
-      images,
-    );
+    const createdImages = await claimDao.createImagesV2(claim.id, userId, images);
 
     await populateImagesSignedUrls(createdImages);
 
@@ -103,11 +81,7 @@ export async function createClaimV2(
   }
 }
 
-export const claimGetById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const claimGetById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
     const id = Number(claimId);
@@ -128,11 +102,7 @@ export const claimGetById = async (
   }
 };
 
-export const getAllClaims = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const getAllClaims = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const claims = await prisma.claim.findMany();
     const claimsData = [];
@@ -149,11 +119,7 @@ export const getAllClaims = async (
   }
 };
 
-export const claimSearch = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const claimSearch = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { search, page = 1, limit = 10 } = req.query;
 
@@ -161,11 +127,7 @@ export const claimSearch = async (
     let count;
 
     if (search) {
-      const searchResult = await claimDao.searchClaims(
-        search as string,
-        Number(page),
-        Number(limit),
-      );
+      const searchResult = await claimDao.searchClaims(search as string, Number(page), Number(limit));
       claims = searchResult.claimData;
       count = searchResult.count;
     } else {
@@ -188,11 +150,7 @@ export const claimSearch = async (
   }
 };
 
-export const claimsGet = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const claimsGet = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = 0, limit = 0 } = req.query;
 
@@ -205,11 +163,7 @@ export const claimsGet = async (
 };
 /*********************************************************************/
 
-export const claimsFeed = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const claimsFeed = async (req: Request, res: Response, next: NextFunction) => {
   try {
     let { page = 1, limit = 100, search = "" } = req.query;
 
@@ -217,12 +171,7 @@ export const claimsFeed = async (
     limit = parseInt(limit.toString());
     search = decodeURIComponent(search.toString());
 
-    if (
-      Number.isNaN(page) ||
-      Number.isNaN(limit) ||
-      limit < 0 ||
-      page - 1 < 0
-    ) {
+    if (Number.isNaN(page) || Number.isNaN(limit) || limit < 0 || page - 1 < 0) {
       throw new createError.UnprocessableEntity("Invalid query string value");
     }
 
@@ -268,18 +217,13 @@ export async function populateReportImagesSignedUrls(report: Report) {
   }
 }
 
-async function populateEdgeImagesSignedUrls(
-  edge: Edge & { startNode: Node; endNode: Node },
-) {
+async function populateEdgeImagesSignedUrls(edge: Edge & { startNode: Node; endNode: Node }) {
   edge.thumbnail = await getS3SignedUrlIfExisted(edge.thumbnail);
   await populateNodeImagesSignedUrls(edge.startNode);
   await populateNodeImagesSignedUrls(edge.endNode);
 }
 
-async function populateNodeImagesSignedUrls(node: {
-  image?: string | null;
-  thumbnail?: string | null;
-}) {
+async function populateNodeImagesSignedUrls(node: { image?: string | null; thumbnail?: string | null }) {
   node.image = await getS3SignedUrlIfExisted(node.image);
   node.thumbnail = await getS3SignedUrlIfExisted(node.thumbnail);
 }

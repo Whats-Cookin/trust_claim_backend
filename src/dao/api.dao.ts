@@ -105,25 +105,28 @@ export class ClaimDao {
 
   createImages = async (claimId: number, userId: number, images: any[]) => {
     let claimImages: any[] = [];
+    const validImages = images.filter((img) => img.url && img.url.trim() !== "");
 
-    if (images && images.length > 0) {
-      claimImages = await Promise.all(
-        images.map(async (img: any) => {
-          if (img.effectiveDate) {
-            img.effectiveDate = new Date(img.effectiveDate);
-          }
-
-          const image = await prisma.image.create({
-            data: {
-              claimId: claimId,
-              owner: `${process.env.BASE_URL}/users/${userId}`,
-              ...img,
-            },
-          });
-          return image;
-        }),
-      );
+    if (validImages.length === 0) {
+      return claimImages;
     }
+
+    claimImages = await Promise.all(
+      validImages.map(async (img: any) => {
+        if (img.effectiveDate) {
+          img.effectiveDate = new Date(img.effectiveDate);
+        }
+
+        const image = await prisma.image.create({
+          data: {
+            claimId: claimId,
+            owner: `${process.env.DATABASE_URL}/users/${userId}`,
+            ...img,
+          },
+        });
+        return image;
+      })
+    );
 
     return claimImages;
   };
@@ -205,9 +208,7 @@ export class ClaimDao {
       },
     });
 
-    const nodeIds = new Set(
-      edges.flatMap((edge) => [edge.startNodeId, edge.endNodeId]),
-    );
+    const nodeIds = new Set(edges.flatMap((edge) => [edge.startNodeId, edge.endNodeId]));
 
     return prisma.node.findMany({
       where: {
@@ -228,10 +229,7 @@ export class ClaimDao {
 
     for (const claim of claims) {
       // Fetch claim data and images concurrently
-      const [data, images] = await Promise.all([
-        this.getClaimData(claim.id),
-        this.getClaimImages(claim.id),
-      ]);
+      const [data, images] = await Promise.all([this.getClaimData(claim.id), this.getClaimImages(claim.id)]);
       claimData.push({ data, claim, images });
     }
 
@@ -363,7 +361,7 @@ export class NodeDao {
                     n3.name ILIKE '%${search}%' OR
                     n3."descrip" ILIKE '%${search}%'
                   )`
-                  : "",
+                  : ""
               )}
         )
         SELECT 
@@ -515,11 +513,7 @@ export class NodeDao {
   };
 }
 
-export const GetClaimReport = async (
-  claimId: any,
-  offset: number,
-  limit: number,
-) => {
+export const GetClaimReport = async (claimId: any, offset: number, limit: number) => {
   const claimDao = new ClaimDao();
 
   const claim_as_node_uri = makeClaimSubjectURL(claimId);
@@ -578,9 +572,7 @@ export const GetClaimReport = async (
   // the subject of the claim is claim.subject, not the url of the claim itself
   const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(
-        claimId,
-      )}
+      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
