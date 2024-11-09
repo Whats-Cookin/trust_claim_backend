@@ -17,10 +17,7 @@ export const s3Client = new S3Client({
   },
 });
 
-export async function uploadImageToS3(
-  filename: string,
-  file: Express.Multer.File,
-) {
+export async function uploadImageToS3(filename: string, file: Express.Multer.File) {
   const optimizedImage = await optimizeImage(file.buffer);
   const params: PutObjectCommandInput = {
     Key: filename,
@@ -41,9 +38,7 @@ export function getS3SignedUrl(filename: string): Promise<string> {
   return getSignedUrl(s3Client, command, { expiresIn: 3600 });
 }
 
-export async function getS3SignedUrlIfExisted(
-  filename?: string | null,
-): Promise<string | null> {
+export async function getS3SignedUrlIfExisted(filename?: string | null): Promise<string | null> {
   if (!filename) return null;
   return getS3SignedUrl(filename);
 }

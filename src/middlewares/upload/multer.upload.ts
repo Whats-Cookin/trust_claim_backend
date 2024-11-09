@@ -12,6 +12,4 @@ export type ProtectedMulterRequest = MulterRequest & {
   userId: number;
 };
 
-export const upload = multer({ storage: multer.memoryStorage() }).array(
-  FIELD_NAME,
-);
+export const upload = multer({ storage: multer.memoryStorage() }).array(FIELD_NAME);

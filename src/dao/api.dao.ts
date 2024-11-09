@@ -1,11 +1,4 @@
-import {
-  Prisma,
-  type Image,
-  type Claim,
-  type Edge,
-  type Node,
-  type ClaimData,
-} from "@prisma/client";
+import { Prisma, type Image, type Claim, type Edge, type Node, type ClaimData } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
@@ -83,11 +76,7 @@ export class ClaimDao {
     return createdClaim;
   }
 
-  async createImagesV2(
-    claimId: number,
-    userId: number,
-    images: ImageDto[],
-  ): Promise<Image[]> {
+  async createImagesV2(claimId: number, userId: number, images: ImageDto[]): Promise<Image[]> {
     if (!images.length) return [];
 
     return prisma.$transaction(
@@ -125,7 +114,7 @@ export class ClaimDao {
           },
         });
         return image;
-      })
+      }),
     );
 
     return claimImages;
@@ -361,7 +350,7 @@ export class NodeDao {
                     n3.name ILIKE '%${search}%' OR
                     n3."descrip" ILIKE '%${search}%'
                   )`
-                  : ""
+                  : "",
               )}
         )
         SELECT 

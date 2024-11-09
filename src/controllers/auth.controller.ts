@@ -1,20 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
-import {
-  generateJWT,
-  passToExpressErrorHandler,
-  verifyRefreshToken,
-  decodeGoogleCredential,
-} from "../utils";
+import { generateJWT, passToExpressErrorHandler, verifyRefreshToken, decodeGoogleCredential } from "../utils";
 import createError from "http-errors";
 import bcrypt from "bcryptjs";
 import axios from "axios";
 
-export const signup = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const signup = async (req: Request, res: Response, next: NextFunction) => {
   console.log("IN SIGNUP");
   const { email, password } = req.body;
 
@@ -34,11 +25,7 @@ export const signup = async (
   }
 };
 
-export const login = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
 
   try {
@@ -66,11 +53,7 @@ export const login = async (
   }
 };
 
-export const refreshToken = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { refreshToken } = req.body;
   try {
     const { email, userId } = verifyRefreshToken(refreshToken);
@@ -85,11 +68,7 @@ export const refreshToken = async (
   }
 };
 
-export const githubAuthenticator = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const githubAuthenticator = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { githubAuthCode } = req.body;
 
@@ -107,7 +86,7 @@ export const githubAuthenticator = async (
           code: githubAuthCode,
         },
         headers: { Accept: "application/json" },
-      }
+      },
     );
 
     const { access_token } = tokens;
@@ -121,19 +100,11 @@ export const githubAuthenticator = async (
 
     let user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email },
-          { authType: "GITHUB", authProviderId: githubIdAsString },
-        ],
+        OR: [{ email }, { authType: "GITHUB", authProviderId: githubIdAsString }],
       },
     });
 
-    if (
-      user &&
-      ((email && !user.email) ||
-        (user.authType !== "GITHUB" &&
-          user.authProviderId !== githubIdAsString))
-    ) {
+    if (user && ((email && !user.email) || (user.authType !== "GITHUB" && user.authProviderId !== githubIdAsString))) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -164,11 +135,7 @@ export const githubAuthenticator = async (
   }
 };
 
-export const googleAuthenticator = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const googleAuthenticator = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { googleAuthCode } = req.body;
 
@@ -184,8 +151,7 @@ export const googleAuthenticator = async (
     if (
       alreadyExistingUser &&
       ((email && !alreadyExistingUser.email) ||
-        (alreadyExistingUser.authType !== "OAUTH" &&
-          alreadyExistingUser.authProviderId !== googleId) ||
+        (alreadyExistingUser.authType !== "OAUTH" && alreadyExistingUser.authProviderId !== googleId) ||
         alreadyExistingUser.name !== name)
     ) {
       user = await prisma.user.update({

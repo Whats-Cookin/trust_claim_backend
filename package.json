@@ -15,6 +15,7 @@
     "migrate:postgres": "dotenv -e .env.test -- npx prisma migrate deploy",
     "prisma:studio": "dotenv -e .env.dev -- npx prisma studio",
     "lint": "eslint . --fix",
+    "format": "prettier -w ./src/**/*",
     "test": "jest"
   },
   "author": "",
@@ -73,6 +74,7 @@
     "jest": "^29.5.0",
     "jest-mock-extended": "^2.0.4",
     "nodemon": "^2.0.16",
+    "prettier": "^3.3.3",
     "prisma": "^5.17.0",
     "renamer": "^4.0.0",
     "supertest": "^6.3.3",

@@ -1,15 +1,9 @@
 import sharp from "sharp";
 import { z } from "zod";
-import {
-  CreateClaimV2Dto,
-  ImageDto,
-} from "../middlewares/validators/claim.validator";
+import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
 import { getS3SignedUrl } from "./aws-s3";
 
-export function parseImagesFromClaimDto(
-  dto: CreateClaimV2Dto,
-  urls: string[],
-): ImageDto[] {
+export function parseImagesFromClaimDto(dto: CreateClaimV2Dto, urls: string[]): ImageDto[] {
   if (!dto.imagesEffectiveDate) return [];
 
   const images: ImageDto[] = [];
