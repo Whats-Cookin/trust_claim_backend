@@ -14,18 +14,13 @@ import {
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
 import { getAllClaims } from "../../controllers/api.controller";
-import {
-  claimPostSchema,
-  CreateClaimV2Dto,
-  joiValidator,
-  zodValidator,
-} from "../../middlewares/validators/claim.validator";
+import { claimPostSchema, joiValidator } from "../../middlewares/validators/claim.validator";
 import { upload } from "../../middlewares/upload/multer.upload";
 
 const router = Router();
 
 router.post("/claim", jwtVerify, claimPostNormalizer, joiValidator(claimPostSchema), claimPost);
-router.post("/claim/v2", upload, jwtVerify, zodValidator(CreateClaimV2Dto), createClaimV2);
+router.post("/claim/v2", upload, jwtVerify, createClaimV2);
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claims-all", getAllClaims);

@@ -25,7 +25,7 @@ export function zodValidator(schema: z.Schema) {
       next();
     } catch (err: any) {
       err.statusCode = 422;
-      passToExpressErrorHandler(err, next);
+      passToExpressErrorHandler(err.errors, next);
     }
   };
 }
@@ -107,36 +107,36 @@ export const CreateClaimV2Dto = z
     object: z.string().optional(),
     statement: z.string().optional(),
     aspect: z.string().optional(),
-    amt: z.coerce.number().or(
-      z
-        .string()
-        .regex(/\s*\$\s*\d+\s*/)
-        .transform(stripCurrencyToFloat),
-    ),
+    amt: z
+      .number()
+      .or(
+        z
+          .string()
+          .regex(/\s*\$\s*\d+\s*/)
+          .transform(stripCurrencyToFloat),
+      )
+      .optional(),
     name: z.string(),
     howKnown: z.enum(howKnowns as NotEmpty<HowKnown>).optional(),
     sourceURI: z.string().optional(),
-    effectiveDate: z.coerce.date(),
-    confidence: z.coerce.number().min(0).max(1),
+    effectiveDate: z.coerce.date().optional(),
+    confidence: z.number().min(0).max(1).optional(),
     claimAddress: z.string().optional(),
-    stars: z.coerce.number().min(0).optional(),
+    stars: z.number().min(0).optional(),
 
-    imagesDescription: z.array(z.string().nullable()).or(z.string().nullable()).optional(),
-    imagesCaption: z.array(z.string().nullable()).or(z.string().nullable()).optional(),
-    imagesEffectiveDate: z.array(z.coerce.date()).or(z.coerce.date()).optional(),
-    // // TODO: what are these fields are for?
-    // imagesDigestMultibase: z
-    //   .array(z.string().nullable())
-    //   .or(z.string().nullable())
-    //   .optional(),
-    // imagesSignature: z
-    //   .array(z.string().nullable())
-    //   .or(z.string().nullable())
-    //   .optional(),
-  })
-  .refine(validateImagesMetadata, {
-    message: "Images metadata are missing data",
-    path: ["images"],
+    images: z.array(
+      z.object({
+        metadata: z
+          .object({
+            description: z.string().nullable().optional(),
+            caption: z.string().nullable().optional(),
+          })
+          .optional(),
+        effectiveDate: z.coerce.date().optional(),
+        digestMultibase: z.string().nullable().optional(),
+        signature: z.string().nullable().optional(),
+      }),
+    ),
   })
   .refine(validateStars, {
     message:
@@ -144,12 +144,6 @@ export const CreateClaimV2Dto = z
     path: ["stars"],
   });
 export type CreateClaimV2Dto = z.infer<typeof CreateClaimV2Dto>;
-
-export function validateImages(files: Express.Multer.File[], dto: CreateClaimV2Dto): boolean {
-  if (!dto.imagesEffectiveDate && !files.length) return true;
-  if (!Array.isArray(dto.imagesEffectiveDate) && files.length === 1) return true;
-  return (dto.imagesEffectiveDate as Date[]).length === files.length;
-}
 
 function stripCurrencyToFloat(val: string): number | null {
   const strippedValue = val.replace(/\$|\s+/g, "");
@@ -160,32 +154,12 @@ function stripCurrencyToFloat(val: string): number | null {
   return num;
 }
 
-function validateImagesMetadata(data: Record<string, unknown>): boolean {
-  const dfltKey = data.imagesEffectiveDate;
-  const imageData = [
-    data.imagesCaption,
-    data.imagesDescription,
-    data.imagesEffectiveDate,
-    // data.imagesSignature,
-    // data.imagesDigestMultibase,
-  ];
-  const len = !dfltKey ? 0 : !Array.isArray(dfltKey) ? 1 : dfltKey.length;
-
-  return (
-    imageData.every((x) => Array.isArray(x) && (x as string | string[]).length === len) ||
-    imageData.every((x) => typeof x === "string") ||
-    imageData.every((x) => x !== undefined)
-  );
-}
-
 function validateStars(data: Record<string, unknown>): boolean {
-  if (
+  return !(
     data.claim &&
-    data.aspect &&
     data.claim === "rated" &&
+    data.aspect &&
     (data.aspect as string | undefined)?.includes("quality:") &&
     (data.stars as number) > 5
-  )
-    return false;
-  return true;
+  );
 }

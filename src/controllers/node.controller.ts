@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction, urlencoded } from "express";
+import { Request, Response, NextFunction } from "express";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
