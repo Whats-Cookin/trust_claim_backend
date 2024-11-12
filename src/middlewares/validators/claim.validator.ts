@@ -134,7 +134,7 @@ export const CreateClaimV2Dto = z
           .optional(),
         effectiveDate: z.coerce.date().optional(),
         digestMultibase: z.string().nullable().optional(),
-        signature: z.string().nullable().optional(),
+        signature: z.string(),
       }),
     ),
   })
