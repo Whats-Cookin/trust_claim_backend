@@ -23,7 +23,7 @@ const claimPostSchema = Joi.object({
         }
         return numberValue; // Return the converted number
       }),
-    Joi.number()
+    Joi.number(),
   ),
   name: Joi.string().required(),
   howKnown: Joi.string().allow("", null),
@@ -35,7 +35,7 @@ const claimPostSchema = Joi.object({
       digestMultibase: Joi.string().allow(null),
       signature: Joi.string().allow(null),
       owner: Joi.string().allow(null),
-    })
+    }),
   ),
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
@@ -54,18 +54,14 @@ const claimPostSchema = Joi.object({
       value > 5.0
     ) {
       throw new Error(
-        'When claim is "rated" and the claim is from a quality aspect, rating "stars" must be a value between 0 and 5'
+        'When claim is "rated" and the claim is from a quality aspect, rating "stars" must be a value between 0 and 5',
       );
     }
     return true;
   }),
 });
 
-export const claimPostValidator = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-) => {
+export const claimPostValidator = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     await claimPostSchema.validateAsync(req.body);
     next();

@@ -7,11 +7,7 @@ import { NodeDao, GetClaimReport } from "../dao/api.dao";
 const nodeDao = new NodeDao();
 /*********************************************************************/
 // Function to get a node by its ID
-export const getNodeById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const getNodeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { nodeId } = req.params;
 
@@ -28,11 +24,7 @@ export const getNodeById = async (
 };
 
 // Function to search for nodes
-export const searchNodes = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const searchNodes = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { search, page = 1, limit = 10 } = req.query;
     let nodes;
@@ -41,11 +33,7 @@ export const searchNodes = async (
     const _search = decodeURIComponent(search?.toString() || "");
 
     if (search) {
-      const searchResult = await nodeDao.searchNodes(
-        _search,
-        Number(page),
-        Number(limit),
-      );
+      const searchResult = await nodeDao.searchNodes(_search, Number(page), Number(limit));
       nodes = searchResult.nodes;
       count = searchResult.count;
     }
@@ -60,11 +48,7 @@ export const searchNodes = async (
 
 // Most would be by their DID, most users will NOT identify by our user id, but by some external universal way
 
-export const getNodeForLoggedInUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const getNodeForLoggedInUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as ModifiedRequest).userId;
     const rawClaim: any = turnFalsyPropsToUndefined(req.body);
@@ -78,11 +62,7 @@ export const getNodeForLoggedInUser = async (
   }
 };
 
-export const claimReport = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const claimReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
     let { page = 1, limit = 100 } = req.query; // defaults provided here
@@ -109,4 +89,3 @@ export const claimReport = async (
     passToExpressErrorHandler(err, next);
   }
 };
-

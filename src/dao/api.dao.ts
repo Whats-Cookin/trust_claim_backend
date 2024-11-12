@@ -60,7 +60,7 @@ export class ClaimDao {
           },
         });
         return image;
-      })
+      }),
     );
 
     return claimImages;
@@ -296,7 +296,7 @@ export class NodeDao {
                     n3.name ILIKE '%${search}%' OR
                     n3."descrip" ILIKE '%${search}%'
                   )`
-                  : ""
+                  : "",
               )}
         )
         SELECT 
