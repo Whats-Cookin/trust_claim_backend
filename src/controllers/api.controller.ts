@@ -11,6 +11,7 @@ import { ClaimDao, NodeDao, Report } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
 import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
 import { getS3SignedUrl, getS3SignedUrlIfExisted, uploadImageToS3 } from "../utils/aws-s3";
+import { calculateBufferHash } from "../utils/hash";
 
 const claimDao = new ClaimDao();
 const nodeDao = new NodeDao();
@@ -64,10 +65,12 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
 
     let awsImages: { filename: string }[];
 
+    const imagesSignatures: string[] = [];
     try {
       awsImages = await Promise.all(
         imagesRequestBody.map(async (f) => {
           const filename = `${ulid()}${path.extname(f.originalname)}`;
+          imagesSignatures.push(calculateBufferHash(f.buffer));
           await uploadImageToS3(filename, f);
           return { filename };
         }),
@@ -88,7 +91,10 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
     const images = dto.images.map((x, i) => ({
       ...x,
       url: awsImages[i].filename,
+      signature: imagesSignatures[i],
     })) as ImageDto[];
+
+    console.log("images:", images);
 
     const claimImages = await claimDao.createImagesV2(claim.id, userId, images);
     console.log("created the images docs");

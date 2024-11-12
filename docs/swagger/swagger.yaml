@@ -518,8 +518,6 @@ components:
               type: array
               items:
                 type: object
-                required:
-                  - signature
                 properties:
                   metadata:
                     type: object
@@ -538,8 +536,6 @@ components:
                   digestMultibase:
                     type: string
                     nullable: true
-                  signature:
-                    type: string
 
   responses:
     Authentication:

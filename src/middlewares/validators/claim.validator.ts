@@ -91,13 +91,13 @@ export const claimPostSchema = Joi.object({
 
 export type ImageDto = {
   url: string;
-  signature: string;
   metadata?: {
     description?: string;
     caption?: string;
   };
   digestedMultibase?: string;
   effectiveDate: Date;
+  signature: string;
 };
 
 export const CreateClaimV2Dto = z
@@ -134,7 +134,6 @@ export const CreateClaimV2Dto = z
           .optional(),
         effectiveDate: z.coerce.date().optional(),
         digestMultibase: z.string().nullable().optional(),
-        signature: z.string(),
       }),
     ),
   })
