@@ -73,9 +73,11 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
         }),
       );
     } catch (e) {
+      const _e = e as Error;
+      console.error("Error uploading the images:", _e.message);
       return passToExpressErrorHandler(
         {
-          ...(e as Error),
+          ..._e,
           message: "Error uploading the images",
           statusCode: 500,
         },
