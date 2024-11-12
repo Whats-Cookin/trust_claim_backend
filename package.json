@@ -14,6 +14,7 @@
     "migrate:dev": "dotenv -e .env.dev -- npx prisma migrate dev --name postgres-init",
     "migrate:postgres": "dotenv -e .env.test -- npx prisma migrate deploy",
     "prisma:studio": "dotenv -e .env.dev -- npx prisma studio",
+    "format": "prettier -w ./src/**/* -w ./docs/**/* -w ./*.md -w ./**/*.md",
     "lint": "eslint . --fix",
     "format": "prettier -w ./src/**/*",
     "test": "jest"

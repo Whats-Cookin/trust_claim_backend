@@ -13,7 +13,7 @@ ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
 REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
 ```
 
-then run 
+then run
 
 `npm run dev`
 
@@ -27,8 +27,7 @@ run from within an IDE such as webstorm with simple configuration such as
 
 <img width="852" alt="image" src="https://user-images.githubusercontent.com/798887/232255771-e3cf52db-ece2-48b0-b67f-cd8edec39776.png">
 
-
-------------
+---
 
 you may also have to copy .env to .env.dev
 
