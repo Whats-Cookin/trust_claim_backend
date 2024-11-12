@@ -9,8 +9,8 @@ To generate Nodes and Edges from Claims it is also necessary to run [trust-claim
 ## Concepts
 
 Claim: a signed set of structured data with the raw claim or attestation, often signed on front end by the user's DID
-Node: an entity that a claim is about.  This is created in the app as a view of what a claim is about.
-Edge: a representation of a claim that relates to a Node or connects two Nodes.  Created in the app as a view of a claim.
+Node: an entity that a claim is about. This is created in the app as a view of what a claim is about.
+Edge: a representation of a claim that relates to a Node or connects two Nodes. Created in the app as a view of a claim.
 
 ## CICD Pipeline with Jenkins
 
@@ -20,11 +20,11 @@ And for Auth Details to the pipeline, kindly refer to vault [jenkins logins](htt
 
 For SSH Access into the dev server, kindly refer to this creds in the vault [dev server ssh creds](https://vault.whatscookin.us/app/passwords/view/cbe52954-3f7a-4e5d-9bb7-039389acc42c) this would help you ssh into the dev serverm while inside, the files would be in the `/data/trust_claim_backend` directory and configured with nginx
 
-*NB: The production version of this is available on [live.linkedtrust.us](live.linkedtrust.us)*
+_NB: The production version of this is available on [live.linkedtrust.us](live.linkedtrust.us)_
 
 ## Run the application locally
 
-Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables).  section.
+Running the application in docker is only important if you don't want to set up postgresql server in your pc. If you choose to not use docker in development, then set the postgresql db url and env variables in `.env` file. Check [Env variables](#env-variables). section.
 
 Then running below command is sufficient.
 
@@ -43,7 +43,7 @@ npm run build
 
 You will need docker installed in your computer. For help with installation, ask in slack.
 
-Build the docker containers and run it.  Two options are available
+Build the docker containers and run it. Two options are available
 
 ### Option 1: Without the data pipeline - for viewing only
 
@@ -89,8 +89,8 @@ Database is handled with the help of prisma orm.
 
 #### Apply migration
 
-*** NOTE NOTE NOTE : the migrations in prod server are currently NOT working automatically 8/1/2024 ***
-*** the migration in the prisma/migrations folder was applied manually ***
+**_ NOTE NOTE NOTE : the migrations in prod server are currently NOT working automatically 8/1/2024 _**
+**_ the migration in the prisma/migrations folder was applied manually _**
 
 If migration is not for docker container then run
 
@@ -135,7 +135,6 @@ For descrip column:
 CREATE INDEX idx_descrip ON "Node" USING GIN ("descrip" gin_trgm_ops);
 ```
 
-
 These steps ensure your local DB mirrors production's text search optimizations.
 
 #### To check the database, use the goodness of prisma studio
@@ -155,13 +154,17 @@ npm run prisma:studio
 After running this command prisma studio opens in port 5555.
 
 #### Integrated seeding with Prisma Migrate:
+
 Database seeding happens in two ways with Prisma: manually with prisma db seed and automatically in prisma migrate dev.
 
-Run 
+Run
+
 ```
 npx prisma db seed
 ```
+
 or
+
 ```
 npm i
 prisma migrate dev
@@ -189,6 +192,7 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/claim"
 Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
 <a name="Review"></a>
+
 ## To review the server files
 
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
@@ -203,7 +207,7 @@ cd into the project
 cd /data/trust_claim_backend
 ```
 
-inspect the running file 
+inspect the running file
 
 ```
 pm2 status index
@@ -236,7 +240,7 @@ Then, building the project is enough, because `pm2` is watching for changes.
 npm run build
 ```
 
-NOTE: Run this ONLY when the server is  down
+NOTE: Run this ONLY when the server is down
 
 ```
 pm2 start index.js --watch
