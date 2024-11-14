@@ -13,7 +13,7 @@ import {
   claimSearch,
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
-import { getAllClaims } from "../../controllers/api.controller";
+import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
 
 const router = Router();
 
@@ -23,6 +23,7 @@ router.get("/claim/:claimId?", claimGetById);
 router.get("/claims-all", getAllClaims);
 router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);
+router.get("/claims/v3", claimsFeedV3);
 router.get("/node/search", searchNodes);
 router.get("/node/:nodeId?", getNodeById);
 router.get("/my-node", getNodeForLoggedInUser);
