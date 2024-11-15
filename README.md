@@ -179,8 +179,8 @@ Create a `.env` file in project root. If running with docker an additional `.env
 ```bash
 PORT=9000
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
-ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
-REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+ACCESS_SECRET='...'
+REFRESH_SECRET='...'
 AWS_ACCESS_KEY_ID='...'
 AWS_SECRET_ACCESS_KEY='...'
 AWS_STORAGE_BUCKET_NAME='...'
