@@ -2,7 +2,6 @@ import { z } from "zod";
 import Joi from "joi";
 import { Request, Response, NextFunction } from "express";
 import { passToExpressErrorHandler } from "../../utils";
-import { howKnowns } from "../../config/enums";
 import { NotEmpty } from "../../types/utils";
 import { HowKnown } from "@prisma/client";
 
@@ -117,7 +116,7 @@ export const CreateClaimV2Dto = z
       )
       .optional(),
     name: z.string(),
-    howKnown: z.enum(howKnowns as NotEmpty<HowKnown>).optional(),
+    howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
     sourceURI: z.string().optional(),
     effectiveDate: z.coerce.date().optional(),
     confidence: z.number().min(0).max(1).optional(),
