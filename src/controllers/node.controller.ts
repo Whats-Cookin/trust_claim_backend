@@ -3,7 +3,6 @@ import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
 import { NodeDao, GetClaimReport } from "../dao/api.dao";
-import { populateReportImagesSignedUrls } from "./api.controller";
 
 const nodeDao = new NodeDao();
 /*********************************************************************/
@@ -81,8 +80,6 @@ export const claimReport = async (req: Request, res: Response, next: NextFunctio
     // then ALSO get other claims about the nodes who were the source or issuer of the attestations
     // those can be separate PRs lets start with this one working and the design for it
     //
-
-    await populateReportImagesSignedUrls(result);
 
     res.status(200).json({ data: result });
     return;
