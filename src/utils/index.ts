@@ -47,17 +47,18 @@ export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   next(err);
 };
 
-export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
-  const newObj = { ...obj };
-  const newObjAsArray = Object.entries(newObj);
+export function turnFalsyPropsToUndefined<T extends Record<keyof any, unknown>>(obj: T): Partial<T> {
+  const newObj = structuredClone(obj);
 
-  newObjAsArray.forEach(([key, val]) => {
+  for (const [key, val] of Object.entries(newObj)) {
     if (!val) {
+      // @ts-expect-error ignore type for the new object
       newObj[key] = undefined;
     }
-  });
+  }
+
   return newObj;
-};
+}
 
 interface Mapping {
   [key: string]: {

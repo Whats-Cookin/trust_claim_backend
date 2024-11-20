@@ -1,9 +1,17 @@
-import { Request, Response, NextFunction } from "express";
-import { prisma } from "../db/prisma";
-import { passToExpressErrorHandler, turnFalsyPropsToUndefined, poormansNormalizer } from "../utils";
+import { NextFunction, Request, Response } from "express";
 import createError from "http-errors";
+import path from "node:path";
+import { ulid } from "ulid";
+
+import { prisma } from "../db/prisma";
+import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefined } from "../utils";
 
 import { ClaimDao, NodeDao } from "../dao/api.dao";
+import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
+import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
+import { uploadImageToS3 } from "../utils/aws-s3";
+import { calculateBufferHash } from "../utils/hash";
+import { config } from "../config";
 
 const claimDao = new ClaimDao();
 const nodeDao = new NodeDao();
@@ -32,6 +40,73 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
   res.status(201).json({ claim, claimData, claimImages });
 };
 
+export async function createClaimV2(req: Request, res: Response, next: NextFunction) {
+  const _req = req as ProtectedMulterRequest;
+  const { userId } = _req;
+
+  const {
+    files: { dto: dtoRequestBody, images: imagesRequestBody },
+  } = _req;
+
+  const body = JSON.parse(dtoRequestBody[0].buffer.toString("utf-8"));
+
+  const { success, data: dto, error } = CreateClaimV2Dto.safeParse(body);
+  if (!success) {
+    return next({ data: error.errors, statusCode: 422 });
+  }
+
+  try {
+    if (imagesRequestBody.length !== dto.images.length) {
+      throw new createError.UnprocessableEntity("Invalid images metadata");
+    }
+
+    const claim = await claimDao.createClaimV2(userId, dto);
+    const claimData = await claimDao.createClaimData(claim.id, dto.name);
+
+    let awsImages: { hash: string; url: string }[];
+
+    try {
+      awsImages = await Promise.all(
+        imagesRequestBody.map(async (f) => {
+          const filename = `${ulid()}${path.extname(f.originalname)}`;
+          await uploadImageToS3(filename, f);
+          return {
+            hash: calculateBufferHash(f.buffer),
+            url: `https://${config.s3.bucketName}.s3.${config.s3.region}.amazonaws.com/${filename}`,
+          };
+        }),
+      );
+    } catch (e) {
+      const _e = e as Error;
+      console.error("Error uploading the images:", _e.message);
+      return passToExpressErrorHandler(
+        {
+          ..._e,
+          message: "Error uploading the images",
+          statusCode: 500,
+        },
+        next,
+      );
+    }
+
+    const images = dto.images.map((x, i) => ({
+      ...x,
+      url: awsImages[i].url,
+      signature: awsImages[i].hash,
+    })) as ImageDto[];
+
+    const claimImages = await claimDao.createImagesV2(claim.id, userId, images);
+
+    return res.status(201).json({
+      claim,
+      claimData,
+      claimImages,
+    });
+  } catch (e) {
+    passToExpressErrorHandler(e, next);
+  }
+}
+
 export const claimGetById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
@@ -53,7 +128,7 @@ export const claimGetById = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const getAllClaims = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllClaims = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const claims = await prisma.claim.findMany();
     const claimsData = [];

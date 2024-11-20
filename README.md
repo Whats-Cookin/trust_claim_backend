@@ -176,16 +176,20 @@ When you want to use prisma migrate dev without seeding, you can pass the --skip
 
 Create a `.env` file in project root. If running with docker an additional `.env.dev` file is needed. Refer to below example for env variables:
 
-```
+```bash
 PORT=9000
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
-ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
-REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+ACCESS_SECRET='...'
+REFRESH_SECRET='...'
+AWS_ACCESS_KEY_ID='...'
+AWS_SECRET_ACCESS_KEY='...'
+AWS_STORAGE_BUCKET_NAME='...'
+AWS_S3_REGION_NAME='...'
 ```
 
 In `.env.dev`, change `DATABASE_URL` like below, everything else can be exactly like `.env`.
 
-```
+```bash
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/claim"
 ```
 
