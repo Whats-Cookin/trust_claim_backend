@@ -1,4 +1,3 @@
-import Joi from "joi";
 import { Request, Response, NextFunction } from "express";
 import { passToExpressErrorHandler } from "../../utils";
 

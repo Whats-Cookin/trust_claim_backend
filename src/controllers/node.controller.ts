@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction, urlencoded } from "express";
+import { Request, Response, NextFunction } from "express";
 import { passToExpressErrorHandler, turnFalsyPropsToUndefined } from "../utils";
 import createError from "http-errors";
 
@@ -81,9 +81,7 @@ export const claimReport = async (req: Request, res: Response, next: NextFunctio
     // those can be separate PRs lets start with this one working and the design for it
     //
 
-    res.status(200).json({
-      data: result,
-    });
+    res.status(200).json({ data: result });
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);

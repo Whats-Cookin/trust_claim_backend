@@ -196,6 +196,45 @@ paths:
               schema:
                 "$ref": "#/components/responses/Error"
 
+  "/api/claim/v2":
+    post:
+      tags:
+        - Claims
+      description: Create Claim (images as stream)
+      summary: Create Claim
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              "$ref": "#/components/requestBodies/CreateClaimV2"
+            encoding:
+              images:
+                contentType: image/*
+              dto:
+                contentType: application/json
+
+      responses:
+        "201":
+          description: Created the claim successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CreatedClaim"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+        "500":
+          description: Invalid body/internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+
   "/api/claim/{id}":
     get:
       tags:
@@ -435,12 +474,12 @@ components:
             - OTHER
         images:
           type: array
-          required:
-            - url
-            - signature
-            - owner
           items:
             type: object
+            required:
+              - url
+              - signature
+              - owner
             properties:
               url:
                 type: string
@@ -479,6 +518,97 @@ components:
         stars:
           type: integer
           nullable: true
+
+    CreateClaimV2:
+      type: object
+      required:
+        - dto
+        - images
+      properties:
+        images:
+          type: array
+          items:
+            type: string
+            format: binary
+        dto:
+          type: object
+          required:
+            - subject
+            - claim
+            - name
+          properties:
+            subject:
+              type: string
+            claim:
+              type: string
+            object:
+              type: string
+              nullable: true
+            statement:
+              type: string
+              nullable: true
+            aspect:
+              type: string
+              nullable: true
+            amt:
+              type: integer
+              nullable: true
+            name:
+              type: string
+            howKnown:
+              type: string
+              nullable: true
+              enum:
+                - FIRST_HAND
+                - SECOND_HAND
+                - WEB_DOCUMENT
+                - VERIFIED_LOGIN
+                - BLOCKCHAIN
+                - SIGNED_DOCUMENT
+                - PHYSICAL_DOCUMENT
+                - INTEGRATION
+                - RESEARCH
+                - OPINION
+                - OTHER
+            sourceURI:
+              type: string
+              nullable: true
+            effectiveDate:
+              type: string
+              format: date-time
+              nullable: true
+            confidence:
+              type: integer
+              nullable: true
+            claimAddress:
+              type: string
+              nullable: true
+            stars:
+              type: integer
+              nullable: true
+            images:
+              type: array
+              items:
+                type: object
+                properties:
+                  metadata:
+                    type: object
+                    nullable: true
+                    properties:
+                      captian:
+                        type: string
+                        nullable: true
+                      description:
+                        type: string
+                        nullable: true
+                  effectiveDate:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  digestMultibase:
+                    type: string
+                    nullable: true
+
   responses:
     Authentication:
       type: object

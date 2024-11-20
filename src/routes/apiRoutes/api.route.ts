@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { claimPostValidator } from "../../middlewares/validators";
 import { claimPostNormalizer } from "../../middlewares/normalizers";
 import {
   claimPost,
@@ -11,13 +10,17 @@ import {
   getNodeForLoggedInUser,
   claimGetById,
   claimSearch,
+  createClaimV2,
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
 import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
+import { claimPostSchema, joiValidator } from "../../middlewares/validators/claim.validator";
+import { upload } from "../../middlewares/upload/multer.upload";
 
 const router = Router();
 
-router.post("/claim", jwtVerify, claimPostNormalizer, claimPostValidator, claimPost);
+router.post("/claim", jwtVerify, claimPostNormalizer, joiValidator(claimPostSchema), claimPost);
+router.post("/claim/v2", upload, jwtVerify, createClaimV2);
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claims-all", getAllClaims);
