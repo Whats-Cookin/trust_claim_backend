@@ -5,6 +5,8 @@ import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 
+const MAX_POSSIBLE_CURSOR = "999999999999999999999999999999";
+
 interface ReportI {
   name: string;
   thumbnail: string;
@@ -254,6 +256,14 @@ interface FeedEntry {
   image_metadata: any | null;
 }
 
+interface FeedEntryV3 {
+  name: string;
+  link: string;
+  claim_id: number;
+  statement: string | null;
+  stars: number | null;
+  effective_date: Date | null;
+}
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
   getNodes = async (page: number, limit: number) => {
@@ -388,6 +398,73 @@ export class NodeDao {
       throw new Error("Failed to fetch feed entries");
     }
   };
+
+  async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null) {
+    try {
+      query = query ? `%${query}%` : null;
+      cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
+
+      const rawQ = Prisma.sql`
+        WITH RankedClaims AS (
+          SELECT
+            n.name AS name,
+            n."nodeUri" AS link,
+            c.id AS claim_id,
+            c.statement AS statement,
+            c.stars AS stars,
+            c."effectiveDate" AS effective_date,
+            ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
+            CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+          FROM "Claim" c
+          INNER JOIN "Edge" AS e ON c.id = e."claimId"
+          INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+          WHERE
+            n."entType" != 'CLAIM'
+            AND e.label != 'source'
+            AND c."effectiveDate" IS NOT NULL
+            AND c.statement IS NOT NULL
+            AND n.name IS NOT NULL
+            AND n.name != ''
+            AND (
+              c.subject ILIKE COALESCE(${query}, '%') OR
+              c.statement ILIKE COALESCE(${query}, '%') OR
+              n.name ILIKE COALESCE(${query}, '%')
+            )
+          ORDER BY c."effectiveDate" DESC, c.id DESC
+        )
+        SELECT 
+          name,
+          link,
+          claim_id,
+          statement,
+          stars,
+          effective_date,
+          cursor
+        FROM RankedClaims
+        WHERE
+          row_num = 1
+          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
+        LIMIT ${limit}
+      `;
+
+      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
+
+      const lastCursor = claims.at(-1)?.cursor;
+      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+
+      for (let i = 0; i < claims.length; i++) {
+        delete claims[i].cursor;
+      }
+
+      return {
+        nextPage,
+        claims: claims as FeedEntryV3[],
+      };
+    } catch (error) {
+      console.error("Error fetching feed entries:", error);
+      throw new Error("Failed to fetch feed entries");
+    }
+  }
 
   getNodeById = async (nodeId: number) => {
     return await prisma.node.findUnique({

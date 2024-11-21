@@ -123,6 +123,46 @@ paths:
               schema:
                 "$ref": "#/components/schemas/Claims"
 
+  "/api/claims/v3":
+    get:
+      tags:
+        - Claims
+      description: List the claims using a cursor instead of page number (more performant)
+      summary: List the claims
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            example: 100
+            minimum: 1
+            maximum: 10000
+            nullable: true
+        - name: search
+          in: query
+          schema:
+            type: string
+            nullable: true
+        - name: nextPage
+          in: query
+          schema:
+            type: string
+            format: byte
+            nullable: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nextPage:
+                    type: string
+                    format: byte
+                    nullable: true
+                  claims:
+                    "$ref": "#/components/schemas/FeedClaimV3"
+
   "/api/claim":
     post:
       tags:
@@ -235,6 +275,12 @@ components:
       type: array
       items:
         "$ref": "#/components/schemas/Claim"
+
+    FeedClaimsV3:
+      type: array
+      items:
+        "$ref": "#/components/schemas/FeedClaimV3"
+
     Claim:
       type: object
       required:
@@ -290,6 +336,32 @@ components:
           type: string
         source_description:
           type: string
+
+    FeedClaimV3:
+      type: object
+      required:
+        - name
+        - link
+        - claim_id
+        - statement
+        - effective_date
+      properties:
+        name:
+          type: string
+        link:
+          type: string
+        claim_id:
+          type: integer
+          format: int32
+        statement:
+          type: string
+        stars:
+          type: integer
+          maximum: 5
+        effective_date:
+          type: string
+          format: date-time
+
     Image:
       type: object
       properties:
