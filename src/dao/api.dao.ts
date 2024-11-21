@@ -300,94 +300,99 @@ export class NodeDao {
 
   getFeedEntries = async (offset: number, limit: number, search: string) => {
     try {
+      // For recent entries without search, use a simpler, more efficient query
+      if (!search) {
+        const rawQ = Prisma.sql`
+          SELECT DISTINCT ON (c.id)
+            n1.name,
+            n1.thumbnail,
+            n1."nodeUri" AS link,
+            n1."descrip" AS description,
+            c.id AS claim_id,
+            c.statement,
+            c.stars,
+            c.score,
+            c.amt,
+            c."effectiveDate" AS effective_date,
+            c."howKnown" AS how_known,
+            c.aspect,
+            c.confidence,
+            e.label AS claim,
+            e2.label AS basis,
+            n3.name AS source_name,
+            n3.thumbnail AS source_thumbnail,
+            n3."nodeUri" AS source_link,
+            n3."descrip" AS source_description
+          FROM "Claim" c
+          INNER JOIN "Edge" e ON c.id = e."claimId"
+          INNER JOIN "Node" n1 ON e."startNodeId" = n1.id
+          LEFT JOIN "Edge" e2 ON e."endNodeId" = e2."startNodeId"
+          LEFT JOIN "Node" n3 ON e2."endNodeId" = n3.id
+          WHERE n1."entType" != 'CLAIM'
+            AND e.label != 'source'
+            AND c."effectiveDate" IS NOT NULL
+            AND c.statement IS NOT NULL
+            AND n1.name IS NOT NULL
+            AND n1.name != ''
+          ORDER BY c.id, c."effectiveDate" DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+        return await prisma.$queryRaw<FeedEntry[]>(rawQ);
+      }
+
+      // For search queries, use the more comprehensive query
       const rawQ = Prisma.sql`
-          WITH RankedClaims AS (
-            SELECT
-                n1.name AS name,
-                n1.thumbnail AS thumbnail,
-                n1."nodeUri" AS link,
-                n1."descrip" AS description,
-                c.id AS claim_id,
-                c.statement AS statement,
-                c.stars AS stars,
-                c.score AS score,
-                c.amt AS amt,
-                c."effectiveDate" AS effective_date,
-                c."howKnown" AS how_known,
-                c.aspect AS aspect,
-                c.confidence AS confidence,
-                e.label AS claim,
-                e2.label AS basis,
-                n3.name AS source_name,
-                n3.thumbnail AS source_thumbnail,
-                n3."nodeUri" AS source_link,
-                n3."descrip" AS source_description,
-                ROW_NUMBER() OVER (
-                    PARTITION BY c.id
-                    ORDER BY c."effectiveDate" DESC
-                ) AS row_num
-            FROM "Claim" c
-            INNER JOIN "Edge" AS e ON c.id = e."claimId"
-            INNER JOIN "Node" AS n1 ON e."startNodeId" = n1.id
-            INNER JOIN "Node" AS n2 ON e."endNodeId" = n2.id
-            LEFT JOIN "Edge" AS e2 ON n2.id = e2."startNodeId"
-            LEFT JOIN "Node" AS n3 ON e2."endNodeId" = n3.id
-            LEFT JOIN "Image" AS i ON c.id = i."claimId"
-            LEFT JOIN "ClaimData" AS cd ON c.id = cd."claimId"
-            WHERE n1."entType" != 'CLAIM'
-              AND e.label != 'source'
-              AND c."effectiveDate" IS NOT NULL
-              AND c.statement IS NOT NULL
-              AND n1.name IS NOT NULL
-              AND n1.name != ''
-              ${Prisma.raw(
-                search
-                  ? `AND (
-                    c.statement ILIKE '%${search}%' OR
-                    c."sourceURI" ILIKE '%${search}%' OR
-                    c."subject" ILIKE '%${search}%' OR
-                    n1.name ILIKE '%${search}%' OR
-                    n3.name ILIKE '%${search}%' OR
-                    n3."descrip" ILIKE '%${search}%'
-                  )`
-                  : "",
-              )}
-        )
-        SELECT 
-          name,
-          thumbnail,
-          link,
-          description,
-          claim_id,
-          statement,
-          stars,
-          score,
-          amt,
-          effective_date,
-          how_known,
-          aspect,
-          confidence,
-          claim,
-          basis,
-          source_name,
-          source_thumbnail,
-          source_link,
-          source_description
-
-        FROM RankedClaims
-        WHERE row_num = 1
-        ORDER BY effective_date DESC
-        OFFSET ${offset}
+        SELECT DISTINCT ON (c.id)
+          n1.name,
+          n1.thumbnail,
+          n1."nodeUri" AS link,
+          n1."descrip" AS description,
+          c.id AS claim_id,
+          c.statement,
+          c.stars,
+          c.score,
+          c.amt,
+          c."effectiveDate" AS effective_date,
+          c."howKnown" AS how_known,
+          c.aspect,
+          c.confidence,
+          e.label AS claim,
+          e2.label AS basis,
+          n3.name AS source_name,
+          n3.thumbnail AS source_thumbnail,
+          n3."nodeUri" AS source_link,
+          n3."descrip" AS source_description
+        FROM "Claim" c
+        INNER JOIN "Edge" e ON c.id = e."claimId"
+        INNER JOIN "Node" n1 ON e."startNodeId" = n1.id
+        LEFT JOIN "Edge" e2 ON e."endNodeId" = e2."startNodeId"
+        LEFT JOIN "Node" n3 ON e2."endNodeId" = n3.id
+        WHERE n1."entType" != 'CLAIM'
+          AND e.label != 'source'
+          AND c."effectiveDate" IS NOT NULL
+          AND c.statement IS NOT NULL
+          AND n1.name IS NOT NULL
+          AND n1.name != ''
+          AND (
+            c.statement ILIKE '%${search}%' OR
+            c."sourceURI" ILIKE '%${search}%' OR
+            c."subject" ILIKE '%${search}%' OR
+            n1.name ILIKE '%${search}%' OR
+            n3.name ILIKE '%${search}%' OR
+            n3."descrip" ILIKE '%${search}%'
+          )
+        ORDER BY c.id, c."effectiveDate" DESC
         LIMIT ${limit}
+        OFFSET ${offset}
       `;
-
-      const entries = await prisma.$queryRaw<FeedEntry[]>(rawQ);
-      return entries;
+      return await prisma.$queryRaw<FeedEntry[]>(rawQ);
     } catch (error) {
       console.error("Error fetching feed entries:", error);
       throw new Error("Failed to fetch feed entries");
     }
   };
+
 
   getNodeById = async (nodeId: number) => {
     return await prisma.node.findUnique({
