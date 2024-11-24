@@ -13,6 +13,7 @@ import { optimizeImage } from "./images";
 // Helper to check if S3 configuration is complete
 function isS3Configured(): boolean {
   return !!(
+    config?.s3 &&
     config.s3?.region &&
     config.s3?.accessKeyId &&
     config.s3?.secretAccessKey &&
