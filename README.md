@@ -197,18 +197,12 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
 <a name="Review"></a>
 
-## To review the server files
+## Prod deployment is manual
 
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
 
 ```
 Check vault for ssh creds, url is inserted above
-```
-
-cd into the project
-
-```
-cd /data/trust_claim_backend
 ```
 
 inspect the running file
@@ -218,13 +212,17 @@ pm2 status index
 pm2 logs index
 ```
 
-Run this command to check for possible changes in packages, and install changed packages.
+### Update from git and install dependencies
 
 ```
+cd /data/trust_claim_backend
+git pull
 npm i
 ```
 
-If there is any database migration, it is a good idea to backup the database.
+### If required, database migration
+
+If there is any database migration, it is a good idea to backup the database, otherwise you may skip this step.
 
 ```
 sudo su postgres
@@ -238,11 +236,15 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
+### Rebuild with changes
+
 Then, building the project is enough, because `pm2` is watching for changes.
 
 ```
 npm run build
 ```
+
+### DONE.  Troubleshooting:
 
 NOTE: Run this ONLY when the server is down
 
