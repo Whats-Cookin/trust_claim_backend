@@ -202,7 +202,7 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
 
 ```
-Check vault for ssh creds, url is inserted above
+Check vault for ssh creds to live.linkedtrust.us
 ```
 
 inspect the running file
