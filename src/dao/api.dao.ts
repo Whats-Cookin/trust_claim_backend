@@ -1,11 +1,16 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type Image, type Claim, type Edge, type Node, type ClaimData } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
+import { CreateClaimV2Dto } from "../middlewares/validators";
+import { ImageDto } from "../middlewares/validators/claim.validator";
+
+const MAX_POSSIBLE_CURSOR = "999999999999999999999999999999";
 
 interface ReportI {
   name: string;
   thumbnail: string;
+  image: string;
   link: string;
   claim_id: number;
   statement: string;
@@ -23,6 +28,19 @@ interface ReportI {
   source_link: string;
 }
 
+export type Report = {
+  edge: Edge & { startNode: Node; endNode: Node };
+  claim: {
+    claim: Claim;
+    claimData: ClaimData;
+    relatedNodes: Node[];
+    images: Image[];
+    image: string | null;
+  };
+  validations: ReportI[];
+  attestations: ReportI[];
+};
+
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
   createClaim = async (userId: any, rawClaim: any) => {
@@ -38,27 +56,68 @@ export class ClaimDao {
     return createdClaim;
   };
 
-  createImages = async (claimId: number, userId: any, images: any[]) => {
-    let claimImages: any[] = [];
+  async createClaimV2(userId: number, claim: CreateClaimV2Dto) {
+    const createdClaim = await prisma.claim.create({
+      data: {
+        issuerId: `${process.env.BASE_URL}/users/${userId}`,
+        issuerIdType: "URL",
+        subject: claim.subject,
+        amt: claim.amt,
+        claim: claim.claim,
+        object: claim.object,
+        statement: claim.statement,
+        aspect: claim.aspect,
+        howKnown: claim.howKnown,
+        sourceURI: claim.sourceURI,
+        effectiveDate: claim.effectiveDate,
+        confidence: claim.confidence,
+        stars: claim.stars,
+      },
+    });
 
-    if (images && images.length > 0) {
-      claimImages = await Promise.all(
-        images.map(async (img: any) => {
-          if (img.effectiveDate) {
-            img.effectiveDate = new Date(img.effectiveDate);
-          }
+    return createdClaim;
+  }
 
-          const image = await prisma.image.create({
-            data: {
-              claimId: claimId,
-              owner: `${process.env.BASE_URL}/users/${userId}`,
-              ...img,
-            },
-          });
-          return image;
+  async createImagesV2(claimId: number, userId: number, images: ImageDto[]): Promise<Image[]> {
+    if (!images.length) return [];
+
+    return prisma.$transaction(
+      images.map((x) =>
+        prisma.image.create({
+          data: {
+            ...x,
+            claimId: claimId,
+            owner: `${process.env.BASE_URL}/users/${userId}`,
+          },
         }),
-      );
+      ),
+    );
+  }
+
+  createImages = async (claimId: number, userId: number, images: any[]) => {
+    let claimImages: any[] = [];
+    const validImages = images.filter((img) => img.url && img.url.trim() !== "");
+
+    if (validImages.length === 0) {
+      return claimImages;
     }
+
+    claimImages = await Promise.all(
+      validImages.map(async (img: any) => {
+        if (img.effectiveDate) {
+          img.effectiveDate = new Date(img.effectiveDate);
+        }
+
+        const image = await prisma.image.create({
+          data: {
+            claimId: claimId,
+            owner: `${process.env.DATABASE_URL}/users/${userId}`,
+            ...img,
+          },
+        });
+        return image;
+      }),
+    );
 
     return claimImages;
   };
@@ -140,9 +199,7 @@ export class ClaimDao {
       },
     });
 
-    const nodeIds = new Set(
-      edges.flatMap((edge) => [edge.startNodeId, edge.endNodeId]),
-    );
+    const nodeIds = new Set(edges.flatMap((edge) => [edge.startNodeId, edge.endNodeId]));
 
     return prisma.node.findMany({
       where: {
@@ -163,10 +220,7 @@ export class ClaimDao {
 
     for (const claim of claims) {
       // Fetch claim data and images concurrently
-      const [data, images] = await Promise.all([
-        this.getClaimData(claim.id),
-        this.getClaimImages(claim.id),
-      ]);
+      const [data, images] = await Promise.all([this.getClaimData(claim.id), this.getClaimImages(claim.id)]);
       claimData.push({ data, claim, images });
     }
 
@@ -202,6 +256,14 @@ interface FeedEntry {
   image_metadata: any | null;
 }
 
+interface FeedEntryV3 {
+  name: string;
+  link: string;
+  claim_id: number;
+  statement: string | null;
+  stars: number | null;
+  effective_date: Date | null;
+}
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
   getNodes = async (page: number, limit: number) => {
@@ -337,6 +399,73 @@ export class NodeDao {
     }
   };
 
+  async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null) {
+    try {
+      query = query ? `%${query}%` : null;
+      cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
+
+      const rawQ = Prisma.sql`
+        WITH RankedClaims AS (
+          SELECT
+            n.name AS name,
+            n."nodeUri" AS link,
+            c.id AS claim_id,
+            c.statement AS statement,
+            c.stars AS stars,
+            c."effectiveDate" AS effective_date,
+            ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
+            CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+          FROM "Claim" c
+          INNER JOIN "Edge" AS e ON c.id = e."claimId"
+          INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+          WHERE
+            n."entType" != 'CLAIM'
+            AND e.label != 'source'
+            AND c."effectiveDate" IS NOT NULL
+            AND c.statement IS NOT NULL
+            AND n.name IS NOT NULL
+            AND n.name != ''
+            AND (
+              c.subject ILIKE COALESCE(${query}, '%') OR
+              c.statement ILIKE COALESCE(${query}, '%') OR
+              n.name ILIKE COALESCE(${query}, '%')
+            )
+          ORDER BY c."effectiveDate" DESC, c.id DESC
+        )
+        SELECT 
+          name,
+          link,
+          claim_id,
+          statement,
+          stars,
+          effective_date,
+          cursor
+        FROM RankedClaims
+        WHERE
+          row_num = 1
+          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
+        LIMIT ${limit}
+      `;
+
+      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
+
+      const lastCursor = claims.at(-1)?.cursor;
+      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+
+      for (let i = 0; i < claims.length; i++) {
+        delete claims[i].cursor;
+      }
+
+      return {
+        nextPage,
+        claims: claims as FeedEntryV3[],
+      };
+    } catch (error) {
+      console.error("Error fetching feed entries:", error);
+      throw new Error("Failed to fetch feed entries");
+    }
+  }
+
   getNodeById = async (nodeId: number) => {
     return await prisma.node.findUnique({
       where: {
@@ -450,11 +579,7 @@ export class NodeDao {
   };
 }
 
-export const GetClaimReport = async (
-  claimId: any,
-  offset: number,
-  limit: number,
-) => {
+export const GetClaimReport = async (claimId: any, offset: number, limit: number) => {
   const claimDao = new ClaimDao();
 
   const claim_as_node_uri = makeClaimSubjectURL(claimId);
@@ -513,9 +638,7 @@ export const GetClaimReport = async (
   // the subject of the claim is claim.subject, not the url of the claim itself
   const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(
-        claimId,
-      )}
+      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -558,5 +681,5 @@ export const GetClaimReport = async (
     },
     validations,
     attestations,
-  };
+  } as Report;
 };
