@@ -344,7 +344,7 @@ export class NodeDao {
             AND c.statement IS NOT NULL
             AND n1.name IS NOT NULL
             AND n1.name != ''
-          ORDER BY c.id, c."effectiveDate" DESC
+          ORDER BY c.id DESC, c."effectiveDate" DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;

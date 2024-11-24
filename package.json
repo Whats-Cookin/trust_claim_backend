@@ -14,9 +14,8 @@
     "migrate:dev": "dotenv -e .env.dev -- npx prisma migrate dev --name postgres-init",
     "migrate:postgres": "dotenv -e .env.test -- npx prisma migrate deploy",
     "prisma:studio": "dotenv -e .env.dev -- npx prisma studio",
-    "format": "prettier -w ./src/**/* -w ./docs/**/* -w ./*.md -w ./**/*.md",
-    "lint": "eslint . --fix",
     "format": "prettier -w ./src/**/*",
+    "lint": "eslint . --fix",
     "test": "jest"
   },
   "author": "",
@@ -43,9 +42,11 @@
     "key-did-resolver": "^2.0.4",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "s3": "^4.4.0",
     "sharp": "^0.33.5",
     "uint8arrays": "^3.0.0",
     "ulid": "^2.3.0",
+    "yaml": "^2.6.1",
     "zod": "^3.21.4"
   },
   "engines": {
