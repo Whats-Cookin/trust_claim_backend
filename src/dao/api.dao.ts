@@ -510,6 +510,7 @@ export class NodeDao {
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
       OR: [
+        { id: { equals: parseInt(search, 10) } },
         { name: { contains: search, mode: "insensitive" } },
         { descrip: { contains: search, mode: "insensitive" } },
         { nodeUri: { contains: search, mode: "insensitive" } },
