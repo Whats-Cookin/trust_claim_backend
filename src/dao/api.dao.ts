@@ -536,99 +536,63 @@ export class NodeDao {
   };
 
 
-  /* Get the graph centered on one claim */
-  getClaimGraph = async (claimId: string | number) => {
-    // First find the edge id from the claim id
-    const edge = await prisma.edge.findFirst({
-      where: { 
-        claimId: typeof claimId === 'string' ? parseInt(claimId, 10) : claimId 
-      },
-      select: { id: true }
-    });
-
-    if (!edge) {
-      throw new Error('Claim not found');
+const getClaimGraph = async (claimId: string | number) => {
+  const parsedClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId;
+  
+  // First get the main edge with its direct nodes
+  const mainEdge = await prisma.edge.findFirst({
+    where: {
+      claimId: parsedClaimId
+    },
+    include: {
+      startNode: true,
+      endNode: true,
+      claim: true
     }
+  });
 
-    const mainEdge = await prisma.edge.findUnique({
-      where: { id: edge.id },
-      include: {
-        startNode: {
-          include: {
-            edgesFrom: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
-            },
-            edgesTo: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
-            }
-          }
-        },
-        endNode: {
-          include: {
-            edgesFrom: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
-            },
-            edgesTo: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
-            }
-          }
-        }
+  if (!mainEdge) {
+    throw new Error('Claim not found');
+  }
+
+  // Get immediate connections for both nodes
+  const connectedEdges = await prisma.edge.findMany({
+    where: {
+      OR: [
+        { startNodeId: mainEdge.startNodeId },
+        { endNodeId: mainEdge.startNodeId },
+        { startNodeId: mainEdge.endNodeId },
+        { endNodeId: mainEdge.endNodeId }
+      ],
+      NOT: {
+        id: mainEdge.id
       }
-    });
-    
-    if (!mainEdge) {
-      throw new Error('Edge not found');
+    },
+    take: 10,
+    orderBy: {
+      id: 'desc'
+    },
+    include: {
+      startNode: true,
+      endNode: true,
+      claim: true
     }
+  });
 
-    // Collect all unique nodes
-    const nodes = new Set([
-      mainEdge.startNode,
-      mainEdge.endNode,
-      ...mainEdge.startNode.edgesFrom.flatMap(e => [e.startNode, e.endNode].filter(Boolean)),
-      ...mainEdge.startNode.edgesTo.flatMap(e => [e.startNode, e.endNode].filter(Boolean)),
-      ...(mainEdge.endNode?.edgesFrom.flatMap(e => [e.startNode, e.endNode].filter(Boolean)) ?? []),
-      ...(mainEdge.endNode?.edgesTo.flatMap(e => [e.startNode, e.endNode].filter(Boolean)) ?? [])
-    ].filter(Boolean));
+  // Collect all unique nodes, maintaining exactly the same structure
+  const nodes = new Set([
+    mainEdge.startNode,
+    mainEdge.endNode,
+    ...connectedEdges.map(e => e.startNode),
+    ...connectedEdges.map(e => e.endNode)
+  ].filter(Boolean));
 
-    // Collect all edges
-    const edges = [
-      mainEdge,
-      ...mainEdge.startNode.edgesFrom,
-      ...mainEdge.startNode.edgesTo,
-      ...(mainEdge.endNode?.edgesFrom ?? []),
-      ...(mainEdge.endNode?.edgesTo ?? [])
-    ];
-
-    return {
-      nodes: Array.from(nodes),
-      edges
-    };
+  // Return in exactly the same format as before
+  return {
+    nodes: Array.from(nodes),
+    edges: [mainEdge, ...connectedEdges]
   };
-
+};
 
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
