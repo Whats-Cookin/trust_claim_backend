@@ -1,14 +1,41 @@
+import { z } from "zod";
 import Joi from "joi";
 import { Request, Response, NextFunction } from "express";
 import { passToExpressErrorHandler } from "../../utils";
+import { NotEmpty } from "../../types/utils";
+import { HowKnown } from "@prisma/client";
 
-const claimPostSchema = Joi.object({
+export function joiValidator(schema: Joi.Schema) {
+  return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
+    try {
+      await schema.validateAsync(req.body);
+      next();
+    } catch (err: any) {
+      err.statusCode = 400;
+      passToExpressErrorHandler(err, next);
+    }
+  };
+}
+
+export function zodValidator(schema: z.Schema) {
+  return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
+    try {
+      req.body = await schema.parse(req.body);
+      next();
+    } catch (err: any) {
+      err.statusCode = 422;
+      passToExpressErrorHandler(err.errors, next);
+    }
+  };
+}
+
+export const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
-  issuerId: Joi.string().allow(""),
-  object: Joi.string().allow(""),
+  issuerId: Joi.string().allow("", null),
+  object: Joi.string().allow("", null),
   statement: Joi.string().allow(""),
-  aspect: Joi.string().allow(""),
+  aspect: Joi.string().allow("", null),
   amt: Joi.alternatives().try(
     Joi.string()
       .allow("")
@@ -23,19 +50,19 @@ const claimPostSchema = Joi.object({
         }
         return numberValue; // Return the converted number
       }),
-    Joi.number()
+    Joi.number(),
   ),
   name: Joi.string().required(),
-  howKnown: Joi.string().allow(""),
+  howKnown: Joi.string().allow("", null),
   images: Joi.array().items(
     Joi.object({
       url: Joi.string().required(),
       metadata: Joi.object().allow(null).pattern(/.*/, Joi.any()),
       effectiveDate: Joi.date().allow(null),
       digestMultibase: Joi.string().allow(null),
-      signature: Joi.string().required(),
-      owner: Joi.string().required(),
-    })
+      signature: Joi.string().allow(null),
+      owner: Joi.string().allow(null),
+    }),
   ),
   sourceURI: Joi.string().allow(""),
   effectiveDate: Joi.date(),
@@ -54,23 +81,83 @@ const claimPostSchema = Joi.object({
       value > 5.0
     ) {
       throw new Error(
-        'When claim is "rated" and the claim is from a quality aspect, rating "stars" must be a value between 0 and 5'
+        'When claim is "rated" and the claim is from a quality aspect, rating "stars" must be a value between 0 and 5',
       );
     }
     return true;
   }),
 });
 
-export const claimPostValidator = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-) => {
-  try {
-    await claimPostSchema.validateAsync(req.body);
-    next();
-  } catch (err: any) {
-    err.statusCode = 400;
-    passToExpressErrorHandler(err, next);
-  }
+export type ImageDto = {
+  url: string;
+  metadata?: {
+    description?: string;
+    caption?: string;
+  };
+  digestedMultibase?: string;
+  effectiveDate: Date;
+  signature: string;
 };
+
+export const CreateClaimV2Dto = z
+  .object({
+    subject: z.string(),
+    claim: z.string(),
+    object: z.string().optional(),
+    statement: z.string().optional(),
+    aspect: z.string().optional(),
+    amt: z
+      .number()
+      .or(
+        z
+          .string()
+          .regex(/\s*\$\s*\d+\s*/)
+          .transform(stripCurrencyToFloat),
+      )
+      .optional(),
+    name: z.string(),
+    howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
+    sourceURI: z.string().optional(),
+    effectiveDate: z.coerce.date().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    claimAddress: z.string().optional(),
+    stars: z.number().min(0).optional(),
+
+    images: z.array(
+      z.object({
+        metadata: z
+          .object({
+            description: z.string().nullable().optional(),
+            caption: z.string().nullable().optional(),
+          })
+          .optional(),
+        effectiveDate: z.coerce.date().optional(),
+        digestMultibase: z.string().nullable().optional(),
+      }),
+    ),
+  })
+  .refine(validateStars, {
+    message:
+      'When claim is "rated" and the claim is from a quality aspect, rating "stars" must be a value between 0 and 5',
+    path: ["stars"],
+  });
+export type CreateClaimV2Dto = z.infer<typeof CreateClaimV2Dto>;
+
+function stripCurrencyToFloat(val: string): number | null {
+  const strippedValue = val.replace(/\$|\s+/g, "");
+  const num = parseFloat(strippedValue);
+  if (Number.isNaN(num)) {
+    return null;
+  }
+  return num;
+}
+
+function validateStars(data: Record<string, unknown>): boolean {
+  return !(
+    data.claim &&
+    data.claim === "rated" &&
+    data.aspect &&
+    (data.aspect as string | undefined)?.includes("quality:") &&
+    (data.stars as number) > 5
+  );
+}

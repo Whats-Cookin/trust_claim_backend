@@ -1,22 +1,18 @@
-import { NextFunction } from 'express';
-import JWT from 'jsonwebtoken';
+import { NextFunction } from "express";
+import JWT from "jsonwebtoken";
 
-export const generateJWT = (
-  userId: number,
-  email: string,
-  tokenType: 'access' | 'refresh'
-): string => {
+export const generateJWT = (userId: number, email: string, tokenType: "access" | "refresh"): string => {
   try {
     let secretVar: string;
     let expiresIn: string | undefined;
     switch (tokenType) {
-      case 'access':
-        secretVar = 'ACCESS_SECRET';
-        expiresIn = '1d';
+      case "access":
+        secretVar = "ACCESS_SECRET";
+        expiresIn = "1d";
         break;
-      case 'refresh':
-        secretVar = 'REFRESH_SECRET';
-        expiresIn = '1y';
+      case "refresh":
+        secretVar = "REFRESH_SECRET";
+        expiresIn = "1y";
         break;
     }
 
@@ -24,8 +20,8 @@ export const generateJWT = (
     const payload = { email };
     const options = {
       expiresIn,
-      issuer: 'trustclaims.whatscookin.us',
-      audience: String(userId)
+      issuer: "trustclaims.whatscookin.us",
+      audience: String(userId),
     };
 
     const token = JWT.sign(payload, secret, options);
@@ -37,10 +33,7 @@ export const generateJWT = (
 };
 
 export const verifyRefreshToken = (refreshToken: string) => {
-  const decoded = JWT.verify(
-    refreshToken,
-    process.env.REFRESH_SECRET as string as string
-  );
+  const decoded = JWT.verify(refreshToken, process.env.REFRESH_SECRET as string as string);
   const { email, aud: userId } = decoded as JWTDecoded;
   return { email, userId };
 };
@@ -49,22 +42,23 @@ export const passToExpressErrorHandler = (err: any, next: NextFunction) => {
   if (!err.statusCode) {
     err.statusCode = 500;
     console.log(err.message);
-    err.message = 'Could not process the request, check inputs and try again';
+    err.message = "Could not process the request, check inputs and try again";
   }
   next(err);
 };
 
-export const turnFalsyPropsToUndefined = (obj: { [key: string]: any }) => {
-  const newObj = { ...obj };
-  const newObjAsArray = Object.entries(newObj);
+export function turnFalsyPropsToUndefined<T extends Record<keyof any, unknown>>(obj: T): Partial<T> {
+  const newObj = structuredClone(obj);
 
-  newObjAsArray.forEach(([key, val]) => {
+  for (const [key, val] of Object.entries(newObj)) {
     if (!val) {
+      // @ts-expect-error ignore type for the new object
       newObj[key] = undefined;
     }
-  });
+  }
+
   return newObj;
-};
+}
 
 interface Mapping {
   [key: string]: {
@@ -74,7 +68,7 @@ interface Mapping {
 
 // handle common mis-keys
 const SIMILAR_MAP: Mapping = {
-  howKnown: { website: 'WEB_DOCUMENT', WEBSITE: 'WEB_DOCUMENT' }
+  howKnown: { website: "WEB_DOCUMENT", WEBSITE: "WEB_DOCUMENT" },
 };
 
 export const poormansNormalizer = (obj: { [key: string]: any }) => {
@@ -91,4 +85,14 @@ export const poormansNormalizer = (obj: { [key: string]: any }) => {
 
 export const makeClaimSubjectURL = (claimId: string) => {
   return `https://live.linkedtrust.us/claims/${claimId}`;
+};
+
+export const decodeGoogleCredential = (accessToken: string) => {
+  const { name, email, sub } = JWT.decode(accessToken) as GoogleCredentialDecoded;
+
+  return {
+    name,
+    email,
+    googleId: sub,
+  };
 };
