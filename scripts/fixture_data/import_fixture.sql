@@ -1,11 +1,5 @@
 BEGIN;
-
-ALTER TABLE "Node" ALTER COLUMN descrip DROP NOT NULL;
-
-
-\copy "Node" FROM '/fixture_data/nodes.txt' WITH (FORMAT csv, DELIMITER '|');
-\copy "Edge" FROM '/fixture_data/edges.txt' WITH (FORMAT csv, DELIMITER '|');
-\copy "Claim" FROM '/fixture_data/claims.txt' WITH (FORMAT csv, DELIMITER '|');
-
-
+\copy "Node" (id,nodeUri,name,entType,descrip,image,thumbnail) FROM 'nodes.txt' WITH (FORMAT csv, DELIMITER '|');
+\copy "Edge" (id,startNodeId,endNodeId,label,thumbnail,claimId) FROM 'edges.txt' WITH (FORMAT csv, DELIMITER '|');
+\copy "Claim" (id,subject,claim,object,statement,effectiveDate,sourceURI,howKnown,dateObserved,digestMultibase,author,curator,aspect,score,stars,amt,unit,howMeasured,intendedAudience,respondAt,confidence,issuerId,issuerIdType,claimAddress,proof,createdAt,lastUpdatedAt) FROM 'claims.txt' WITH (FORMAT csv, DELIMITER '|');
 COMMIT;
