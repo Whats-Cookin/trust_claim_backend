@@ -35,13 +35,7 @@ https://www.linkedin.com/feed/update/urn:li:activity:7192648658339647488/
 33923|https://voiceofachild.org|rated||we have English and computer training
 33929|https://live.linkedtrust.us/claims/33830|rated||It was really good trainings .
 118499|https://www.amurt.net|impact||In Ebonyi, Nigeria, Amurt ( which is the organization that works in providing help to people) work to provide good health to people of Ebonyi state.
-The work with hospitals within the state to achieve this. They have been doing since 2010.
-The help to provide solid health care to baby and mother that have complication in child delivery. They foot the bills and make sure that both the mother and child are healthy as they stay in the hospital.
-They also cater for care that are extreme and need treatment asap by using their ambulance for quick response. They can also pay for the bills for this too.
-Sometime they visit hospital to fund people that can pay for their bills so that can be discharged. They have representative of themselves in several hospital and they are across the state of Ebonyi.
-In summary, they exist to make sure people have a sound health care with small or no cost.
 33594|https://VoiceOfAChild.org|impact||Voice of a Child donated $6500 to create a computer learning center in Jarablus, Syria starting with 36 students.
-These young men and women are learning job skills and have Internet access in a secure location.
 33075|https://lifesapitch.io/|rated||And, Ro has continued to be an incredibly valuable collaborator to our team, offering quick insights and help and genuinely sensitive to our needs and position.
 33920|https://voiceofachild.org|rated||thank your for your help VOC
 118505|https://live.linkedtrust.us/claims/118502|rated||I spoke with Alice and she indicated that she was given a sum of 30 thousand naira to start a groundnut business in 2016, and she is still in the business.
@@ -49,4 +43,3 @@ These young men and women are learning job skills and have Internet access in a 
 33931|https://live.linkedtrust.us/claims/33830|rated||it was great trainings , thank you very much VOC .
 118542|https://live.linkedtrust.us/claims/118541|rated||
 33922|https://live.linkedtrust.us/claims/33830|agree||
-(38 rows)

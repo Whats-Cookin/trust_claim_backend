@@ -1,7 +1,5 @@
 647|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|ORGANIZATION|
 4012|https://www.linkedin.com/in/goldavelez/|https://www.linkedin.com/in/goldavelez/|ORGANIZATION|
-4017|https://live.linkedtrust.us/claims/33075|rated|CLAIM|5 out of 5
-And, Ro has continued to be an incredibly valuable collaborator to our team, offering quick insights and help and genuinely sensitive to our needs and position.
 4029|https://noo.network/user/455d0177-280b-4659-a287-8a36cdb0f7d4|Powered by NooNet|ORGANIZATION|
 4762|https://voiceofachild.org|Voice of a Child|ORGANIZATION|
 4764|https://live.linkedtrust.us/claims/33594|impact|CLAIM|
@@ -53,4 +51,3 @@ it was great trainings
 I spoke to Mohammed several times during this time and am confident he disbursed the money to families and to a school.
 215184|https://live.linkedtrust.us/claims/33925|rated|CLAIM|
 لقد حضرت تدريب في اللغة الانكليزية و الحاسوب وقد كان ممتع جدا ومفيد
-(28 rows)

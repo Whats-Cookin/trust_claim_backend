@@ -21,16 +21,16 @@ function isS3Configured(): boolean {
   );
 }
 
-// Initialize S3 client only if properly configured
-export const s3Client: S3Client | null = isS3Configured()
+export const s3Client: S3Client | null = config.s3?.accessKeyId && config.s3?.secretAccessKey
   ? new S3Client({
-      region: config.s3.region,
+      region: config.s3?.region ?? 'us-east-1',
       credentials: {
         accessKeyId: config.s3.accessKeyId,
         secretAccessKey: config.s3.secretAccessKey,
       },
     })
   : null;
+
 
 export async function uploadImageToS3(
   filename: string,
@@ -48,7 +48,7 @@ export async function uploadImageToS3(
       Key: filename,
       Body: optimizedImage,
       ContentType: file.mimetype,
-      Bucket: config.s3.bucketName,
+      Bucket: config?.s3?.bucketName,
     };
     const command = new PutObjectCommand(params);
     await s3Client.send(command);
@@ -62,8 +62,7 @@ export async function uploadImageToS3(
 }
 
 export async function getS3SignedUrl(filename: string): Promise<string | null> {
-  // If S3 is not configured, return null
-  if (!s3Client || !isS3Configured()) {
+  if (!s3Client || !config.s3?.bucketName) {
     console.warn('S3 is not configured. Cannot generate signed URL.');
     return null;
   }
