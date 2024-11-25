@@ -17,3 +17,12 @@ On your local development machine:
 ```
 psql claim -f insert_fixture.sql
 ```
+
+Or if using postgres in a docker container,
+
+```
+
+docker cp insert_fixture.sql postgres:/insert_fixture.sql
+
+docker exec -it postgres psql -U postgres -d claim -f /insert_fixture.sql
+```
