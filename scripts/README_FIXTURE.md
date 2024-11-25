@@ -22,7 +22,7 @@ Or if using postgres in a docker container,
 
 ```
 
-docker cp insert_fixture.sql postgres:/insert_fixture.sql
+docker cp import_fixture.sql nodes.txt claims.txt edges.txt postgres:/insert_fixture.sql
 
-docker exec -it postgres psql -U postgres -d claim -f /insert_fixture.sql
+docker exec -it postgres psql -U postgres -d claim -f /import_fixture.sql
 ```
