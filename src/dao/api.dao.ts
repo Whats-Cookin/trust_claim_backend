@@ -344,7 +344,7 @@ export class NodeDao {
             AND c.statement IS NOT NULL
             AND n1.name IS NOT NULL
             AND n1.name != ''
-          ORDER BY c.id, c."effectiveDate" DESC
+          ORDER BY c.id DESC, c."effectiveDate" DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;
@@ -392,7 +392,7 @@ export class NodeDao {
             n3.name ILIKE '%${search}%' OR
             n3."descrip" ILIKE '%${search}%'
           )
-        ORDER BY c.id, c."effectiveDate" DESC
+        ORDER BY c.id DESC, c."effectiveDate" DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;

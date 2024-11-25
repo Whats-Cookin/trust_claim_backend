@@ -1,0 +1,175 @@
+id|nodeUri|name|entType|descrip|image|thumbnail
+647|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|ORGANIZATION|||
+4012|https://www.linkedin.com/in/goldavelez/|https://www.linkedin.com/in/goldavelez/|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__www.linkedin.com_in_goldavelez_.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=pVOKVXKV0sLwyINPg4WwHpPwDBg%3D&Expires=1686590169
+4017|https://live.linkedtrust.us/claims/33075|rated|CLAIM|5 out of 5
+And, Ro has continued to be an incredibly valuable collaborator to our team, offering quick insights and help and genuinely sensitive to our needs and position.||
+4029|https://noo.network/user/455d0177-280b-4659-a287-8a36cdb0f7d4|Powered by NooNet|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__noo.network_user_455d0177-280b-4659-a287-8a36cdb0f7d4.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=D28gzAmi6erJgc3%2FtJGXchp3lBk%3D&Expires=1687406766
+4762|https://voiceofachild.org|Voice of a Child|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__voiceofachild.org.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=hXZzR5TUWNNPfeFjH0pidVvAlWI%3D&Expires=1693876389
+4764|https://live.linkedtrust.us/claims/33594|impact|CLAIM|
+Voice of a Child donated $6500 to create a computer learning center in Jarablus, Syria starting with 36 students.
+
+These young men and women are learning job skills and have Internet access in a secure location.||
+9767|https://live.linkedtrust.us/claims/33830|**** educational impact|CLAIM|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__voiceofachild.org_33830.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=jTd47YjEht6OQaKy%2FlKEbuGWITY%3D&Expires=1703480349
+214889|https://www.linkedin.com/in/kenechukwu-orjiene/|https://www.linkedin.com/in/kenechukwu-orjiene/|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__www.linkedin.com_in_kenechukwu-orjiene_.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=Sa%2Bk98POwAHhYt7We0cL1RY%2BUzs%3D&Expires=1706913150
+214918|https://www.amurt.net/safeguarding-the-lives-of-women-and-children/|Safeguarding lives of women & children|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__www.amurt.net_safeguarding-the-lives-of-women-and-children_.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=EqRLzIjJ5ZPdLmWyNLNA%2BeU7Ay8%3D&Expires=1714752563
+214921|https://live.linkedtrust.us/claims/118500|rated|CLAIM|
+On the 3rd of March 2024, I visited AMURT in Ebonyi, Nigeria to check out the facilities and work they do. I was blowed away by their achievement due the way they converted health centers to a mini hospital. I spoke with some beneficiary of this project and not only them but the community has been glad since the beginning of the project.
+
+I visited some health center and check them out.|https://trustclaims-images.s3.us-west-1.amazonaws.com/IMG_20240503_144203.jpeg|
+214922|https://live.linkedtrust.us/claims/118501|rated|CLAIM|
+On the 3rd of May, 2024, I visit AMURT in Ebonyi, Nigeria. I was blown away with what they are doing and have done there. They have succeeded in converting some local health center to a standard ones. 
+
+I visited some of their health centers and spoke with some beneficiaries, not only the beneficiaries but also the communities was happy with the project so far. 
+
+Their impact on the people of Ebonyi have been great.|https://trustclaims-images.s3.us-west-1.amazonaws.com/1714738074246.jpeg|
+214925|https://live.linkedtrust.us/claims/118502|Safeguarding lives of women & children|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__www.amurt.net_safeguarding-the-lives-of-women-and-children__118502.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=oN%2B2YXgug4LDY46Ndm0tRDr9xac%3D&Expires=1714866007
+214933|https://live.linkedtrust.us/claims/118508|rated|CLAIM|5 out of 5
+Molly was able to do design on a hard problem we had that had confused others, appreciate her work on the design of this app to improve the feed - check back to see the results soon||
+214978|https://live.linkedtrust.us/claims/118537|related_to|CLAIM|
+Golda Velez is the Co-founder of WhatsCookin.us ( https://www.whatscookin.us/ ) and LinkedTrust (https://live.linkedtrust.us/) and she is very energetic and professional.||
+214983|https://live.linkedtrust.us/claims/118537|Trust Claims|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__live.linkedtrust.us_claims_118537.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=cIVpjn5gRvqDooyLXxAoah8g0yI%3D&Expires=1716285005
+214986|https://live.linkedtrust.us/claims/118541|Trust Claims|ORGANIZATION|||https://trustclaims-images.s3.amazonaws.com/thumbnails/https%3A__live.linkedtrust.us_claims_118541.png?AWSAccessKeyId=AKIARE2JHLTLJ5M7M5NF&Signature=FFDzfPdCz2lmV9qmVdF7nMdHN1U%3D&Expires=1716461104
+214991|https://www.amurt.net|AMURT Disaster Relief – Development Cooperation|ORGANIZATION|||
+214992|https://live.linkedtrust.us/claims/118499|impact|CLAIM|
+In Ebonyi, Nigeria, Amurt ( which is the organization that works in providing help to people) work to provide good health to people of Ebonyi state.
+The work with hospitals within the state to achieve this. They have been doing since 2010.
+The help to provide solid health care to baby and mother that have complication in child delivery. They foot the bills and make sure that both the mother and child are healthy as they stay in the hospital.
+They also cater for care that are extreme and need treatment asap by using their ambulance for quick response. They can also pay for the bills for this too.
+Sometime they visit hospital to fund people that can pay for their bills so that can be discharged. They have representative of themselves in several hospital and they are across the state of Ebonyi.
+In summary, they exist to make sure people have a sound health care with small or no cost.||
+214995|https://live.linkedtrust.us/claims/118546|rated|CLAIM|
+My name is Ani Peter Benjamin, and I am a software engineer with the LinkedTrust team. In early May 2024, I traveled to Ebonyi State with Orjiene Kenechukwu to observe the remarkable work being done by AMURT in the community. As a Nigerian, I am delighted to see the significant improvements in underdeveloped communities.
+
+AMURT's strategies to combat poverty in rural areas, such as providing innovative cooperative ideas, have greatly assisted local women in taking better care of their families. Additionally, AMURT has established awareness groups to educate women on proper childbearing practices and to engage the youth in educational initiatives.
+
+The impact of AMURT's efforts on Ebonyi State has been profoundly positive, especially in their health centers. I am personally impressed and supportive of the progress they have made.|https://trustclaims-images.s3.us-west-1.amazonaws.com/IMG_20240503_130439.jpeg|
+214998|https://live.linkedtrust.us/claims/118548|rated|CLAIM|||
+215154|https://live.linkedtrust.us/claims/33923|rated|CLAIM|4 out of 5
+we have English and computer training||
+215155|https://live.linkedtrust.us/claims/33835|rated|CLAIM|5 out of 5
+Agnes Koinage is a skilled, grounded and reliable software developer with Typescript and web3 skills.https://www.linkedin.com/in/goldavelez/||
+215159|https://live.linkedtrust.us/claims/33920|rated|CLAIM|5 out of 5
+thank your for your help VOC||
+215167|https://live.linkedtrust.us/claims/33818|impact|CLAIM|
+Billy Bicket at TechSoup gave some really great advice and strategy during a 1 hr, extremely valuable.||
+215177|https://live.linkedtrust.us/claims/33921|rated|CLAIM|5 out of 5
+سعيد جدا بالتدريبات||
+215179|https://live.linkedtrust.us/claims/33924|related_to|CLAIM|
+it was great trainings||
+215183|https://live.linkedtrust.us/claims/33918|rated|CLAIM|
+I spoke to Mohammed several times during this time and am confident he disbursed the money to families and to a school.||
+215184|https://live.linkedtrust.us/claims/33925|rated|CLAIM|
+لقد حضرت تدريب في اللغة الانكليزية و الحاسوب وقد كان ممتع جدا ومفيد||
+(28 rows)
+id|startNodeId|endNodeId|label|thumbnail|claimId
+915|648|647|source||9926
+917|649|647|source||9927
+4548|4017|4012|source||33075
+4560|4012|4029|same_as||33095
+4561|4012|4029|same_as||33096
+5741|4029|4030|same_as||33305
+5777|4012|647|same_as||33306
+419245|214925|214927|rated||118505
+419246|214925|214928|rated||118506
+419249|214932|214933|rated||118508
+419250|214933|4012|source||118508
+419251|214925|214934|rated||118509
+419293|4012|214978|related_to||118537
+419294|214978|214976|source||118537
+419298|214983|214984|rated||118540
+419301|214986|214987|rated||118542
+419305|214991|214992|impact||118499
+419306|214992|214918|source||118499
+419307|214992|214921|rated||118500
+419308|214992|214922|rated||118501
+419309|214918|214925|impact||118502
+419310|214925|214889|source||118502
+419313|214991|214986|rated||118541
+419314|214986|4012|source||118541
+419318|4012|214983|related_to||118537
+419319|214983|214976|source||118537
+419320|214922|214889|source||118501
+419321|214992|214995|rated||118546
+419323|214992|214998|rated||118548
+419324|214986|214999|rated||118549
+419502|9767|215148|agree||33919
+419508|9767|215153|agree||33922
+419509|4762|215154|rated||33923
+419510|5021|215155|rated||33835
+419511|215155|4012|source||33835
+419512|9767|215156|rated||33931
+419515|4762|215159|rated||33920
+419524|4995|215167|impact||33818
+419525|215167|4012|source||33818
+419530|9767|215170|rated||33932
+419537|4762|215177|rated||33921
+419540|4762|215179|related_to||33924
+419545|644|215183|rated||33918
+419546|215183|4012|source||33918
+419547|4762|9767|rated||33830
+419548|4762|215184|rated||33925
+419551|9767|215186|rated||33929
+419553|4762|4764|impact||33594
+419554|4764|4012|source||33594
+419555|4762|214991|impact||118550
+(50 rows)
+id|subject|claim|object|statement|effectiveDate|sourceURI|howKnown|dateObserved|digestMultibase|author|curator|aspect|score|stars|amt|unit|howMeasured|intendedAudience|respondAt|confidence|issuerId|issuerIdType|claimAddress|proof|createdAt|lastUpdatedAt
+9926|https://linkedtrust.us/claims/992|verified||I have spoken to Mohammed who gave these funds directly to the recipient on the ground in Jarablus|2023-03-05 00:00:00|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|FIRST_HAND||||||||||||||||kjzl6kcym7w8y9821wp6wnpl45pxfaessare1jm8ibn4m8hij9ygnkewbfduhac||2023-04-12 10:18:38.32|2023-04-12 10:18:38.32
+9927|https://live.linkedtrust.us/claims/9924|verified||I have spoken to Mohammed who gave these funds directly to the recipient on the ground in Jarablus|2023-03-05 00:00:00|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|SECOND_HAND||||||||||||||||||2023-04-12 10:23:36.504|2023-04-12 10:23:36.504
+33075|https://lifesapitch.io/|rated||And, Ro has continued to be an incredibly valuable collaborator to our team, offering quick insights and help and genuinely sensitive to our needs and position.|2023-06-15 23:18:55.344|https://www.linkedin.com/in/goldavelez/|FIRST_HAND|||||quality:relevance||5||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y7i8jqm175uiixdassl7twnj2l4hz4v3xwyd340fyau4qqfa8kp||2023-06-15 23:20:11.482|2023-06-15 23:20:11.482
+33095|https://www.linkedin.com/in/goldavelez/|same_as|https://noo.network/user/455d0177-280b-4659-a287-8a36cdb0f7d4|this is me!  in both places|2023-06-22 03:03:17.062||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y53aslmc2h8edybcx1ajncrtf0c8t2oy89ojvz1drniqw7vc141||2023-06-22 03:05:11.001|2023-06-22 03:05:11.001
+33096|https://www.linkedin.com/in/goldavelez/|same_as|https://noo.network/user/455d0177-280b-4659-a287-8a36cdb0f7d4|this is me! in both places|2023-06-22 03:05:52.88||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y66u0xhmcn46iugmhzxkysr0ouuev1etyiu7wbekyaq6amlu9hj||2023-06-22 03:06:20.816|2023-06-22 03:06:20.816
+33305|https://noo.network/api/murmur/network/455d0177-280b-4659-a287-8a36cdb0f7d4|same_as|https://noo.network/user/455d0177-280b-4659-a287-8a36cdb0f7d4|One is the user friendly NooNet and the other is the api, they are both same data - me!|2023-06-22 04:12:20.004||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y7v2h15n7c00w7b2urgr8defsuwtyrgyo9q14hk0a09x15spbeq||2023-06-22 04:12:47.663|2023-06-22 04:12:47.663
+33306|https://www.linkedin.com/in/goldavelez/|same_as|0x3176Dd992793ae9C50b92fE09E1bb7CcCdFF8016|my wallet and my linked in|2023-06-22 04:14:09.677||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y9r9hp6c7ag630hrirgsj9dt9uygoxm80niwlhaawznay1p9faa||2023-06-22 04:14:33.29|2023-06-22 04:14:33.29
+33594|https://VoiceOfAChild.org|impact||Voice of a Child donated $6500 to create a computer learning center in Jarablus, Syria starting with 36 students.
+
+These young men and women are learning job skills and have Internet access in a secure location.|2023-09-05 05:52:14.163|https://www.linkedin.com/in/goldavelez/|FIRST_HAND||||||||6500|||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y7eiidlqgeagbmygujcsn9wxx91eejqg5j53b8qr0lqpr8fw353||2023-09-05 05:53:05.046|2023-09-05 05:53:05.046
+33818|https://techsoup.org|impact||Billy Bicket at TechSoup gave some really great advice and strategy during a 1 hr, extremely valuable.|2023-09-12 17:32:06.883|https://www.linkedin.com/in/goldavelez/|FIRST_HAND||||||||200|||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y9a6jpggud2ev31v8u29gprh8cyfdbw4434puqqiol7liv82jrv||2023-09-12 17:33:34.703|2023-09-12 17:33:34.703
+33830|https://voiceofachild.org|rated|||2023-09-27 14:58:51.451||FIRST_HAND|||||impact:educational||4|||||||http://trustclaims.whatscookin.us/users/0|URL|||2023-09-27 15:00:34.693|2023-09-27 15:00:34.693
+33835|https://www.linkedin.com/in/agnes-koinange|rated||Agnes Koinage is a skilled, grounded and reliable software developer with Typescript and web3 skills.https://www.linkedin.com/in/goldavelez/|2023-10-16 20:14:47.427|https://www.linkedin.com/in/goldavelez/|FIRST_HAND|||||quality:technical||5||||||0.9|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y9zszmqypq8tl72lw0erewzcd3dcltpyr03agbk9f6wj96hhjws||2023-10-16 20:16:33.729|2023-10-16 20:16:33.729
+33918|https://live.linkedtrust.us/claims/9924|rated||I spoke to Mohammed several times during this time and am confident he disbursed the money to families and to a school.|2023-11-09 23:10:43.539|https://www.linkedin.com/in/goldavelez/|SECOND_HAND|||||||||||||0.99|http://trustclaims.whatscookin.us/users/0|URL|||2023-11-09 23:11:56.122|2023-11-09 23:11:56.122
+33919|https://live.linkedtrust.us/claims/33830|agree||it was amazing trainings|2023-11-23 12:26:06.23||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|||2023-11-23 12:27:04.632|2023-11-23 12:27:04.632
+33920|https://voiceofachild.org|rated||thank your for your help VOC|2023-11-23 12:30:19.617||FIRST_HAND|||||quality:fun||5||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y8flj3o8499qapgc0ox8hklzum21ubtp40x4szw5uj15ddeo1aw||2023-11-23 12:31:35.459|2023-11-23 12:31:35.459
+33921|https://voiceofachild.org|rated||سعيد جدا بالتدريبات|2023-11-23 12:39:59.266||SECOND_HAND|||||impact:educational||5||||||1|http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y9abqbpannt1emxi1cfpe2u818uygmvj4lp4rl41qs1tw4twu8n||2023-11-23 12:41:05.336|2023-11-23 12:41:05.336
+33922|https://live.linkedtrust.us/claims/33830|agree|||2023-11-23 12:43:43.587||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|||2023-11-23 12:44:01.352|2023-11-23 12:44:01.352
+33923|https://voiceofachild.org|rated||we have English and computer training|2023-11-23 13:59:44.49||FIRST_HAND|||||||4||||||1|http://trustclaims.whatscookin.us/users/0|URL|||2023-11-23 14:01:19.324|2023-11-23 14:01:19.324
+33924|https://voiceofachild.org|related_to||it was great trainings|2023-11-23 14:02:00.742||FIRST_HAND|||||||||||||1|http://trustclaims.whatscookin.us/users/0|URL|||2023-11-23 14:02:45.715|2023-11-23 14:02:45.715
+33925|https://voiceofachild.org|rated||لقد حضرت تدريب في اللغة الانكليزية و الحاسوب وقد كان ممتع جدا ومفيد|2023-11-24 05:27:49.29||FIRST_HAND||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y7qj29p0w0dswd5ldx3icyxmz50aeezbk0m4rfy8otok1llgnpj||2023-11-24 05:29:32.244|2023-11-24 05:29:32.244
+33929|https://live.linkedtrust.us/claims/33830|rated||It was really good trainings .|2023-11-27 16:05:12.189||||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|||2023-11-27 16:05:41.689|2023-11-27 16:05:41.689
+33931|https://live.linkedtrust.us/claims/33830|rated||it was great trainings , thank you very much VOC .|2023-11-27 17:39:07.023||FIRST_HAND||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|||2023-11-27 17:48:30.015|2023-11-27 17:48:30.015
+33932|https://live.linkedtrust.us/claims/33830|rated||لقد تابعت التدريبات وكانت مميزة جدا شكرا جزيلا لكم .|2023-11-27 17:52:56.559||||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|||2023-11-27 17:53:59.356|2023-11-27 17:53:59.356
+118499|https://www.amurt.net|impact||In Ebonyi, Nigeria, Amurt ( which is the organization that works in providing help to people) work to provide good health to people of Ebonyi state.
+The work with hospitals within the state to achieve this. They have been doing since 2010.
+The help to provide solid health care to baby and mother that have complication in child delivery. They foot the bills and make sure that both the mother and child are healthy as they stay in the hospital.
+They also cater for care that are extreme and need treatment asap by using their ambulance for quick response. They can also pay for the bills for this too.
+Sometime they visit hospital to fund people that can pay for their bills so that can be discharged. They have representative of themselves in several hospital and they are across the state of Ebonyi.
+In summary, they exist to make sure people have a sound health care with small or no cost.|2024-05-03 15:05:34.054|https://www.amurt.net/safeguarding-the-lives-of-women-and-children/|SECOND_HAND|||||||||||||0.85|eyJzZXNzaW9uS2V5U2VlZCI6ImhCbnhXNWw3V0RoaE1EM3VEWTNiblFyRXp2YzFTaksySmU2SXYwOGcwb0k9IiwiY2FjYW8iOnsiaCI6eyJ0IjoiZWlwNDM2MSJ9LCJwIjp7ImRvbWFpbiI6ImxpdmUubGlua2VkdHJ1c3QudXMiLCJpYXQiOiIyMDI0LTA0LTI1VDE1OjA5OjA4LjcyMVoiLCJpc3MiOiJkaWQ6cGtoOmVpcDE1NToxOjB4MzE3NmRkOTkyNzkzYWU5YzUwYjkyZmUwOWUxYmI3Y2NjZGZmODAxNiIsImF1ZCI6ImRpZDprZXk6ejZNa2l1NEtXUUEzQ1BDekZtYWluNERyZXpvM0ZYNmljZTdFdlNhN0VpRnlqMWRtIiwidmVyc2lvbiI6IjEiLCJub25jZSI6IlFXbjl0OXdsc1UiLCJleHAiOiIyMDI0LTA1LTAyVDE1OjA5OjA4LjcyMVoiLCJzdGF0ZW1lbnQiOiJHaXZlIHRoaXMgYXBwbGljYXRpb24gYWNjZXNzIHRvIHNvbWUgb2YgeW91ciBkYXRhIG9uIENlcmFtaWMiLCJyZXNvdXJjZXMiOlsiY2VyYW1pYzovLyo_bW9kZWw9a2p6bDZodmZyYnc2YzdmOHpyNGJkeXpmdW1qN2h2N3I5aTdkYnU1N2lzcnplenFqdWV0a3VtMjg4NXA5YWdjIl19LCJzIjp7InQiOiJlaXAxOTEiLCJzIjoiMHgyY2NmYTk5NGY5OTIzODU0M2MwMGMwYzhhZjY2ODcyYjllMzUwZTI1NTBlZDhjOWI5ZWQ0ZmZiYWE0N2EzMDJjMTYwM2MxYzJhYjMyMjA3MmUyMThmNjNkOWI1ZGNjMjFmY2UwYzhmM2RjNmVhYjVmMzRmZWNmYzBhZTNjMWFmNTFjIn19fQ|URL|kjzl6kcym7w8yasmlebdhlqgcnu0b791keuex8qg970irc6331b61njy0cjp2xn||2024-05-03 15:06:40.545|2024-05-03 15:06:40.544
+118500|https://live.linkedtrust.us/claims/118499|rated||On the 3rd of March 2024, I visited AMURT in Ebonyi, Nigeria to check out the facilities and work they do. I was blowed away by their achievement due the way they converted health centers to a mini hospital. I spoke with some beneficiary of this project and not only them but the community has been glad since the beginning of the project.
+
+I visited some health center and check them out.|2024-05-04 12:21:01.188||FIRST_HAND||||||||||||||http://trustclaims.whatscookin.us/users/105|URL|kjzl6kcym7w8y4xdy6238753aygf5g4ccvy8mqm33l7ihs5yysvazjv5tpy89dz||2024-05-04 12:47:43.279|2024-05-04 12:47:43.279
+118501|https://live.linkedtrust.us/claims/118499|rated||On the 3rd of May, 2024, I visit AMURT in Ebonyi, Nigeria. I was blown away with what they are doing and have done there. They have succeeded in converting some local health center to a standard ones. 
+
+I visited some of their health centers and spoke with some beneficiaries, not only the beneficiaries but also the communities was happy with the project so far. 
+
+Their impact on the people of Ebonyi have been great.|2024-05-04 12:48:07.204|https://www.linkedin.com/in/kenechukwu-orjiene/|||||||||||||||http://trustclaims.whatscookin.us/users/105|URL|||2024-05-04 13:03:54.38|2024-05-04 13:03:54.38
+118502|https://www.amurt.net/safeguarding-the-lives-of-women-and-children/|impact||
+Peter and I visited AMURT in Ebonyi, Nigeria, representing Voice of a Child via LinkedTrust. We were warmly welcomed by Dada. During our visit, we met with key individuals including Dada, Peter, the COO, and heads of various departments. We learned about their collaboration with the Government and Community to provide high-quality healthcare services, especially focusing on maternal and child health. Our visit to health centers showcased their dedication. We spoke with beneficiaries and learned about the impact of AMURT's initiatives, including economic empowerment through cooperative management schemes and increased healthcare utilization rates through outreach efforts. AMURT's holistic approach includes surgical interventions for children. Our visit left us inspired by their commitment to transforming lives, and we anticipate continued collaboration in advancing healthcare and socioeconomic development in Ebonyi and beyond.
+
+https://www.linkedin.com/feed/update/urn:li:activity:7192648658339647488/|2024-05-04 13:07:40.651|https://www.linkedin.com/in/kenechukwu-orjiene/|FIRST_HAND|||||||||||||0.9|eyJzZXNzaW9uS2V5U2VlZCI6ImZRRUpVVk1MTFRqbHAzcHZmc0JFL2lrSExMNEsyZkg3Y1N1RjdyNXVHOXM9IiwiY2FjYW8iOnsiaCI6eyJ0IjoiZWlwNDM2MSJ9LCJwIjp7ImRvbWFpbiI6ImxpdmUubGlua2VkdHJ1c3QudXMiLCJpYXQiOiIyMDI0LTA1LTA0VDEzOjAzOjQ2LjkxMFoiLCJpc3MiOiJkaWQ6cGtoOmVpcDE1NToxOjB4ZjZjYWQzNWMzNmI1OTYzOGZkY2IzMjRlOGMyMTkxODhkNzA0YjY4YyIsImF1ZCI6ImRpZDprZXk6ejZNa3BRREpIcjRxR2hrM2JRYXFDVFVnNHBhSzZQaXdvejFaazloems3Q1poQWY0IiwidmVyc2lvbiI6IjEiLCJub25jZSI6IjZnS0pwZko3TDEiLCJleHAiOiIyMDI0LTA1LTExVDEzOjAzOjQ2LjkxMFoiLCJzdGF0ZW1lbnQiOiJHaXZlIHRoaXMgYXBwbGljYXRpb24gYWNjZXNzIHRvIHNvbWUgb2YgeW91ciBkYXRhIG9uIENlcmFtaWMiLCJyZXNvdXJjZXMiOlsiY2VyYW1pYzovLyo_bW9kZWw9a2p6bDZodmZyYnc2YzdmOHpyNGJkeXpmdW1qN2h2N3I5aTdkYnU1N2lzcnplenFqdWV0a3VtMjg4NXA5YWdjIl19LCJzIjp7InQiOiJlaXAxOTEiLCJzIjoiMHg5YjA2MjI5ZmMzODg4Y2Q1MWY0OTg0M2I2MDE4OWM2ZDY3ODYxODNkZjMxMTgyMTg5NjdlN2M2NTc5MTEzZWNmNDdhYWE0YWEyOThlNmU4ZTAyYzk5MzQwNjI5YzdhMGUyMjYwZDgxZGY1ZjE1NzRiNjM5MTI3N2UzODgyZmYzMjFjIn19fQ|URL|kjzl6kcym7w8y7nnidtnxkpmnjyw2oc1ifmatgyfni5bz5tdkejuze4m6nos5gj||2024-05-04 22:20:44.54|2024-05-04 22:20:44.54
+118505|https://live.linkedtrust.us/claims/118502|rated||I spoke with Alice and she indicated that she was given a sum of 30 thousand naira to start a groundnut business in 2016, and she is still in the business.|2024-05-04 22:40:19.32||WEB_DOCUMENT||||||||||||||http://trustclaims.whatscookin.us/users/105|URL|kjzl6kcym7w8y68zwi7bivsbz2oy82jsaph7ajyav6qxdgtdq8xhfv5xr4qave2||2024-05-04 22:47:43.563|2024-05-04 22:47:43.563
+118506|https://live.linkedtrust.us/claims/118502|rated||I went with kene to ebonyi, to visit most of amurt's health centres, and i love the work the team is doing|2024-05-08 14:11:51||||||||||||||||http://trustclaims.whatscookin.us/users/6|URL|kjzl6kcym7w8y74v7ntdpfihi6qt5xjm1f8dvdcbw3qczivx4pmhhr9do8i566i||2024-05-08 07:12:27.541|2024-05-08 07:12:27.541
+118508|https://www.linkedin.com/in/ahlam-sayed-a54155289/|rated||Molly was able to do design on a hard problem we had that had confused others, appreciate her work on the design of this app to improve the feed - check back to see the results soon|2024-05-14 17:17:53.315|https://www.linkedin.com/in/goldavelez/|FIRST_HAND|||||impact:work||5||||||1|eyJzZXNzaW9uS2V5U2VlZCI6IkxOblJscU9RbjlhUk9PZHFMWjdGSTk0dzhwbnBvZUt3MkVTM3hFWEtIU0k9IiwiY2FjYW8iOnsiaCI6eyJ0IjoiZWlwNDM2MSJ9LCJwIjp7ImRvbWFpbiI6ImxpdmUubGlua2VkdHJ1c3QudXMiLCJpYXQiOiIyMDI0LTA1LTAzVDE1OjA2OjM3LjI1MFoiLCJpc3MiOiJkaWQ6cGtoOmVpcDE1NToxMzEzMTYxNTU0OjB4MzE3NmRkOTkyNzkzYWU5YzUwYjkyZmUwOWUxYmI3Y2NjZGZmODAxNiIsImF1ZCI6ImRpZDprZXk6ejZNa3ZtWWpEVm1lQUVXMlhncG5nY05UclpyUFpMaEU2RWtlQTdRTlhmUlhVVG05IiwidmVyc2lvbiI6IjEiLCJub25jZSI6IjhkWTVXSUNHb0wiLCJleHAiOiIyMDI0LTA1LTEwVDE1OjA2OjM3LjI1MFoiLCJzdGF0ZW1lbnQiOiJHaXZlIHRoaXMgYXBwbGljYXRpb24gYWNjZXNzIHRvIHNvbWUgb2YgeW91ciBkYXRhIG9uIENlcmFtaWMiLCJyZXNvdXJjZXMiOlsiY2VyYW1pYzovLyo_bW9kZWw9a2p6bDZodmZyYnc2YzdmOHpyNGJkeXpmdW1qN2h2N3I5aTdkYnU1N2lzcnplenFqdWV0a3VtMjg4NXA5YWdjIl19LCJzIjp7InQiOiJlaXAxOTEiLCJzIjoiMHgyZmRiYzVhNjUzMmEzNjIzYTNjMWFlYTc0MWI5YWRlYzBiMDNlNjZmNjRjNmI3MGIxNTE0NzczYzVkOWQwYjMyNzFlZDQ5ZTAwMjYwNDc5ZWRjNmUwMWQwNTFjMmIzNzI2OWZlY2JhNTgxMzIwMGRlMzg2NDc4NDNkOGVjZDc2NDFjIn19fQ|URL|kjzl6kcym7w8y5gkvpm8pymulwmdzi50vz285uwdm7lqtgns2c15co17l1vudxi||2024-05-14 17:21:21.583|2024-05-14 17:21:21.583
+118509|https://live.linkedtrust.us/claims/118502|rated||This is Dada. I received Kene and Peter at the motor park in Ebonyi and took them to AMURT office to introduce them to some of AMURT key staff.  Kene and Peter visited Odeligbo Health Center in Ikwo LGA and Ephuenyim Health Center in Abakaliki LGA accompanied by Medical Director Dr. Opoke and COO Ogbonna Agha.  They met staff, patients and their families and some community members.  The model for the Economic Empowerment Scheme is described as a "Cooperatively managed revolving credit scheme'.  |2024-05-14 18:46:11.095||||||||||||||||http://trustclaims.whatscookin.us/users/114|URL|kjzl6kcym7w8y5b2zs15g62c7i3fv7v9a13ivest3kd2jcfjd0utcpanvmp3peu||2024-05-14 18:55:45.94|2024-05-14 18:55:45.94
+118537|https://www.linkedin.com/in/goldavelez/|related_to||Golda Velez is the Co-founder of WhatsCookin.us ( https://www.whatscookin.us/ ) and LinkedTrust (https://live.linkedtrust.us/) and she is very energetic and professional.|2024-05-17 18:42:07.146|https://www.linkedin.com/in/sarrahhassan/|WEB_DOCUMENT|||||||||||||1|eyJzZXNzaW9uS2V5U2VlZCI6InRnQnliSHFib1FUYUpESDI5TGxNd0NZL21EL295MmhNRnRnVHVIamdYc289IiwiY2FjYW8iOnsiaCI6eyJ0IjoiZWlwNDM2MSJ9LCJwIjp7ImRvbWFpbiI6ImxpdmUubGlua2VkdHJ1c3QudXMiLCJpYXQiOiIyMDI0LTA1LTE3VDE4OjMwOjQzLjE2NFoiLCJpc3MiOiJkaWQ6cGtoOmVpcDE1NToxOjB4YzhjOGY1MzAwNWRiNGE3OWNmMTYxMDMzMDZiMGNmN2QzNmE4OTAwNSIsImF1ZCI6ImRpZDprZXk6ejZNa2t4MU5ReHhmbkhGUkdjQXRSOFRyejRqbmJkclRwVDN3c25jcEJxb0tadXNwIiwidmVyc2lvbiI6IjEiLCJub25jZSI6IkJrRXZ5UGNjeE4iLCJleHAiOiIyMDI0LTA1LTI0VDE4OjMwOjQzLjE2NFoiLCJzdGF0ZW1lbnQiOiJHaXZlIHRoaXMgYXBwbGljYXRpb24gYWNjZXNzIHRvIHNvbWUgb2YgeW91ciBkYXRhIG9uIENlcmFtaWMiLCJyZXNvdXJjZXMiOlsiY2VyYW1pYzovLyo_bW9kZWw9a2p6bDZodmZyYnc2YzdmOHpyNGJkeXpmdW1qN2h2N3I5aTdkYnU1N2lzcnplenFqdWV0a3VtMjg4NXA5YWdjIl19LCJzIjp7InQiOiJlaXAxOTEiLCJzIjoiMHg1MTAyOWZmNDU3NzA4YjUxOTIwMTIwNjg5YmY0YjdiNWMzNTM2OTVlNzU5YTk1YjUyNDJmY2Y5OWFiNjczMWEyMWNkNWFiMDY2ZjJkMTU1OGQ5MzBhNTQxZDY4YjAzODgyM2M1Y2ZlMTRiOTBlYjlhYzIxNDQ5NjhkYzQyYjRlNjFjIn19fQ|URL|kjzl6kcym7w8y74mtgnvtn9aul04z9vjzsqptaklnhv18mjccz5njc68x0w0xf3||2024-05-17 18:48:30.369|2024-05-17 18:48:30.369
+118540|https://live.linkedtrust.us/claims/118537|rated||I dunno about so professional but I am Golda and i can attest i am the co-founder of WhatsCookin.us and LinkedTrust!|2024-05-21 08:47:15.746||||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|kjzl6kcym7w8y857zxz4ni0g030e4g5snl2vrydqbfrhubq541jus2o8qcylwax||2024-05-21 08:47:37.413|2024-05-21 08:47:37.413
+118541|https://www.amurt.net|rated||I know several of the people involved with AMURT and trust that they are genuine and ethical people, because I have also seen the impact of their other projects with people I know.  In particular I have very high confidence in Kirit  Dave as I am familiar with a kindergarten he started in Jarablus|2024-05-21 09:37:59.07|https://www.linkedin.com/in/goldavelez/|SECOND_HAND|||||impact:social||5||||||0.95|eyJzZXNzaW9uS2V5U2VlZCI6InI5R3g3Snc0cndGbGg2clZQOUxQRzgzWk9sa3dETGJPMFlQUnMyVkZIcXc9IiwiY2FjYW8iOnsiaCI6eyJ0IjoiZWlwNDM2MSJ9LCJwIjp7ImRvbWFpbiI6ImxpdmUubGlua2VkdHJ1c3QudXMiLCJpYXQiOiIyMDI0LTA1LTE0VDE3OjIxOjE3LjE0OFoiLCJpc3MiOiJkaWQ6cGtoOmVpcDE1NToxMzEzMTYxNTU0OjB4MzE3NmRkOTkyNzkzYWU5YzUwYjkyZmUwOWUxYmI3Y2NjZGZmODAxNiIsImF1ZCI6ImRpZDprZXk6ejZNa252WE1yQW16R1I2NUZuUGtMb2hxNkRYZGE5TFR3b01wSFdGdDdoTW5yclJqIiwidmVyc2lvbiI6IjEiLCJub25jZSI6IlRBVkJzQXdqUGsiLCJleHAiOiIyMDI0LTA1LTIxVDE3OjIxOjE3LjE0OFoiLCJzdGF0ZW1lbnQiOiJHaXZlIHRoaXMgYXBwbGljYXRpb24gYWNjZXNzIHRvIHNvbWUgb2YgeW91ciBkYXRhIG9uIENlcmFtaWMiLCJyZXNvdXJjZXMiOlsiY2VyYW1pYzovLyo_bW9kZWw9a2p6bDZodmZyYnc2YzdmOHpyNGJkeXpmdW1qN2h2N3I5aTdkYnU1N2lzcnplenFqdWV0a3VtMjg4NXA5YWdjIl19LCJzIjp7InQiOiJlaXAxOTEiLCJzIjoiMHg0YjExMWU4OGUxMWM0MDBmODRkMTVkZDFjNjU0MDllNmEwOGE1NDIyNDQ1MzQyMWE4OTUyZWUwYzEzMGY5MDI0MWNkYWE3NDU0Y2VhNzY0OWYwNmM0NjI0ZGM4YTBmNGY0YjhkYTUxMGY0ODQ2ODQ5YmE3YmRiMzk3MTk0MmQ2YjFjIn19fQ|URL|||2024-05-21 09:40:26.256|2024-05-21 09:40:26.256
+118542|https://live.linkedtrust.us/claims/118541|rated|||2024-05-23 09:43:56.032||||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|||2024-05-23 09:44:10.822|2024-05-23 09:44:10.822
+118546|https://live.linkedtrust.us/claims/118499|rated||My name is Ani Peter Benjamin, and I am a software engineer with the LinkedTrust team. In early May 2024, I traveled to Ebonyi State with Orjiene Kenechukwu to observe the remarkable work being done by AMURT in the community. As a Nigerian, I am delighted to see the significant improvements in underdeveloped communities.
+
+AMURT's strategies to combat poverty in rural areas, such as providing innovative cooperative ideas, have greatly assisted local women in taking better care of their families. Additionally, AMURT has established awareness groups to educate women on proper childbearing practices and to engage the youth in educational initiatives.
+
+The impact of AMURT's efforts on Ebonyi State has been profoundly positive, especially in their health centers. I am personally impressed and supportive of the progress they have made.|2024-05-27 10:47:08.728||||||||||||||||http://trustclaims.whatscookin.us/users/6|URL|||2024-05-27 10:54:53.868|2024-05-27 10:54:53.868
+118548|https://live.linkedtrust.us/claims/118499|rated|||2024-05-27 18:09:10.084||||||||||||||||http://trustclaims.whatscookin.us/users/0|URL|||2024-05-27 18:10:19.762|2024-05-27 18:10:19.763
+118549|https://live.linkedtrust.us/claims/118541|rated|||2024-06-07 14:10:58.516||||||||||||||||http://trustclaims.whatscookin.us/users/130|URL|||2024-06-07 14:11:37.716|2024-06-07 14:11:37.716
+118550|https://voiceofachild.org|impact|https://www.amurt.net|Voice of a Child is one of the largest cash contributors to the AMURT Nigeria projects since its inception. Through our fundraising and cash contributions, they have impacted over $50,000 in cash. Additionally, they have contributed significantly towards medical ultrasound machines and ambulances.|2024-06-07 14:09:41.437|https://voiceofachild.org/whoweare/our-board/#:~:text=Kirit%20Dave|SECOND_HAND||||||||50000|||||0.9|eyJzZXNzaW9uS2V5U2VlZCI6IldDQVZidWJ0VFRBbStNbjN0SVF6QXVkeTBlNFIvVWpwTzNQSGhHUmw0YzA9IiwiY2FjYW8iOnsiaCI6eyJ0IjoiZWlwNDM2MSJ9LCJwIjp7ImRvbWFpbiI6ImxpdmUubGlua2VkdHJ1c3QudXMiLCJpYXQiOiIyMDI0LTA1LTI3VDA1OjQxOjM0LjQ0OVoiLCJpc3MiOiJkaWQ6cGtoOmVpcDE1NToxMzEzMTYxNTU0OjB4MzE3NmRkOTkyNzkzYWU5YzUwYjkyZmUwOWUxYmI3Y2NjZGZmODAxNiIsImF1ZCI6ImRpZDprZXk6ejZNa2dSelV4UkFlR29aQW00VXRpaFZjVFB5TllKZzNWbThkS0FHanBZYkxZTURvIiwidmVyc2lvbiI6IjEiLCJub25jZSI6IkxRdXpIZWJxcUMiLCJleHAiOiIyMDI0LTA2LTAzVDA1OjQxOjM0LjQ0OVoiLCJzdGF0ZW1lbnQiOiJHaXZlIHRoaXMgYXBwbGljYXRpb24gYWNjZXNzIHRvIHNvbWUgb2YgeW91ciBkYXRhIG9uIENlcmFtaWMiLCJyZXNvdXJjZXMiOlsiY2VyYW1pYzovLyo_bW9kZWw9a2p6bDZodmZyYnc2YzdmOHpyNGJkeXpmdW1qN2h2N3I5aTdkYnU1N2lzcnplenFqdWV0a3VtMjg4NXA5YWdjIl19LCJzIjp7InQiOiJlaXAxOTEiLCJzIjoiMHgxYWIyYWU3N2IxOTE3M2E2YTNjZTViZjJlZThjMjE3NzJlMzdlYWY2NTQ5YmE2MjBlZmJjMTlmMDRiODYxMzAxNGRhYjk0NzdhMjhmODY2ZGMwOWY1NTUwNGVjMDIwMzA3MmRiZTAzOTE2MDVjMDFmMWMyM2RlOGFhZTI0MTQ2NTFiIn19fQ|URL|||2024-06-07 15:19:46.311|2024-06-07 15:19:46.311
+(38 rows)
