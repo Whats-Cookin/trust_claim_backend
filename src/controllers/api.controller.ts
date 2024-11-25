@@ -198,7 +198,7 @@ export const claimGraph = async (req: Request, res: Response, next: NextFunction
   try {
     const { claimId } = req.params;
     const result = await nodeDao.getClaimGraph(claimId)
-        res.status(200).json({ data: result });
+        res.status(200).json( result );
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
