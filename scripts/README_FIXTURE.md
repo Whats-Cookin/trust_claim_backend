@@ -12,17 +12,11 @@ python convert_to_inserts.py  # creates fixture_data.sql
 
 ## Load the fixture data into local db
 
-On your local development machine:
-
-```
-psql claim -f insert_fixture.sql
-```
-
-Or if using postgres in a docker container,
+If using postgres in a docker container,
 
 ```
 
-docker cp import_fixture.sql nodes.txt claims.txt edges.txt postgres:/insert_fixture.sql
+docker cp fixture_data postgres:/
+docker exec postgres psql -U postgres -d claim -f /fixture_data/import_fixture.sql
 
-docker exec -it postgres psql -U postgres -d claim -f /import_fixture.sql
 ```
