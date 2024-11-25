@@ -507,6 +507,93 @@ export class NodeDao {
     });
   };
 
+
+  /* Get the graph centered on one claim */
+  getClaimGraph = async (claimId: string) => {
+    const mainEdge = await prisma.edge.findUnique({
+      where: { claimId },
+      include: {
+        startNode: {
+          include: {
+            edgesFrom: {
+              take: 5,
+              orderBy: { id: 'desc' },
+              select: {
+                id: true,
+                claimId: true,
+                startNodeId: true,
+                endNodeId: true,
+                label: true,
+                thumbnail: true,
+                claim: true,
+                endNode: true,
+                startNode: true,
+              }
+            },
+            edgesTo: {
+              take: 5,
+              orderBy: { id: 'desc' },
+              select: {
+                id: true,
+                claimId: true,
+                startNodeId: true,
+                endNodeId: true,
+                label: true,
+                thumbnail: true,
+                claim: true,
+                endNode: true,
+                startNode: true,
+              }
+            }
+          }
+        },
+        endNode: {
+          include: {
+            edgesFrom: {
+              take: 5,
+              orderBy: { id: 'desc' },
+              select: {
+                id: true,
+                claimId: true,
+                startNodeId: true,
+                endNodeId: true,
+                label: true,
+                thumbnail: true,
+                claim: true,
+                endNode: true,
+                startNode: true,
+              }
+            },
+            edgesTo: {
+              take: 5,
+              orderBy: { id: 'desc' },
+              select: {
+                id: true,
+                claimId: true,
+                startNodeId: true,
+                endNodeId: true,
+                label: true,
+                thumbnail: true,
+                claim: true,
+                endNode: true,
+                startNode: true,
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!mainEdge) {
+      throw new Error('Claim not found');
+    }
+
+    return {
+      nodes: [mainEdge.startNode, mainEdge.endNode]
+    };
+  };
+
+
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
       OR: [
