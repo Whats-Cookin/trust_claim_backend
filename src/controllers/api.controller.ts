@@ -74,7 +74,7 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
           await uploadImageToS3(filename, f);
           return {
             hash: calculateBufferHash(f.buffer),
-            url: `https://${config.s3.bucketName}.s3.${config.s3.region}.amazonaws.com/${filename}`,
+            url: `https://${config?.s3?.bucketName}.s3.${config?.s3?.region}.amazonaws.com/${filename}`,
           };
         }),
       );

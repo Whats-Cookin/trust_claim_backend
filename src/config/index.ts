@@ -1,4 +1,5 @@
-import { z } from "zod";
+// src/config/index.ts
+import { z } from 'zod';
 
 const schema = z.object({
   s3: z.object({
@@ -6,21 +7,27 @@ const schema = z.object({
     secretAccessKey: z.string(),
     region: z.string(),
     bucketName: z.string(),
-  }),
+  }).optional(),
 });
 
-let config: z.infer<typeof schema>;
-try {
-  config = schema.parse({
-    s3: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      region: process.env.AWS_S3_REGION_NAME,
-      bucketName: process.env.AWS_STORAGE_BUCKET_NAME,
-    },
-  });
-} catch (e) {
-  console.error("Error parsing the configuration:", e);
-}
+export type Config = z.infer<typeof schema>;
 
-export { config };
+export const config: Config = {
+  s3: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_S3_REGION_NAME ?? '',
+    bucketName: process.env.AWS_STORAGE_BUCKET_NAME ?? '',
+  } : undefined
+};
+
+// src/utils/aws-s3.ts
+import { S3Client } from '@aws-sdk/client-s3';
+
+export const s3Client = config.s3 ? new S3Client({
+  region: config.s3.region,
+  credentials: {
+    accessKeyId: config.s3.accessKeyId,
+    secretAccessKey: config.s3.secretAccessKey,
+  }
+}) : null;

@@ -5,7 +5,7 @@ import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 
-const MAX_POSSIBLE_CURSOR = "999999999999999999999999999999";
+const MAX_POSSIBLE_CURSOR = "999999999999";
 
 interface ReportI {
   name: string;
@@ -40,6 +40,34 @@ export type Report = {
   validations: ReportI[];
   attestations: ReportI[];
 };
+
+export type EdgeWithRelations = Edge & {
+      startNode: Node & {
+        edgesFrom: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+        edgesTo: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+      };
+      endNode: (Node & {
+        edgesFrom: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+        edgesTo: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+      }) | null;
+    };
+
 
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
@@ -508,90 +536,98 @@ export class NodeDao {
   };
 
 
-  /* Get the graph centered on one claim */
-  getClaimGraph = async (claimId: string) => {
-    const mainEdge = await prisma.edge.findUnique({
-      where: { claimId },
-      include: {
-        startNode: {
-          include: {
-            edgesFrom: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              select: {
-                id: true,
-                claimId: true,
-                startNodeId: true,
-                endNodeId: true,
-                label: true,
-                thumbnail: true,
-                claim: true,
-                endNode: true,
-                startNode: true,
-              }
-            },
-            edgesTo: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              select: {
-                id: true,
-                claimId: true,
-                startNodeId: true,
-                endNodeId: true,
-                label: true,
-                thumbnail: true,
-                claim: true,
-                endNode: true,
-                startNode: true,
-              }
+/* Get the graph centered on one claim */
+getClaimGraph = async (claimId: string | number) => {
+  // First find the edge id from the claim id
+  const edge = await prisma.edge.findFirst({
+    where: { 
+      claimId: typeof claimId === 'string' ? parseInt(claimId, 10) : claimId 
+    },
+    select: { id: true }
+  });
+
+  if (!edge) {
+    throw new Error('Claim not found');
+  }
+
+  const mainEdge = await prisma.edge.findUnique({
+    where: { id: edge.id },
+    include: {
+      startNode: {
+        include: {
+          edgesFrom: {
+            take: 5,
+            orderBy: { id: 'desc' },
+            include: {
+              startNode: true,
+              endNode: true,
+              claim: true
+            }
+          },
+          edgesTo: {
+            take: 5,
+            orderBy: { id: 'desc' },
+            include: {
+              startNode: true,
+              endNode: true,
+              claim: true
             }
           }
-        },
-        endNode: {
-          include: {
-            edgesFrom: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              select: {
-                id: true,
-                claimId: true,
-                startNodeId: true,
-                endNodeId: true,
-                label: true,
-                thumbnail: true,
-                claim: true,
-                endNode: true,
-                startNode: true,
-              }
-            },
-            edgesTo: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              select: {
-                id: true,
-                claimId: true,
-                startNodeId: true,
-                endNodeId: true,
-                label: true,
-                thumbnail: true,
-                claim: true,
-                endNode: true,
-                startNode: true,
-              }
+        }
+      },
+      endNode: {
+        include: {
+          edgesFrom: {
+            take: 5,
+            orderBy: { id: 'desc' },
+            include: {
+              startNode: true,
+              endNode: true,
+              claim: true
+            }
+          },
+          edgesTo: {
+            take: 5,
+            orderBy: { id: 'desc' },
+            include: {
+              startNode: true,
+              endNode: true,
+              claim: true
             }
           }
         }
       }
-    });
-
-    if (!mainEdge) {
-      throw new Error('Claim not found');
     }
+  });
+  
+  if (!mainEdge) {
+    throw new Error('Edge not found');
+  }
 
-    return {
-      nodes: [mainEdge.startNode, mainEdge.endNode]
-    };
+  // Collect all unique nodes
+  const nodes = new Set([
+    mainEdge.startNode,
+    mainEdge.endNode,
+    ...mainEdge.startNode.edgesFrom.flatMap(e => [e.startNode, e.endNode].filter(Boolean)),
+    ...mainEdge.startNode.edgesTo.flatMap(e => [e.startNode, e.endNode].filter(Boolean)),
+    ...(mainEdge.endNode?.edgesFrom.flatMap(e => [e.startNode, e.endNode].filter(Boolean)) ?? []),
+    ...(mainEdge.endNode?.edgesTo.flatMap(e => [e.startNode, e.endNode].filter(Boolean)) ?? [])
+  ].filter(Boolean));
+
+  // Collect all edges
+  const edges = [
+    mainEdge,
+    ...mainEdge.startNode.edgesFrom,
+    ...mainEdge.startNode.edgesTo,
+    ...(mainEdge.endNode?.edgesFrom ?? []),
+    ...(mainEdge.endNode?.edgesTo ?? [])
+  ];
+
+  return {
+    nodes: Array.from(nodes),
+    edges
   };
+};
 
 
   searchNodes = async (search: string, page: number, limit: number) => {
