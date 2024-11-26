@@ -536,98 +536,59 @@ export class NodeDao {
   };
 
 
-  /* Get the graph centered on one claim */
-  getClaimGraph = async (claimId: string | number) => {
-    // First find the edge id from the claim id
-    const edge = await prisma.edge.findFirst({
-      where: { 
-        claimId: typeof claimId === 'string' ? parseInt(claimId, 10) : claimId 
-      },
-      select: { id: true }
-    });
+getClaimGraph = async(claimId: string | number) => {
 
-    if (!edge) {
-      throw new Error('Claim not found');
-    }
+  const numericClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId
 
-    const mainEdge = await prisma.edge.findUnique({
-      where: { id: edge.id },
-      include: {
-        startNode: {
-          include: {
-            edgesFrom: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
-            },
-            edgesTo: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
+  // Get the nodes with their connected edges for this claim
+  const nodes = await prisma.node.findMany({
+    where: {
+      OR: [
+        {
+          edgesFrom: {
+            some: {
+              claimId: numericClaimId
             }
           }
         },
-        endNode: {
-          include: {
-            edgesFrom: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
-            },
-            edgesTo: {
-              take: 5,
-              orderBy: { id: 'desc' },
-              include: {
-                startNode: true,
-                endNode: true,
-                claim: true
-              }
+        {
+          edgesTo: {
+            some: {
+              claimId: numericClaimId
             }
           }
         }
+      ]
+    },
+    include: {
+      edgesFrom: {
+        where: {
+          claimId: numericClaimId
+        },
+        include: {
+          claim: true,
+          startNode: true,
+          endNode: true,
+        }
+      },
+      edgesTo: {
+        where: {
+          claimId: numericClaimId
+        },
+        include: {
+          claim: true,
+          startNode: true,
+          endNode: true,
+        }
       }
-    });
-    
-    if (!mainEdge) {
-      throw new Error('Edge not found');
     }
+  })
 
-    // Collect all unique nodes
-    const nodes = new Set([
-      mainEdge.startNode,
-      mainEdge.endNode,
-      ...mainEdge.startNode.edgesFrom.flatMap(e => [e.startNode, e.endNode].filter(Boolean)),
-      ...mainEdge.startNode.edgesTo.flatMap(e => [e.startNode, e.endNode].filter(Boolean)),
-      ...(mainEdge.endNode?.edgesFrom.flatMap(e => [e.startNode, e.endNode].filter(Boolean)) ?? []),
-      ...(mainEdge.endNode?.edgesTo.flatMap(e => [e.startNode, e.endNode].filter(Boolean)) ?? [])
-    ].filter(Boolean));
-
-    // Collect all edges
-    const edges = [
-      mainEdge,
-      ...mainEdge.startNode.edgesFrom,
-      ...mainEdge.startNode.edgesTo,
-      ...(mainEdge.endNode?.edgesFrom ?? []),
-      ...(mainEdge.endNode?.edgesTo ?? [])
-    ];
-
-    return {
-      nodes: Array.from(nodes),
-      edges
-    };
-  };
+  return {
+    nodes,
+    count: nodes.length
+  }
+}
 
 
   searchNodes = async (search: string, page: number, limit: number) => {
