@@ -538,9 +538,10 @@ export class NodeDao {
 
 getClaimGraph = async(claimId: string | number) => {
 
-  const numericClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId
+ console.log("In getClaimGraph")
+ const numericClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId
 
-  // Get the nodes with their connected edges for this claim
+  // First find the nodes involved with this claim
   const nodes = await prisma.node.findMany({
     where: {
       OR: [
@@ -561,10 +562,8 @@ getClaimGraph = async(claimId: string | number) => {
       ]
     },
     include: {
+      // Include ALL edges connected to these nodes
       edgesFrom: {
-        where: {
-          claimId: numericClaimId
-        },
         include: {
           claim: true,
           startNode: true,
@@ -572,9 +571,6 @@ getClaimGraph = async(claimId: string | number) => {
         }
       },
       edgesTo: {
-        where: {
-          claimId: numericClaimId
-        },
         include: {
           claim: true,
           startNode: true,
@@ -584,12 +580,19 @@ getClaimGraph = async(claimId: string | number) => {
     }
   })
 
+  // Debug logging
+  console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`)
+  nodes.forEach(node => {
+    console.log(`Node ${node.id} (${node.name}):`)
+    console.log(`  ${node.edgesFrom.length} outgoing edges`)
+    console.log(`  ${node.edgesTo.length} incoming edges`)
+  })
+
   return {
     nodes,
     count: nodes.length
   }
 }
-
 
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
