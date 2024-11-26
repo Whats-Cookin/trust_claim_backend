@@ -536,63 +536,60 @@ export class NodeDao {
   };
 
 
-const getClaimGraph = async (claimId: string | number) => {
-  const parsedClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId;
-  
-  // First get the main edge with its direct nodes
-  const mainEdge = await prisma.edge.findFirst({
-    where: {
-      claimId: parsedClaimId
-    },
-    include: {
-      startNode: true,
-      endNode: true,
-      claim: true
-    }
-  });
+getClaimGraph = async(claimId: string | number) => {
 
-  if (!mainEdge) {
-    throw new Error('Claim not found');
-  }
+  const numericClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId
 
-  // Get immediate connections for both nodes
-  const connectedEdges = await prisma.edge.findMany({
+  // Get the nodes with their connected edges for this claim
+  const nodes = await prisma.node.findMany({
     where: {
       OR: [
-        { startNodeId: mainEdge.startNodeId },
-        { endNodeId: mainEdge.startNodeId },
-        { startNodeId: mainEdge.endNodeId },
-        { endNodeId: mainEdge.endNodeId }
-      ],
-      NOT: {
-        id: mainEdge.id
-      }
-    },
-    take: 10,
-    orderBy: {
-      id: 'desc'
+        {
+          edgesFrom: {
+            some: {
+              claimId: numericClaimId
+            }
+          }
+        },
+        {
+          edgesTo: {
+            some: {
+              claimId: numericClaimId
+            }
+          }
+        }
+      ]
     },
     include: {
-      startNode: true,
-      endNode: true,
-      claim: true
+      edgesFrom: {
+        where: {
+          claimId: numericClaimId
+        },
+        include: {
+          claim: true,
+          startNode: true,
+          endNode: true,
+        }
+      },
+      edgesTo: {
+        where: {
+          claimId: numericClaimId
+        },
+        include: {
+          claim: true,
+          startNode: true,
+          endNode: true,
+        }
+      }
     }
-  });
+  })
 
-  // Collect all unique nodes, maintaining exactly the same structure
-  const nodes = new Set([
-    mainEdge.startNode,
-    mainEdge.endNode,
-    ...connectedEdges.map(e => e.startNode),
-    ...connectedEdges.map(e => e.endNode)
-  ].filter(Boolean));
-
-  // Return in exactly the same format as before
   return {
-    nodes: Array.from(nodes),
-    edges: [mainEdge, ...connectedEdges]
-  };
-};
+    nodes,
+    count: nodes.length
+  }
+}
+
 
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
