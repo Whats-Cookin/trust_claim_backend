@@ -52,10 +52,11 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
 
   const body = JSON.parse(dtoRequestBody[0].buffer.toString("utf-8"));
 
-  const { success, data: dto, error } = CreateClaimV2Dto.safeParse(body);
-  if (!success) {
-    return next({ data: error.errors, statusCode: 422 });
+  const result = CreateClaimV2Dto.safeParse(body);
+  if (!result.success) {
+    return next({ data: result.error.errors, statusCode: 422 });
   }
+  const dto = result.data;
 
   try {
     if (imagesRequestBody.length !== dto.images.length) {
