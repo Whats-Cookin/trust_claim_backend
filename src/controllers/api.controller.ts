@@ -52,10 +52,11 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
 
   const body = JSON.parse(dtoRequestBody[0].buffer.toString("utf-8"));
 
-  const { success, data: dto, error } = CreateClaimV2Dto.safeParse(body);
-  if (!success) {
-    return next({ data: error.errors, statusCode: 422 });
+  const result = CreateClaimV2Dto.safeParse(body);
+  if (!result.success) {
+    return next({ data: result.error.errors, statusCode: 422 });
   }
+  const dto = result.data;
 
   try {
     if (imagesRequestBody.length !== dto.images.length) {
@@ -74,7 +75,7 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
           await uploadImageToS3(filename, f);
           return {
             hash: calculateBufferHash(f.buffer),
-            url: `https://${config.s3.bucketName}.s3.${config.s3.region}.amazonaws.com/${filename}`,
+            url: `https://${config?.s3?.bucketName}.s3.${config?.s3?.region}.amazonaws.com/${filename}`,
           };
         }),
       );
@@ -191,6 +192,22 @@ export const claimsGet = async (req: Request, res: Response, next: NextFunction)
 };
 /*********************************************************************/
 
+
+/* This is for initializing the graph for a given claim */
+export const claimGraph = async (req: Request, res: Response, next: NextFunction) => {
+
+  try {
+    const { claimId } = req.params;
+    const result = await nodeDao.getClaimGraph(claimId)
+        res.status(200).json( result );
+    return;
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
+
+/* This is for the home feed and the search */
 export const claimsFeed = async (req: Request, res: Response, next: NextFunction) => {
   try {
     let { page = 1, limit = 100, search = "" } = req.query;

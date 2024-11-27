@@ -5,7 +5,7 @@ import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 
-const MAX_POSSIBLE_CURSOR = "999999999999999999999999999999";
+const MAX_POSSIBLE_CURSOR = "999999999999";
 
 interface ReportI {
   name: string;
@@ -40,6 +40,34 @@ export type Report = {
   validations: ReportI[];
   attestations: ReportI[];
 };
+
+export type EdgeWithRelations = Edge & {
+      startNode: Node & {
+        edgesFrom: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+        edgesTo: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+      };
+      endNode: (Node & {
+        edgesFrom: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+        edgesTo: (Edge & {
+          startNode: Node;
+          endNode: Node | null;
+          claim: Claim;
+        })[];
+      }) | null;
+    };
+
 
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
@@ -344,7 +372,7 @@ export class NodeDao {
             AND c.statement IS NOT NULL
             AND n1.name IS NOT NULL
             AND n1.name != ''
-          ORDER BY c.id, c."effectiveDate" DESC
+          ORDER BY c.id DESC, c."effectiveDate" DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;
@@ -392,7 +420,7 @@ export class NodeDao {
             n3.name ILIKE '%${search}%' OR
             n3."descrip" ILIKE '%${search}%'
           )
-        ORDER BY c.id, c."effectiveDate" DESC
+        ORDER BY c.id DESC, c."effectiveDate" DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
@@ -507,9 +535,69 @@ export class NodeDao {
     });
   };
 
+
+getClaimGraph = async(claimId: string | number) => {
+
+ console.log("In getClaimGraph")
+ const numericClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId
+
+  // First find the nodes involved with this claim
+  const nodes = await prisma.node.findMany({
+    where: {
+      OR: [
+        {
+          edgesFrom: {
+            some: {
+              claimId: numericClaimId
+            }
+          }
+        },
+        {
+          edgesTo: {
+            some: {
+              claimId: numericClaimId
+            }
+          }
+        }
+      ]
+    },
+    include: {
+      // Include ALL edges connected to these nodes
+      edgesFrom: {
+        include: {
+          claim: true,
+          startNode: true,
+          endNode: true,
+        }
+      },
+      edgesTo: {
+        include: {
+          claim: true,
+          startNode: true,
+          endNode: true,
+        }
+      }
+    }
+  })
+
+  // Debug logging
+  console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`)
+  nodes.forEach(node => {
+    console.log(`Node ${node.id} (${node.name}):`)
+    console.log(`  ${node.edgesFrom.length} outgoing edges`)
+    console.log(`  ${node.edgesTo.length} incoming edges`)
+  })
+
+  return {
+    nodes,
+    count: nodes.length
+  }
+}
+
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
       OR: [
+        { id: { equals: parseInt(search, 10) } },
         { name: { contains: search, mode: "insensitive" } },
         { descrip: { contains: search, mode: "insensitive" } },
         { nodeUri: { contains: search, mode: "insensitive" } },

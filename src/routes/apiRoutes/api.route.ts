@@ -9,6 +9,7 @@ import {
   claimReport,
   getNodeForLoggedInUser,
   claimGetById,
+  claimGraph,
   claimSearch,
   createClaimV2,
 } from "../../controllers";
@@ -23,6 +24,7 @@ router.post("/claim", jwtVerify, claimPostNormalizer, joiValidator(claimPostSche
 router.post("/claim/v2", upload, jwtVerify, createClaimV2);
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
+router.get("/claim_graph/:claimId", claimGraph);
 router.get("/claims-all", getAllClaims);
 router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);
