@@ -161,7 +161,7 @@ paths:
                     format: byte
                     nullable: true
                   claims:
-                    "$ref": "#/components/schemas/FeedClaimV3"
+                    "$ref": "#/components/schemas/FeedClaimsV3"
 
   "/api/claim":
     post:
