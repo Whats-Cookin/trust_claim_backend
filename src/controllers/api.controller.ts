@@ -50,11 +50,17 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
   const _req = req as ProtectedMulterRequest;
   const { userId } = _req;
 
-  const {
-    files: { dto: dtoRequestBody, images: imagesRequestBody },
-  } = _req;
+  const { files } = _req;
+  const dtoRequestBody = files?.dto ?? {};
+  const imagesRequestBody = files?.images ?? [];
 
-  const body = JSON.parse(dtoRequestBody[0].buffer.toString("utf-8"));
+  let body: any;
+
+  if (Array.isArray(dtoRequestBody) && dtoRequestBody.length > 0) {
+    body = JSON.parse(dtoRequestBody[0]?.buffer.toString("utf-8"));
+  } else {
+    return next({ message: "No DTO provided", statusCode: 400 });
+  }
 
   const result = CreateClaimV2Dto.safeParse(body);
   if (!result.success) {
@@ -63,7 +69,7 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
   const dto = result.data;
 
   try {
-    if (imagesRequestBody.length !== dto.images.length) {
+    if (imagesRequestBody?.length !== dto?.images.length) {
       throw new createError.UnprocessableEntity("Invalid images metadata");
     }
 
