@@ -48,17 +48,29 @@ Build the docker containers and run it. Two options are available
 ### Option 1: Without the data pipeline - for viewing only
 
 ```bash
-docker-compose up
+docker compose --profile prod up
 ```
 
 ### Option 2: With the data pipeline
 
-```
+```bash
 cd ..
 git clone git@github.com:Whats-Cookin/trust-claim-data-pipeline.git
 cd trust_claim_backend
-docker-compose -f docker-compose-full.yml up
+
+# Run in development mode
+docker compose --profile dev up --watch
+# Run in production mode
+# docker compose --profile prod up
 ```
+
+> [!TIP]
+> Ask in Slack for the `claim.backup` file to populate the database.
+>
+> Add the file to the parent directory of the project, uncomment the `- ../claim.backup:/claim.backup`
+> line in `docker-compose.yml` and rebuild the image `docker compose build`.
+>
+> Jump in the postgres container with `docker exec -it postgres bash` and run `pg_restore -x --no-owner -U postgres -d claim claim.backup` to populate the database.
 
 Once the docker containers are running, install the packages and run the migration
 
@@ -76,7 +88,7 @@ npm run dev:watch
 To stop and delete the containers
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## JWT Token secrets
@@ -94,13 +106,13 @@ Database is handled with the help of prisma orm.
 
 If migration is not for docker container then run
 
-```
+```bash
 npx prisma migrate dev
 ```
 
 For docker container
 
-```
+```bash
 npx dotenv -e .env.dev -- npx prisma migrate dev --name {name of the migration}
 ```
 
@@ -200,12 +212,17 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
 <a name="Review"></a>
 
+
+## To review the server files
+
+
 ## Prod deployment is manual
 
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
 
-```plaintext
-Check vault for ssh creds to live.linkedtrust.us
+
+```bash
+cd /data/trust_claim_backend
 ```
 
 inspect the running file

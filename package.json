@@ -4,7 +4,7 @@
   "description": "Backend support for trust claims",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"tsc -w\" \"nodemon build/index.js\"",
+    "dev": "nodemon -w 'src/**/*' src/index.ts",
     "inspect": "concurrently \"tsc -w\" \"nodemon --inspect build/index.js\"",
     "dev:watch": "nodemon -w './src/**/*' -w  'docs/**/*' src/index.ts",
     "build": "tsc",
