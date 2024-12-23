@@ -12,6 +12,7 @@ import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.vali
 import { uploadImageToS3 } from "../utils/aws-s3";
 import { calculateBufferHash } from "../utils/hash";
 import { config } from "../config";
+import axios from "axios";
 
 const DEFAULT_LIMIT = 100;
 
@@ -30,6 +31,9 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
     rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
 
     claim = await claimDao.createClaim(userId, rawClaim);
+
+    await processClaim(claim.id);
+
     claimData = await claimDao.createClaimData(claim.id, rawClaim.name);
 
     if (rawClaim.images && rawClaim.images.length > 0) {
@@ -39,18 +43,24 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
     passToExpressErrorHandler(err, next);
   }
 
-  res.status(201).json({ claim, claimData, claimImages });
+  return res.status(201).json({ claim, claimData, claimImages });
 };
 
 export async function createClaimV2(req: Request, res: Response, next: NextFunction) {
   const _req = req as ProtectedMulterRequest;
   const { userId } = _req;
 
-  const {
-    files: { dto: dtoRequestBody, images: imagesRequestBody },
-  } = _req;
+  const { files } = _req;
+  const dtoRequestBody = files?.dto ?? {};
+  const imagesRequestBody = files?.images ?? [];
 
-  const body = JSON.parse(dtoRequestBody[0].buffer.toString("utf-8"));
+  let body: any;
+
+  if (Array.isArray(dtoRequestBody) && dtoRequestBody.length > 0) {
+    body = JSON.parse(dtoRequestBody[0]?.buffer.toString("utf-8"));
+  } else {
+    return next({ message: "No DTO provided", statusCode: 400 });
+  }
 
   const result = CreateClaimV2Dto.safeParse(body);
   if (!result.success) {
@@ -59,11 +69,14 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
   const dto = result.data;
 
   try {
-    if (imagesRequestBody.length !== dto.images.length) {
+    if (imagesRequestBody?.length !== dto?.images.length) {
       throw new createError.UnprocessableEntity("Invalid images metadata");
     }
 
     const claim = await claimDao.createClaimV2(userId, dto);
+
+    await processClaim(claim.id);
+
     const claimData = await claimDao.createClaimData(claim.id, dto.name);
 
     let awsImages: { hash: string; url: string }[];
@@ -192,20 +205,17 @@ export const claimsGet = async (req: Request, res: Response, next: NextFunction)
 };
 /*********************************************************************/
 
-
 /* This is for initializing the graph for a given claim */
 export const claimGraph = async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const { claimId } = req.params;
-    const result = await nodeDao.getClaimGraph(claimId)
-        res.status(200).json( result );
+    const result = await nodeDao.getClaimGraph(claimId);
+    res.status(200).json(result);
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
 };
-
 
 /* This is for the home feed and the search */
 export const claimsFeed = async (req: Request, res: Response, next: NextFunction) => {
@@ -260,4 +270,16 @@ function parseAndValidateClaimsFeedV3Query(query: Request["query"]): {
   const nextPage = query.nextPage?.toString() || null;
 
   return { limit, search, nextPage };
+}
+
+async function processClaim(claimId: string | number) {
+  const { url } = config.dataPipeline;
+  if (!url) return;
+
+  try {
+    await axios.post(`${url}/process_claim/${claimId}`);
+  } catch (e) {
+    console.error(`Error while processing a claim (${claimId}): ${e}`);
+    throw e;
+  }
 }

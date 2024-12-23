@@ -3,7 +3,8 @@
   "compilerOptions": {
     "sourceMap": true,
     "outDir": "build",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "moduleResolution": "Node16"
   },
   "files": ["src/types.d.ts"],
   "include": ["src"],

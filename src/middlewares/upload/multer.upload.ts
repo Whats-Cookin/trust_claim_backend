@@ -6,8 +6,8 @@ const DTO_FIELD_NAME = "dto" as const;
 
 export type MulterRequest = Request & {
   files: {
-    [IMAGES_FIELD_NAME]: Express.Multer.File[];
-    [DTO_FIELD_NAME]: Express.Multer.File[];
+    [IMAGES_FIELD_NAME]?: Express.Multer.File[];
+    [DTO_FIELD_NAME]?: Express.Multer.File[];
   };
 };
 

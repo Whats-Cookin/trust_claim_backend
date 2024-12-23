@@ -28,7 +28,7 @@ Running the application in docker is only important if you don't want to set up 
 
 Then running below command is sufficient.
 
-```
+```bash
 npm run dev
 ```
 
@@ -36,7 +36,7 @@ To run with docker, firstly, have all the env variables in `.env` and `.env.dev`
 
 Then, build the project -
 
-```
+```bash
 npx prisma generate # the first time
 npm run build
 ```
@@ -47,36 +47,48 @@ Build the docker containers and run it. Two options are available
 
 ### Option 1: Without the data pipeline - for viewing only
 
-```
-docker-compose up
+```bash
+docker compose --profile prod up
 ```
 
 ### Option 2: With the data pipeline
 
-```
+```bash
 cd ..
 git clone git@github.com:Whats-Cookin/trust-claim-data-pipeline.git
 cd trust_claim_backend
-docker-compose -f docker-compose-full.yml up
+
+# Run in development mode
+docker compose --profile dev up --watch
+# Run in production mode
+# docker compose --profile prod up
 ```
+
+> [!TIP]
+> Ask in Slack for the `claim.backup` file to populate the database.
+>
+> Add the file to the parent directory of the project, uncomment the `- ../claim.backup:/claim.backup`
+> line in `docker-compose.yml` and rebuild the image `docker compose build`.
+>
+> Jump in the postgres container with `docker exec -it postgres bash` and run `pg_restore -x --no-owner -U postgres -d claim claim.backup` to populate the database.
 
 Once the docker containers are running, install the packages and run the migration
 
-```
+```bash
 npm i
 npm run migrate:dev
 ```
 
 Then, while developing, run
 
-```
+```bash
 npm run dev:watch
 ```
 
 To stop and delete the containers
 
-```
-docker-compose down
+```bash
+docker compose down
 ```
 
 ## JWT Token secrets
@@ -94,13 +106,13 @@ Database is handled with the help of prisma orm.
 
 If migration is not for docker container then run
 
-```
+```bash
 npx prisma migrate dev
 ```
 
 For docker container
 
-```
+```bash
 npx dotenv -e .env.dev -- npx prisma migrate dev --name {name of the migration}
 ```
 
@@ -141,13 +153,13 @@ These steps ensure your local DB mirrors production's text search optimizations.
 
 If not using docker containers
 
-```
+```bash
 npx prisma studio
 ```
 
 If using docker containers
 
-```
+```bash
 npm run prisma:studio
 ```
 
@@ -159,13 +171,13 @@ Database seeding happens in two ways with Prisma: manually with prisma db seed a
 
 Run
 
-```
+```bash
 npx prisma db seed
 ```
 
 or
 
-```
+```bash
 npm i
 prisma migrate dev
 ```
@@ -187,6 +199,7 @@ AWS_SECRET_ACCESS_KEY='...'
 AWS_STORAGE_BUCKET_NAME='...'
 AWS_S3_REGION_NAME='...'
 
+DATA_PIPELINE_MS='http://trust-claim-data-pipeline:5000'
 ```
 
 In `.env.dev`, change `DATABASE_URL` like below, everything else can be exactly like `.env`.
@@ -199,24 +212,29 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
 <a name="Review"></a>
 
+
+## To review the server files
+
+
 ## Prod deployment is manual
 
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
 
-```
-Check vault for ssh creds to live.linkedtrust.us
+
+```bash
+cd /data/trust_claim_backend
 ```
 
 inspect the running file
 
-```
+```bash
 pm2 status index
 pm2 logs index
 ```
 
 ### Update from git and install dependencies
 
-```
+```bash
 cd /data/trust_claim_backend
 git pull
 npm i
@@ -226,14 +244,14 @@ npm i
 
 If there is any database migration, it is a good idea to backup the database, otherwise you may skip this step.
 
-```
+```bash
 sudo su postgres
 pg_dump claim > /postgres/backup_filename.sql
 ```
 
 Then run the following 2 commands to generate artifacts and deploy migrations [This is already implemented in the CI/CD pipeline, but for local, it's needed].
 
-```
+```bash
 npx prisma generate
 npx prisma migrate deploy
 ```
@@ -242,15 +260,15 @@ npx prisma migrate deploy
 
 Then, building the project is enough, because `pm2` is watching for changes.
 
-```
+```bash
 npm run build
 ```
 
-### DONE.  Troubleshooting:
+### DONE. Troubleshooting:
 
 NOTE: Run this ONLY when the server is down
 
-```
+```bash
 pm2 start index.js --watch
 ```
 
@@ -258,7 +276,7 @@ Logs are in `/data/home/ubuntu/.pm2/logs`
 
 To see all about the pm2 process use
 
-```
+```bash
 PM2_HOME=/data/home/ubuntu/.pm2 /data/home/ubuntu/.nvm/versions/node/v16.15.1/bin/pm2 describe index
 ```
 
@@ -266,19 +284,19 @@ PM2_HOME=/data/home/ubuntu/.pm2 /data/home/ubuntu/.nvm/versions/node/v16.15.1/bi
 
 Nginx config is located here - `/etc/nginx/sites-available/trustclaims.whatscookin.us`. To change the config -
 
-```
+```bash
 sudo vim /etc/nginx/sites-available/trustclaims.whatscookin.us
 ```
 
 After changing Nginx config, test it using -
 
-```
+```bash
 sudo nginx -t
 ```
 
 Then reload nginx service
 
-```
+```bash
 sudo systemctl reload nginx.service`
 ```
 
@@ -317,7 +335,7 @@ ACCESS_SECRET=**add_your_secret_keys_here**
 REFRESH_SECRET=**add_your_secret_keys_here**
 ```
 
-then run 
+then run
 
 `npm run dev`
 
@@ -331,8 +349,7 @@ run from within an IDE such as webstorm with simple configuration such as
 
 <img width="852" alt="image" src="https://user-images.githubusercontent.com/798887/232255771-e3cf52db-ece2-48b0-b67f-cd8edec39776.png">
 
-
-------------
+---
 
 you may also have to copy .env to .env.dev
 
