@@ -191,8 +191,15 @@ Create a `.env` file in project root. If running with docker an additional `.env
 ```bash
 PORT=9000
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
-ACCESS_SECRET=dPEBknfdAcx5bir34KnX2mATWZnvM4xF
-REFRESH_SECRET=opdC0LNGrZWWF0jLrPJwhLPF8aew4l3L
+
+ACCESS_SECRET='...'
+REFRESH_SECRET='...'
+AWS_ACCESS_KEY_ID='...'
+AWS_SECRET_ACCESS_KEY='...'
+AWS_STORAGE_BUCKET_NAME='...'
+AWS_S3_REGION_NAME='...'
+
+DATA_PIPELINE_MS='http://trust-claim-data-pipeline:5000'
 ```
 
 In `.env.dev`, change `DATABASE_URL` like below, everything else can be exactly like `.env`.
@@ -205,15 +212,14 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 
 <a name="Review"></a>
 
+
 ## To review the server files
+
+
+## Prod deployment is manual
 
 SSH into the server with the private key. If you don't have the key, ask for it in slack.
 
-```
-Check vault for ssh creds, url is inserted above
-```
-
-cd into the project
 
 ```bash
 cd /data/trust_claim_backend
@@ -226,13 +232,17 @@ pm2 status index
 pm2 logs index
 ```
 
-Run this command to check for possible changes in packages, and install changed packages.
+### Update from git and install dependencies
 
 ```bash
+cd /data/trust_claim_backend
+git pull
 npm i
 ```
 
-If there is any database migration, it is a good idea to backup the database.
+### If required, database migration
+
+If there is any database migration, it is a good idea to backup the database, otherwise you may skip this step.
 
 ```bash
 sudo su postgres
@@ -246,11 +256,15 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
+### Rebuild with changes
+
 Then, building the project is enough, because `pm2` is watching for changes.
 
 ```bash
 npm run build
 ```
+
+### DONE. Troubleshooting:
 
 NOTE: Run this ONLY when the server is down
 
@@ -305,3 +319,42 @@ restore the db file
 ```bash
 docker exec -it <id> psql -U postgres -d claim -f /tmp/dump_file
 ```
+
+Alternate instructions
+
+Run
+
+`docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres --name postgres-db postgres`
+
+ensure you have a .env file
+
+```
+PORT=9000
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/claim"
+ACCESS_SECRET=**add_your_secret_keys_here**
+REFRESH_SECRET=**add_your_secret_keys_here**
+```
+
+then run
+
+`npm run dev`
+
+OR
+
+`npm run inspect`. to be able to connect with remote debugger
+
+OR
+
+run from within an IDE such as webstorm with simple configuration such as
+
+<img width="852" alt="image" src="https://user-images.githubusercontent.com/798887/232255771-e3cf52db-ece2-48b0-b67f-cd8edec39776.png">
+
+---
+
+you may also have to copy .env to .env.dev
+
+and run
+
+`npm run migrate:dev`
+
+to set up the initial database
