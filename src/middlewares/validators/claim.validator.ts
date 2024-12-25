@@ -130,14 +130,14 @@ export const CreateClaimV2Dto = z
     effectiveDate: z.coerce.date().optional(),
     confidence: z.number().min(0).max(1).optional().default(1),
     claimAddress: z.string().optional(),
-    stars: z
-      .number()
-      .or(z.string().transform(str => Number(str)))
-      .min(0, {
-        message: "rating 'stars' must NOT be a value lower than 0"
+    stars: z.union([
+      z.number().min(0),
+      z.string().transform(str => {
+        const num = Number(str);
+        if (num < 0) throw new Error("rating 'stars' must NOT be a value lower than 0");
+        return num;
       })
-      .nullable()
-      .optional(),
+    ]).nullable().optional(),
     images: z.array(
       z.object({
         metadata: z
