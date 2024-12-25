@@ -24,7 +24,12 @@ export function zodValidator(schema: z.Schema) {
       next();
     } catch (err: any) {
       err.statusCode = 422;
-      passToExpressErrorHandler(err.errors, next);
+      // Add version info to error response
+      const errorResponse = {
+        schemaVersion: "2024-03-26-v1",
+        data: err.errors
+      };
+      passToExpressErrorHandler(errorResponse, next);
     }
   };
 }
@@ -99,6 +104,7 @@ export type ImageDto = {
   signature: string;
 };
 
+// ValidationSchema Version: 2024-03-26
 export const CreateClaimV2Dto = z
   .object({
     subject: z.string(),
@@ -108,6 +114,8 @@ export const CreateClaimV2Dto = z
     aspect: z.string().optional(),
     amt: z
       .number()
+      .nullable()
+      .optional()
       .or(
         z
           .string()
@@ -115,23 +123,21 @@ export const CreateClaimV2Dto = z
             message: "Can't convert aspect to number"
           })
           .transform(stripCurrencyToFloat)
-      )
-      .nullable()
-      .optional(),
+      ),
     name: z.string(),
     howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
     sourceURI: z.string().optional().default(''),
     effectiveDate: z.coerce.date().optional(),
     confidence: z.number().min(0).max(1).optional().default(1),
     claimAddress: z.string().optional(),
-    stars: z.coerce
+    stars: z
       .number()
+      .or(z.string().transform(str => Number(str)))
       .min(0, {
         message: "rating 'stars' must NOT be a value lower than 0"
       })
-      .optional()
-      .nullable(),
-
+      .nullable()
+      .optional(),
     images: z.array(
       z.object({
         metadata: z
