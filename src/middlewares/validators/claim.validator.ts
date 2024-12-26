@@ -24,7 +24,12 @@ export function zodValidator(schema: z.Schema) {
       next();
     } catch (err: any) {
       err.statusCode = 422;
-      passToExpressErrorHandler(err.errors, next);
+      // Add version info to error response
+      const errorResponse = {
+        schemaVersion: "2024-03-26-v1",
+        data: err.errors
+      };
+      passToExpressErrorHandler(errorResponse, next);
     }
   };
 }
@@ -99,30 +104,40 @@ export type ImageDto = {
   signature: string;
 };
 
+// ValidationSchema Version: 2024-03-26
 export const CreateClaimV2Dto = z
   .object({
     subject: z.string(),
-    claim: z.string(),
-    object: z.string().optional(),
-    statement: z.string().optional(),
+    claim: z.string().optional().default(''),
+    object: z.string().optional().default(''),
+    statement: z.string().optional().default(''),
     aspect: z.string().optional(),
     amt: z
       .number()
+      .nullable()
+      .optional()
       .or(
         z
           .string()
-          .regex(/\s*\$\s*\d+\s*/)
-          .transform(stripCurrencyToFloat),
-      )
-      .optional(),
+          .regex(/\s*\$?\s*\d*\s*/, {
+            message: "Can't convert aspect to number"
+          })
+          .transform(stripCurrencyToFloat)
+      ),
     name: z.string(),
     howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
-    sourceURI: z.string().optional(),
+    sourceURI: z.string().optional().default(''),
     effectiveDate: z.coerce.date().optional(),
-    confidence: z.number().min(0).max(1).optional(),
+    confidence: z.number().min(0).max(1).optional().default(1),
     claimAddress: z.string().optional(),
-    stars: z.number().min(0).optional(),
-
+    stars: z.union([
+      z.number().min(0),
+      z.string().transform(str => {
+        const num = Number(str);
+        if (num < 0) throw new Error("rating 'stars' must NOT be a value lower than 0");
+        return num;
+      })
+    ]).nullable().optional(),
     images: z.array(
       z.object({
         metadata: z
@@ -134,13 +149,14 @@ export const CreateClaimV2Dto = z
         effectiveDate: z.coerce.date().optional(),
         digestMultibase: z.string().nullable().optional(),
       }),
-    ),
+    ).default([]),
   })
   .refine(validateStars, {
     message:
       'When claim is "rated" and the claim is from a quality aspect, rating "stars" must be a value between 0 and 5',
     path: ["stars"],
   });
+
 export type CreateClaimV2Dto = z.infer<typeof CreateClaimV2Dto>;
 
 function stripCurrencyToFloat(val: string): number | null {
