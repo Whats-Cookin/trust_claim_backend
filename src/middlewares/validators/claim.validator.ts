@@ -125,6 +125,7 @@ export const CreateClaimV2Dto = z
           .transform(stripCurrencyToFloat)
       ),
     name: z.string(),
+    issuerId: z.string().optional(),
     howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
     sourceURI: z.string().optional().default(''),
     effectiveDate: z.coerce.date().optional(),
