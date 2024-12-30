@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import createError from "http-errors";
 
 export function jwtVerify(req: Request, _res: Response, next: NextFunction) {
-  // If request has claimAddress and issuerId, allow it through
-  if (req.body.claimAddress && req.body.issuerId) {
+  // If request has claimAddress or issuerId, allow it through
+  if (req.body.claimAddress || req.body.issuerId) {
     (req as ModifiedRequest).isAuthenticated = false; // or true depending on your needs
     (req as ModifiedRequest).userId = 0;
     return next();
