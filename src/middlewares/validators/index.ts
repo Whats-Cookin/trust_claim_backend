@@ -4,4 +4,4 @@ export {
   githubAuthValidator,
   googleAuthValidator,
 } from "./auth.validator";
-export { CreateClaimV2Dto, zodValidator, claimPostSchema, joiValidator } from "./claim.validator";
+export { CreateClaimV2Dto, claimPostSchema, joiValidator } from "./claim.validator";

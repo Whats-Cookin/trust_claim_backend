@@ -19,7 +19,7 @@ import { claimPostSchema, joiValidator } from "../../middlewares/validators/clai
 import { upload } from "../../middlewares/upload/multer.upload";
 
 const router = Router();
-
+console.log("setting up routes");
 router.post("/claim", jwtVerify, claimPostNormalizer, joiValidator(claimPostSchema), claimPost);
 router.post("/claim/v2", upload as unknown as RequestHandler, jwtVerify, createClaimV2);
 router.get("/claim/search", claimSearch);
