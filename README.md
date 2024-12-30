@@ -269,10 +269,11 @@ npm run build
 NOTE: Run this ONLY when the server is down
 
 ```bash
-pm2 start index.js --watch
+pm2 start trust_claim_backend --watch
 ```
 
 Logs are in `/data/home/ubuntu/.pm2/logs`
+Can also view with `pm2 logs trust_claim_backend`
 
 To see all about the pm2 process use
 
