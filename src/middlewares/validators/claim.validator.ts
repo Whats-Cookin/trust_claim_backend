@@ -57,7 +57,7 @@ export const claimPostSchema = Joi.object({
       }),
     Joi.number(),
   ),
-  name: Joi.string().required(),
+  name: Joi.string().allow("", null),
   howKnown: Joi.string().allow("", null),
   images: Joi.array().items(
     Joi.object({
