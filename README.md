@@ -272,6 +272,14 @@ NOTE: Run this ONLY when the server is down
 pm2 start trust_claim_backend --watch
 ```
 
+To completely reset the pm2 process use
+
+```
+pm2 delete trust_claim_backend
+pm2 start build/index.js --name trust_claim_backend --cwd /data/trust_claim_backend --interpreter /data/home/ubuntu/.nvm/versions/node/v20.18.1/bin/node
+pm2 save
+```
+
 Logs are in `/data/home/ubuntu/.pm2/logs`
 Can also view with `pm2 logs trust_claim_backend`
 

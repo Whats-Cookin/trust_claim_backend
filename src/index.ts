@@ -37,4 +37,5 @@ app.use(
 
 app.listen(port, () => {
   console.log(`Listening to requests in port - ${port}`);
+  console.log(`VERSION 2024-12-30 8:56`);
 });

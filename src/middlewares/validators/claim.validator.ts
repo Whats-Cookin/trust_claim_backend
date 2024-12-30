@@ -17,23 +17,7 @@ export function joiValidator(schema: Joi.Schema) {
   };
 }
 
-export function zodValidator(schema: z.Schema) {
-  return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
-    try {
-      req.body = await schema.parse(req.body);
-      next();
-    } catch (err: any) {
-      err.statusCode = 422;
-      // Add version info to error response
-      const errorResponse = {
-        schemaVersion: "2024-03-26-v1",
-        data: err.errors
-      };
-      passToExpressErrorHandler(errorResponse, next);
-    }
-  };
-}
-
+// MAY BE UNUSED _ PLEASE DELETE IF SO
 export const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
@@ -124,7 +108,7 @@ export const CreateClaimV2Dto = z
           })
           .transform(stripCurrencyToFloat)
       ),
-    name: z.string(),
+    name: z.string().optional(),
     issuerId: z.string().optional(),
     howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
     sourceURI: z.string().optional().default(''),
