@@ -34,7 +34,10 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
 
     await processClaim(claim.id);
 
-    claimData = await claimDao.createClaimData(claim.id, rawClaim.name);
+    const name = rawClaim.name
+    if (name) {
+        claimData = await claimDao.createClaimData(claim.id, name);
+    }
 
     if (rawClaim.images && rawClaim.images.length > 0) {
       claimImages = await claimDao.createImages(claim.id, userId, rawClaim.images);
@@ -77,7 +80,11 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
 
     await processClaim(claim.id);
 
-    const claimData = await claimDao.createClaimData(claim.id, dto.name);
+    const name = dto.name
+    let claimData = null
+    if (name) {
+        claimData = await claimDao.createClaimData(claim.id, name);
+    }
 
     let awsImages: { hash: string; url: string }[];
 
