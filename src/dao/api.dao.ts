@@ -42,7 +42,20 @@ export type Report = {
 };
 
 export type EdgeWithRelations = Edge & {
-      startNode: Node & {
+  startNode: Node & {
+    edgesFrom: (Edge & {
+      startNode: Node;
+      endNode: Node | null;
+      claim: Claim;
+    })[];
+    edgesTo: (Edge & {
+      startNode: Node;
+      endNode: Node | null;
+      claim: Claim;
+    })[];
+  };
+  endNode:
+    | (Node & {
         edgesFrom: (Edge & {
           startNode: Node;
           endNode: Node | null;
@@ -53,21 +66,9 @@ export type EdgeWithRelations = Edge & {
           endNode: Node | null;
           claim: Claim;
         })[];
-      };
-      endNode: (Node & {
-        edgesFrom: (Edge & {
-          startNode: Node;
-          endNode: Node | null;
-          claim: Claim;
-        })[];
-        edgesTo: (Edge & {
-          startNode: Node;
-          endNode: Node | null;
-          claim: Claim;
-        })[];
-      }) | null;
-    };
-
+      })
+    | null;
+};
 
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
 export class ClaimDao {
@@ -498,7 +499,6 @@ export class NodeDao {
     }
   }
 
-
   getNodeById = async (nodeId: number) => {
     return await prisma.node.findUnique({
       where: {
@@ -535,64 +535,62 @@ export class NodeDao {
     });
   };
 
+  getClaimGraph = async (claimId: string | number) => {
+    console.log("In getClaimGraph");
+    const numericClaimId = typeof claimId === "string" ? parseInt(claimId, 10) : claimId;
 
-getClaimGraph = async(claimId: string | number) => {
-
- console.log("In getClaimGraph")
- const numericClaimId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId
-
-  // First find the nodes involved with this claim
-  const nodes = await prisma.node.findMany({
-    where: {
-      OR: [
-        {
-          edgesFrom: {
-            some: {
-              claimId: numericClaimId
-            }
-          }
-        },
-        {
-          edgesTo: {
-            some: {
-              claimId: numericClaimId
-            }
-          }
-        }
-      ]
-    },
-    include: {
-      // Include ALL edges connected to these nodes
-      edgesFrom: {
-        include: {
-          claim: true,
-          startNode: true,
-          endNode: true,
-        }
+    // First find the nodes involved with this claim
+    const nodes = await prisma.node.findMany({
+      where: {
+        OR: [
+          {
+            edgesFrom: {
+              some: {
+                claimId: numericClaimId,
+              },
+            },
+          },
+          {
+            edgesTo: {
+              some: {
+                claimId: numericClaimId,
+              },
+            },
+          },
+        ],
       },
-      edgesTo: {
-        include: {
-          claim: true,
-          startNode: true,
-          endNode: true,
-        }
-      }
-    }
-  })
+      include: {
+        // Include ALL edges connected to these nodes
+        edgesFrom: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+        edgesTo: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+      },
+    });
 
-  // Debug logging
-  console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`)
-  nodes.forEach(node => {
-    console.log(`Node ${node.id} (${node.name}):`)
-    console.log(`  ${node.edgesFrom.length} outgoing edges`)
-    console.log(`  ${node.edgesTo.length} incoming edges`)
-  })
+    // Debug logging
+    console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`);
+    nodes.forEach((node) => {
+      console.log(`Node ${node.id} (${node.name}):`);
+      console.log(`  ${node.edgesFrom.length} outgoing edges`);
+      console.log(`  ${node.edgesTo.length} incoming edges`);
+    });
 
-  return {
-    nodes,
-    count: nodes.length
-  }
-}
+    return {
+      nodes,
+      count: nodes.length,
+    };
+  };
 
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
