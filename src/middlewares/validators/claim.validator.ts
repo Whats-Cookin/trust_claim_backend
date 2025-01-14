@@ -142,10 +142,10 @@ export type ImageDto = {
 export const CreateClaimV2Dto = z
   .object({
     subject: z.string(),
-    claim: z.string().optional().default(""),
-    object: z.string().optional().default(""),
-    statement: z.string().optional().default(""),
-    aspect: z.string().optional(),
+    claim: z.string(),
+    object: z.string().nullable().optional().default(""),
+    statement: z.string().nullable().optional().default(""),
+    aspect: z.string().nullable().optional(),
     amt: z
       .number()
       .nullable()
@@ -158,13 +158,16 @@ export const CreateClaimV2Dto = z
           })
           .transform(stripCurrencyToFloat),
       ),
-    name: z.string().optional(),
-    issuerId: z.string().optional(),
-    howKnown: z.enum(Object.values(HowKnown) as NotEmpty<HowKnown>).optional(),
-    sourceURI: z.string().optional().default(""),
-    effectiveDate: z.coerce.date().optional(),
-    confidence: z.number().min(0).max(1).optional().default(1),
-    claimAddress: z.string().optional(),
+    name: z.string().nullable().optional(),
+    issuerId: z.string().nullable().optional(),
+    howKnown: z
+      .enum(Object.values(HowKnown) as NotEmpty<HowKnown>)
+      .nullable()
+      .optional(),
+    sourceURI: z.string().nullable().optional().default(""),
+    effectiveDate: z.coerce.date().nullable().optional(),
+    confidence: z.number().min(0).max(1).nullable().optional().default(1),
+    claimAddress: z.string().nullable().optional(),
     stars: z
       .union([
         z.number().min(0),
@@ -185,7 +188,7 @@ export const CreateClaimV2Dto = z
               caption: z.string().nullable().optional(),
             })
             .optional(),
-          effectiveDate: z.coerce.date().optional(),
+          effectiveDate: z.coerce.date().nullable().optional(),
           digestMultibase: z.string().nullable().optional(),
         }),
       )
