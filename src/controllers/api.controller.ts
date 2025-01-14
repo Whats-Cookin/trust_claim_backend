@@ -55,7 +55,6 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
     const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof } = req.body;
     const credential = await credentialDao.createCredential({
       context,
-      id,
       type,
       issuer,
       issuanceDate,
