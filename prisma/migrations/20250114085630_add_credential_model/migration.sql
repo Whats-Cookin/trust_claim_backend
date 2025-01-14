@@ -1,11 +1,27 @@
 -- CreateEnum
-ALTER TYPE "AuthType" ADD VALUE 'OAUTH';
-
--- CreateEnum
 CREATE TYPE "ValidationStatus" AS ENUM ('PENDING', 'COMPLETED', 'REJECTED', 'ABANDONED');
 
 -- CreateEnum
 CREATE TYPE "ResponseStatus" AS ENUM ('GREEN', 'YELLOW', 'GREY', 'RED');
+
+-- AlterEnum
+ALTER TYPE "AuthType" ADD VALUE 'OAUTH';
+
+-- CreateTable
+CREATE TABLE "Credential" (
+    "id" TEXT NOT NULL,
+    "context" JSONB NOT NULL,
+    "type" JSONB NOT NULL,
+    "issuer" JSONB NOT NULL,
+    "issuanceDate" TIMESTAMP(3) NOT NULL,
+    "expirationDate" TIMESTAMP(3),
+    "credentialSubject" JSONB NOT NULL,
+    "proof" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Credential_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "ClaimData" (
@@ -34,12 +50,15 @@ CREATE TABLE "Image" (
 -- CreateTable
 CREATE TABLE "CandidUserInfo" (
     "id" SERIAL NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     "claimId" INTEGER,
     "firstName" TEXT,
     "lastName" TEXT,
     "candid_entity_id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "profileURL" TEXT NOT NULL,
+    "response" "ResponseStatus",
 
     CONSTRAINT "CandidUserInfo_pkey" PRIMARY KEY ("id")
 );
@@ -48,13 +67,15 @@ CREATE TABLE "CandidUserInfo" (
 CREATE TABLE "ValidationRequest" (
     "id" SERIAL NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     "context" TEXT NOT NULL,
     "validatorName" TEXT NOT NULL,
     "validatorEmail" TEXT NOT NULL,
     "claimId" INTEGER NOT NULL,
     "validationClaimId" INTEGER,
     "validationStatus" "ValidationStatus" NOT NULL DEFAULT 'PENDING',
-    "response" "ResponseStatus",
+    "response" "ResponseStatus" NOT NULL,
+    "rating" INTEGER,
     "validationDate" TIMESTAMP(3),
     "statement" TEXT,
 
@@ -69,4 +90,3 @@ CREATE UNIQUE INDEX "CandidUserInfo_claimId_key" ON "CandidUserInfo"("claimId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ValidationRequest_validationClaimId_key" ON "ValidationRequest"("validationClaimId");
-

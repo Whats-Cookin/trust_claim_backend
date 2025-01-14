@@ -259,6 +259,20 @@ export class ClaimDao {
   };
 }
 
+export class CredentialDao {
+  async createCredential(data: any) {
+    return await prisma.credential.create({
+      data,
+    });
+  }
+
+  async getCredentialById(id: string) {
+    return await prisma.credential.findUnique({
+      where: { id },
+    });
+  }
+}
+
 interface FeedEntry {
   name: string;
   thumbnail: string | null;

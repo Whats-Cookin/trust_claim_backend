@@ -6,7 +6,7 @@ import { ulid } from "ulid";
 import { prisma } from "../db/prisma";
 import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefined } from "../utils";
 
-import { ClaimDao, NodeDao } from "../dao/api.dao";
+import { ClaimDao, NodeDao, CredentialDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
 import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
 import { uploadImageToS3 } from "../utils/aws-s3";
@@ -47,6 +47,26 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
   }
 
   return res.status(201).json({ claim, claimData, claimImages });
+};
+
+const credentialDao = new CredentialDao();
+export const createCredential = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof } = req.body;
+    const credential = await credentialDao.createCredential({
+      context,
+      type,
+      issuer,
+      issuanceDate,
+      expirationDate,
+      credentialSubject,
+      proof,
+    });
+
+    return res.status(201).json({ message: "Credential created successfully!", credential });
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
 };
 
 export async function createClaimV2(req: Request, res: Response, next: NextFunction) {
