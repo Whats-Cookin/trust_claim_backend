@@ -1,8 +1,9 @@
-import {type RequestHandler, Router } from "express";
+import { type RequestHandler, Router } from "express";
 import { claimPostNormalizer } from "../../middlewares/normalizers";
 import {
   claimPost,
   claimsGet,
+  createCredential,
   claimsFeed,
   getNodeById,
   searchNodes,
@@ -15,12 +16,13 @@ import {
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
 import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
-import { claimPostSchema, joiValidator } from "../../middlewares/validators/claim.validator";
+import { claimPostSchema, joiValidator, credentialPostSchema } from "../../middlewares/validators/claim.validator";
 import { upload } from "../../middlewares/upload/multer.upload";
 
 const router = Router();
 console.log("setting up routes");
 router.post("/claim", jwtVerify, claimPostNormalizer, joiValidator(claimPostSchema), claimPost);
+router.post("/credential", joiValidator(credentialPostSchema), createCredential);
 router.post("/claim/v2", upload as unknown as RequestHandler, jwtVerify, createClaimV2);
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
