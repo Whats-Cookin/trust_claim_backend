@@ -262,7 +262,15 @@ export class ClaimDao {
 export class CredentialDao {
   async createCredential(data: any) {
     return await prisma.credential.create({
-      data,
+      data: {
+        context: data.context || ["https://www.w3.org/2018/credentials/v1"],
+        type: data.type,
+        issuer: data.issuer,
+        issuanceDate: data.issuanceDate,
+        expirationDate: data.expirationDate,
+        credentialSubject: data.credentialSubject,
+        proof: data.proof,
+      },
     });
   }
 
@@ -451,61 +459,77 @@ export class NodeDao {
       query = query ? `%${query}%` : null;
       cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
 
-      const rawQ = Prisma.sql`
-        WITH RankedClaims AS (
-          SELECT
-            n.name AS name,
-            n."nodeUri" AS link,
-            c.id AS claim_id,
-            c.statement AS statement,
-            c.stars AS stars,
-            c."effectiveDate" AS effective_date,
-            ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
-            CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
-          FROM "Claim" c
-          INNER JOIN "Edge" AS e ON c.id = e."claimId"
-          INNER JOIN "Node" AS n ON e."startNodeId" = n.id
-          WHERE
-            n."entType" != 'CLAIM'
-            AND e.label != 'source'
-            AND c."effectiveDate" IS NOT NULL
-            AND c.statement IS NOT NULL
-            AND n.name IS NOT NULL
-            AND n.name != ''
-            AND (
-              c.subject ILIKE COALESCE(${query}, '%') OR
-              c.statement ILIKE COALESCE(${query}, '%') OR
-              n.name ILIKE COALESCE(${query}, '%')
-            )
-          ORDER BY c."effectiveDate" DESC, c.id DESC
+      const claimsQuery = Prisma.sql`
+      SELECT
+        n.name AS name,
+        n."nodeUri" AS link,
+        c.id::TEXT AS claim_id,
+        c.statement AS statement,
+        c.stars AS stars,
+        c."effectiveDate" AS effective_date,
+        CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+      FROM "Claim" c
+      INNER JOIN "Edge" AS e ON c.id = e."claimId"
+      INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+      WHERE
+        n."entType" != 'CLAIM'
+        AND e.label != 'source'
+        AND c."effectiveDate" IS NOT NULL
+        AND c.statement IS NOT NULL
+        AND n.name IS NOT NULL
+        AND n.name != ''
+        AND (
+          c.subject ILIKE COALESCE(${query}, '%') OR
+          c.statement ILIKE COALESCE(${query}, '%') OR
+          n.name ILIKE COALESCE(${query}, '%')
         )
-        SELECT 
-          name,
-          link,
-          claim_id,
-          statement,
-          stars,
-          effective_date,
-          cursor
-        FROM RankedClaims
-        WHERE
-          row_num = 1
-          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
-        LIMIT ${limit}
-      `;
+      ORDER BY c."effectiveDate" DESC, c.id DESC
+      LIMIT ${limit}
+    `;
 
-      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
+      const credentialsQuery = Prisma.sql`
+      SELECT
+        cr.id AS credential_id,
+        cr.context AS context,
+        cr.type AS credential_type,
+        cr.issuer AS issuer,
+        cr."issuanceDate" AS issuance_date,
+        cr."expirationDate" AS expiration_date,
+        cr."credentialSubject" AS credential_subject,
+        cr.proof AS proof,
+        CONCAT(COALESCE(to_char(cr."issuanceDate", 'YYYYMMDDHH24MISS'), ''), cr.id) AS cursor
+      FROM "Credential" cr
+      WHERE
+        cr."credentialSubject"::TEXT ILIKE COALESCE(${query}, '%')
+      ORDER BY cr."issuanceDate" DESC, cr.id DESC
+      LIMIT ${limit}
+    `;
 
-      const lastCursor = claims.at(-1)?.cursor;
-      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(claimsQuery);
+      const credentials = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(credentialsQuery);
+
+      const lastClaimCursor = claims.at(-1)?.cursor;
+      const lastCredentialCursor = credentials.at(-1)?.cursor;
+
+      const nextPage =
+        lastClaimCursor || lastCredentialCursor
+          ? Buffer.from(lastClaimCursor || lastCredentialCursor || "").toString("base64")
+          : null;
 
       for (let i = 0; i < claims.length; i++) {
         delete claims[i].cursor;
       }
 
+      for (let i = 0; i < credentials.length; i++) {
+        delete credentials[i].cursor;
+      }
+
       return {
         nextPage,
-        claims: claims as FeedEntryV3[],
+        feedEntries: {
+          claims: claims as FeedEntryV3[],
+          credentials: credentials as FeedEntryV3[],
+        },
       };
     } catch (error) {
       console.error("Error fetching feed entries:", error);

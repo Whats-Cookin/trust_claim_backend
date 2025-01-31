@@ -17,7 +17,6 @@ export function joiValidator(schema: Joi.Schema) {
   };
 }
 
-// MAY BE UNUSED _ PLEASE DELETE IF SO
 export const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
@@ -75,56 +74,6 @@ export const claimPostSchema = Joi.object({
     }
     return true;
   }),
-});
-
-export const credentialPostSchema = Joi.object({
-  context: Joi.array().required(),
-  id: Joi.string().required(),
-  type: Joi.array().required(),
-  issuer: Joi.object({
-    id: Joi.string().required(),
-    type: Joi.array().required(),
-  }).required(),
-  issuanceDate: Joi.date().required(),
-  expirationDate: Joi.date().optional(),
-  credentialSubject: Joi.object({
-    type: Joi.array().required(),
-    name: Joi.string().required(),
-    portfolio: Joi.array().items(
-      Joi.object({
-        "@type": Joi.string().required(),
-        name: Joi.string().required(),
-        url: Joi.string().uri().required(),
-      }),
-    ),
-    evidenceLink: Joi.string().uri().required(),
-    evidenceDescription: Joi.string().required(),
-    duration: Joi.string().required(),
-    achievement: Joi.array()
-      .items(
-        Joi.object({
-          id: Joi.string().required(),
-          type: Joi.array().required(),
-          criteria: Joi.object({
-            narrative: Joi.string().required(),
-          }).required(),
-          description: Joi.string().required(),
-          name: Joi.string().required(),
-          image: Joi.object({
-            id: Joi.string().uri().required(),
-            type: Joi.string().required(),
-          }).required(),
-        }),
-      )
-      .required(),
-  }).required(),
-  proof: Joi.object({
-    type: Joi.string().required(),
-    created: Joi.date().required(),
-    verificationMethod: Joi.string().required(),
-    proofPurpose: Joi.string().required(),
-    proofValue: Joi.string().required(),
-  }).required(),
 });
 
 export type ImageDto = {

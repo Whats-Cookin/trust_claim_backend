@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,8 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User is only for convenience, the app itself signs the claims if the user is logged in web2 methods
-// The User *may* be the source, or the source may be the actual wallet issuing the claim directly to composedb
 model User {
   id             Int      @id @default(autoincrement())
   email          String?  @unique
@@ -19,6 +14,161 @@ model User {
   name           String?
   authType       AuthType @default(PASSWORD)
   authProviderId String?
+}
+
+model Node {
+  id        Int        @id @default(autoincrement())
+  nodeUri   String
+  name      String
+  entType   EntityType
+  descrip   String
+  image     String?
+  thumbnail String?
+  edgesTo   Edge[]     @relation("edgeTo")
+  edgesFrom Edge[]     @relation("edgeFrom")
+}
+
+model Edge {
+  id          Int     @id @default(autoincrement())
+  startNodeId Int
+  endNodeId   Int?
+  label       String
+  thumbnail   String?
+  claimId     Int
+  claim       Claim   @relation("edgeClaim", fields: [claimId], references: [id])
+  endNode     Node?   @relation("edgeTo", fields: [endNodeId], references: [id])
+  startNode   Node    @relation("edgeFrom", fields: [startNodeId], references: [id])
+
+  @@index([claimId], map: "idx_edge_claimid")
+  @@index([endNodeId], map: "idx_endnodeid")
+  @@index([startNodeId], map: "idx_startnodeid")
+}
+
+model Claim {
+  id               Int           @id @default(autoincrement())
+  subject          String
+  claim            String
+  object           String?
+  statement        String?
+  effectiveDate    DateTime?
+  sourceURI        String?
+  howKnown         HowKnown?
+  dateObserved     DateTime?
+  digestMultibase  String?
+  author           String?
+  curator          String?
+  aspect           String?
+  score            Float?
+  stars            Int?
+  amt              Float?
+  unit             String?
+  howMeasured      String?
+  intendedAudience String?
+  respondAt        String?
+  confidence       Float?
+  issuerId         String?
+  issuerIdType     IssuerIdType?
+  claimAddress     String?
+  proof            String?
+  createdAt        DateTime      @default(now())
+  lastUpdatedAt    DateTime      @default(now())
+  edges            Edge[]        @relation("edgeClaim")
+
+  @@index([object(ops: raw("gin_trgm_ops"))], map: "idx_object", type: Gin)
+  @@index([subject(ops: raw("gin_trgm_ops"))], map: "idx_subject", type: Gin)
+}
+
+model Credential {
+  id                String    @id @default(uuid())
+  context           Json?
+  type              Json?
+  issuer            Json?
+  issuanceDate      DateTime?
+  expirationDate    DateTime?
+  credentialSubject Json?
+  proof             Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model ClaimData {
+  id      Int    @id @default(autoincrement())
+  claimId Int    @unique
+  name    String
+}
+
+model Image {
+  id              Int      @id @default(autoincrement())
+  claimId         Int
+  url             String
+  digestMultibase String?
+  metadata        Json?
+  effectiveDate   DateTime
+  createdDate     DateTime @default(now())
+  owner           String
+  signature       String
+}
+
+model CandidUserInfo {
+  id               Int             @id @default(autoincrement())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  claimId          Int?            @unique
+  firstName        String?
+  lastName         String?
+  candid_entity_id String
+  email            String
+  profileURL       String
+  response         ResponseStatus?
+}
+
+model ValidationRequest {
+  id                Int              @id @default(autoincrement())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  context           String
+  validatorName     String
+  validatorEmail    String
+  claimId           Int
+  validationClaimId Int?             @unique
+  validationStatus  ValidationStatus @default(PENDING)
+  response          ResponseStatus
+  rating            Int?
+  validationDate    DateTime?
+  statement         String?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model restore_claim {
+  id               Int?
+  subject          String?
+  claim            String?
+  object           String?
+  statement        String?
+  effectiveDate    DateTime?
+  sourceURI        String?
+  howKnown         HowKnown?
+  dateObserved     DateTime?
+  digestMultibase  String?
+  author           String?
+  curator          String?
+  aspect           String?
+  score            Float?
+  stars            Int?
+  amt              Float?
+  unit             String?
+  howMeasured      String?
+  intendedAudience String?
+  respondAt        String?
+  confidence       Float?
+  issuerId         String?
+  issuerIdType     IssuerIdType?
+  claimAddress     String?
+  proof            String?
+  createdAt        DateTime?
+  lastUpdatedAt    DateTime?
+
+  @@ignore
 }
 
 enum AuthType {
@@ -40,168 +190,6 @@ enum EntityType {
   OTHER
 }
 
-// Derived models
-
-// Nodes & Edges are used to return element graph to front end view
-
-// Nodes are generated from subject, object, source of claims, and even claim itself may be a node
-// these fields are useful for display
-model Node {
-  id        Int        @id @default(autoincrement())
-  nodeUri   String
-  name      String
-  entType   EntityType
-  descrip   String
-  image     String? // image?
-  thumbnail String? // thumbnail?
-  edgesTo   Edge[]     @relation("edgeTo")
-  edgesFrom Edge[]     @relation("edgeFrom")
-}
-
-// Relationship between two nodes
-//   subject -> object, edge label is claim  (if claim is a relationship)
-//   subject -> claim, edge label is claim   (if claim is a rating or credential)
-//   claim -> source, edge is "source" (still associated with claim)
-
-model Edge {
-  id          Int     @id @default(autoincrement())
-  startNode   Node    @relation("edgeFrom", fields: [startNodeId], references: [id])
-  startNodeId Int
-  endNode     Node?   @relation("edgeTo", fields: [endNodeId], references: [id])
-  endNodeId   Int?
-  label       String
-  thumbnail   String?
-  claim       Claim   @relation("edgeClaim", fields: [claimId], references: [id])
-  claimId     Int
-}
-
-// Raw data from signed claims - generated from composedb stream of TrustClaims
-model Claim {
-  id            Int       @id @default(autoincrement())
-  subject       String
-  claim         String
-  object        String?
-  statement     String?
-  effectiveDate DateTime?
-
-  // splat ClaimSource
-  sourceURI       String?
-  howKnown        HowKnown?
-  dateObserved    DateTime?
-  digestMultibase String?
-  author          String?
-  curator         String?
-
-  // splat NormalizedRating
-  aspect String?
-  score  Float? // -1 to 1
-  stars  Int? // 0 to 5
-
-  // splat Measure
-  amt         Float?
-  unit        String?
-  howMeasured String?
-
-  // splat Sharing
-  intendedAudience String?
-  respondAt        String?
-
-  confidence Float?
-
-  // signer of the original claim
-  issuerId     String?
-  issuerIdType IssuerIdType?
-
-  // cid or other external address of signed claim
-  claimAddress String?
-
-  // embedded cryptographically signed version
-  proof String?
-
-  /////////////////  Below here nothing to do with actual claim ///////////////
-
-  // specific to this database instance
-  edges Edge[] @relation(name: "edgeClaim")
-
-  // for the database record itself
-  createdAt     DateTime @default(now())
-  lastUpdatedAt DateTime @default(now())
-}
-
-model Credential {
-  id                String   @id @default(uuid())
-  context           Json
-  type              Json
-  issuer            Json
-  issuanceDate      DateTime
-  expirationDate    DateTime?
-  credentialSubject Json
-  proof             Json
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-
-// this model is to connect between the claim and the data that supports it
-// like the name of the claim, the image, the source, etc.
-// maybe to add another atts in future like the urls that can be related to the claim, like the website, the social media, etc.
-model  ClaimData {
-  id      Int @id @default(autoincrement())
-  claimId Int @unique
-
-  name  String
-  // image Image[]
-}
-
-// this model is to store the image of the claim
-model Image {
-  id      Int @id @default(autoincrement())
-  claimId Int  // @unique
-  // claimDataId Int
-
-  url             String
-  digestMultibase String?
-  metadata        Json?
-  effectiveDate   DateTime
-  createdDate     DateTime @default(now())
-  owner           String
-  signature       String
-
-  // claimData ClaimData @relation(fields: [claimDataId], references: [id])
-}
-
-// this is for validator service
-model CandidUserInfo {
-  id               Int     @id @default(autoincrement())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  claimId          Int?    @unique
-  firstName        String?
-  lastName         String?
-  candid_entity_id String
-  email            String
-  profileURL       String
-  response         ResponseStatus?
-}
-
-model ValidationRequest {
-  id                Int              @id @default(autoincrement())
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  context           String
-  validatorName     String
-  validatorEmail    String
-  claimId           Int
-  validationClaimId Int?             @unique
-  validationStatus  ValidationStatus @default(PENDING)
-  response          ResponseStatus   
-  rating            Int?
-  validationDate    DateTime?
-  statement         String?
-}
-
 enum ValidationStatus {
   PENDING
   COMPLETED
@@ -217,10 +205,10 @@ enum IssuerIdType {
 }
 
 enum ResponseStatus {
-  GREEN // approved
-  YELLOW // may wish to follow up
-  GREY // we do not have any information that they should actively be rejected
-  RED // should be rejected without further action.
+  GREEN
+  YELLOW
+  GREY
+  RED
 }
 
 enum HowKnown {
