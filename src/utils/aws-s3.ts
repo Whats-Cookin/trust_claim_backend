@@ -40,7 +40,9 @@ export async function uploadImageToS3(filename: string, file: Express.Multer.Fil
   }
 
   try {
-    const optimizedImage = await optimizeImage(file.buffer);
+    let optimizedImage = file.buffer;
+    if (file.mimetype !== "video/mp4") optimizedImage = await optimizeImage(file.buffer);
+
     const params: PutObjectCommandInput = {
       Key: filename,
       Body: optimizedImage,

@@ -4,6 +4,7 @@ import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
+import { getS3SignedUrlIfExisted } from "../utils/aws-s3";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -182,11 +183,20 @@ export class ClaimDao {
   };
 
   getClaimImages = async (claimId: number) => {
-    return await prisma.image.findMany({
+    const images = await prisma.image.findMany({
       where: {
         claimId,
       },
     });
+
+    const signedImages = await Promise.all(images.map(async (img) => {
+      return {
+        ...img,
+        url: await getS3SignedUrlIfExisted(img.url.split("/").pop()) || "",
+      };
+    }));
+
+    return signedImages;
   };
 
   searchClaims = async (search: string, page: number, limit: number) => {
@@ -725,6 +735,18 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       OFFSET ${offset}
     `;
 
+  for (const validation of validations) {
+    const validationImage = await prisma.image.findFirst({
+      where: {
+        claimId: validation.claim_id,
+      },
+    });
+
+    const accessableImage = await getS3SignedUrlIfExisted(validationImage?.url.split("/").pop());
+
+    validation.image = accessableImage || "";
+  }
+
   // Now get any other claims about the same subject, if any
   // the subject of the claim is claim.subject, not the url of the claim itself
   const attestations = await prisma.$queryRaw<ReportI[]>`
@@ -734,6 +756,19 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       LIMIT ${limit}
       OFFSET ${offset}
     `;
+
+for (const attestation of attestations) {
+  const attestationImage = await prisma.image.findFirst({
+    where: {
+      claimId: attestation.claim_id,
+    },
+  });
+
+  const accessableImage = await getS3SignedUrlIfExisted(attestationImage?.url.split("/").pop());
+
+
+  attestation.image = accessableImage || "";
+}
 
   //
   // later we might want a second level call where we ALSO get other claims about the nodes who were the source or issuer of the attestations
