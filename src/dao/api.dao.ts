@@ -4,7 +4,7 @@ import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
-import { getS3SignedUrlIfExisted } from "../utils/aws-s3";
+import { getS3SignedUrlIfExisted, isS3Url } from "../utils/aws-s3";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -183,20 +183,38 @@ export class ClaimDao {
   };
 
   getClaimImages = async (claimId: number) => {
+    // TODO: This function is just temporary, just there to avoid break something for now.
     const images = await prisma.image.findMany({
       where: {
         claimId,
       },
     });
 
+    // if the image/video is in s3, get a signed url, otherwise return the url as is
     const signedImages = await Promise.all(images.map(async (img) => {
+      if (!isS3Url(img.url)) return img;
       return {
         ...img,
         url: await getS3SignedUrlIfExisted(img.url.split("/").pop()) || "",
       };
     }));
 
+
     return signedImages;
+  };
+
+  getClaimImage = async (claimId: number) => {
+    const image = await prisma.image.findFirst({
+      where: {
+        claimId,
+      },
+    });
+
+    // if the image/video is in s3, get a signed url, otherwise return the url as is
+    if (image && image.url && isS3Url(image.url))
+        image.url = await getS3SignedUrlIfExisted(image.url.split('/').pop()) || '';
+
+    return image;
   };
 
   searchClaims = async (search: string, page: number, limit: number) => {
@@ -684,7 +702,7 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   const claimDao = new ClaimDao();
 
   const claim_as_node_uri = makeClaimSubjectURL(claimId);
-  let images;
+  let image;
   let claimData;
   let relatedNodes;
   const claimToGet = await prisma.claim.findUnique({
@@ -694,7 +712,7 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   });
 
   if (claimToGet) {
-    images = await claimDao.getClaimImages(claimToGet.id);
+    image = await claimDao.getClaimImage(claimToGet.id);
     claimData = await claimDao.getClaimData(claimToGet.id);
     relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
   }
@@ -757,18 +775,17 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       OFFSET ${offset}
     `;
 
-for (const attestation of attestations) {
-  const attestationImage = await prisma.image.findFirst({
-    where: {
-      claimId: attestation.claim_id,
-    },
-  });
+  for (const attestation of attestations) {
+    const attestationImage = await prisma.image.findFirst({
+      where: {
+        claimId: attestation.claim_id,
+      },
+    });
 
-  const accessableImage = await getS3SignedUrlIfExisted(attestationImage?.url.split("/").pop());
+    const accessableImage = await getS3SignedUrlIfExisted(attestationImage?.url.split("/").pop());
 
-
-  attestation.image = accessableImage || "";
-}
+    attestation.image = accessableImage || "";
+  }
 
   //
   // later we might want a second level call where we ALSO get other claims about the nodes who were the source or issuer of the attestations
@@ -784,27 +801,16 @@ for (const attestation of attestations) {
     },
   });
 
-  // the Node of the Claim is the one representing the claim, not the subject
-  // we may later want to put an image of the subject instead, we'll decide in design
-  const NodeOfClaim = await prisma.node.findFirst({
-    where: {
-      nodeUri: claim_as_node_uri,
-    },
-  });
-
   const claim = {
     claim: claimToGet,
-    images: images,
+    image: image?.url,
     claimData: claimData,
     relatedNodes: relatedNodes,
   };
 
   return {
     edge,
-    claim: {
-      ...claim,
-      image: NodeOfClaim?.image,
-    },
+    claim,
     validations,
     attestations,
   } as Report;
