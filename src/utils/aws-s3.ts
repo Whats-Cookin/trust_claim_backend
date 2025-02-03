@@ -91,6 +91,6 @@ export function isS3Url(url: string): boolean {
   // Regex to match:
   // - Global endpoint: *.s3.amazonaws.com
   // - Regional endpoints: *.s3.[region].amazonaws.com
-  const s3Regex = /^https?:\/\/(.*\.)?s3(\.[a-z0-9-]+)?\.amazonaws\.com\//i;
-  return s3Regex.test(url);
+  const s3Regex = /^https?:\/\/(\w[\w-]+?\.)?s3(\.[a-z0-9-]+)?\.amazonaws\.com\//i;
+    return s3Regex.test(url);
 }
