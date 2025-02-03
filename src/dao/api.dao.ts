@@ -4,7 +4,7 @@ import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
-import { getS3SignedUrlIfExisted, isS3Url } from "../utils/aws-s3";
+import { getSignedImageForClaim } from "../controllers/api.controller";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -778,42 +778,3 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   } as Report;
 };
 
-export const getSignedImageForClaim = async (claimId: number): Promise<Image | null> => {
-  const claimDao = new ClaimDao();
-  try {
-    const image = await claimDao.getClaimImage(claimId);
-    if (!image) return null;
-
-    // if the image/video is in s3, get a signed url, otherwise return the url as is
-    if (image.url && isS3Url(image.url))
-      image.url = (await getS3SignedUrlIfExisted(image.url.split("/").pop())) || image.url;
-    return image;
-  } catch (error) {
-    console.error("Error signing image URL:", error);
-    return null;
-  }
-};
-
-export const getSignedImagesForClaim = async (claimId: number): Promise<Image[]> => {
-  // TODO: This function is just temporary, just there to avoid break something for now.
-  // we have only 1 image for a claim for now
-  const claimDao = new ClaimDao();
-
-  try {
-    const images = await claimDao.getClaimImages(claimId);
-
-    return Promise.all(
-      images.map(async (image) => {
-        if (image.url && isS3Url(image.url)) {
-          const filename = image.url.split("/").pop();
-          const signedUrl = await getS3SignedUrlIfExisted(filename);
-          return { ...image, url: signedUrl || image.url };
-        }
-        return image;
-      }),
-    );
-  } catch (error) {
-    console.error("Error signing image URLs:", error);
-    return [];
-  }
-};
