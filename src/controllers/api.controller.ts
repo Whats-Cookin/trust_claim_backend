@@ -9,10 +9,11 @@ import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefine
 import { ClaimDao, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
 import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
-import { uploadImageToS3 } from "../utils/aws-s3";
+import { getS3SignedUrlIfExisted, isS3Url, uploadImageToS3 } from "../utils/aws-s3";
 import { calculateBufferHash } from "../utils/hash";
 import { config } from "../config";
 import axios from "axios";
+import { Image } from "@prisma/client";
 
 const DEFAULT_LIMIT = 100;
 
@@ -157,7 +158,7 @@ export const getAllClaims = async (_req: Request, res: Response, next: NextFunct
     const claimsData = [];
     for (const claim of claims) {
       const data = await claimDao.getClaimData(claim.id as any);
-      const images = await claimDao.getClaimImages(claim.id as any);
+      const images = await getSignedImagesForClaim(claim.id as any);
       claimsData.push({ data, claim, images });
     }
     const count = await prisma.claim.count({});
@@ -187,7 +188,7 @@ export const claimSearch = async (req: Request, res: Response, next: NextFunctio
       });
       for (const claim of claimsData) {
         const data = await claimDao.getClaimData(claim.id);
-        const images = await claimDao.getClaimImages(claim.id);
+        const images = await getSignedImagesForClaim(claim.id);
         const relatedNodes = await claimDao.getRelatedNodes(claim.id);
         claims.push({ data, claim, images, relatedNodes });
       }
@@ -290,3 +291,44 @@ async function processClaim(claimId: string | number) {
     throw e;
   }
 }
+
+
+export const getSignedImageForClaim = async (claimId: number): Promise<Image | null> => {
+  const claimDao = new ClaimDao();
+  try {
+    const image = await claimDao.getClaimImage(claimId);
+    if (!image) return null;
+
+    // if the image/video is in s3, get a signed url, otherwise return the url as is
+    if (image.url && isS3Url(image.url))
+      image.url = (await getS3SignedUrlIfExisted(image.url.split("/").pop())) || image.url;
+    return image;
+  } catch (error) {
+    console.error("Error signing image URL:", error);
+    return null;
+  }
+};
+
+export const getSignedImagesForClaim = async (claimId: number): Promise<Image[]> => {
+  // TODO: This function is just temporary, just there to avoid break something for now.
+  // we have only 1 image for a claim for now
+  const claimDao = new ClaimDao();
+
+  try {
+    const images = await claimDao.getClaimImages(claimId);
+
+    return Promise.all(
+      images.map(async (image) => {
+        if (image.url && isS3Url(image.url)) {
+          const filename = image.url.split("/").pop();
+          const signedUrl = await getS3SignedUrlIfExisted(filename);
+          return { ...image, url: signedUrl || image.url };
+        }
+        return image;
+      }),
+    );
+  } catch (error) {
+    console.error("Error signing image URLs:", error);
+    return [];
+  }
+};
