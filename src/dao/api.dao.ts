@@ -691,10 +691,9 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   });
 
   if (!claimToGet) throw new createError.NotFound("Claim does not exist");
-    const image = await getSignedImageForClaim(claimToGet.id);
-    const claimData = await claimDao.getClaimData(claimToGet.id);
-    const relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
-
+  const image = await getSignedImageForClaim(claimToGet.id);
+  const claimData = await claimDao.getClaimData(claimToGet.id);
+  const relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
 
   const baseQuery = `
         SELECT DISTINCT
@@ -797,7 +796,7 @@ export const getSignedImageForClaim = async (claimId: number): Promise<Image | n
 
 export const getSignedImagesForClaim = async (claimId: number): Promise<Image[]> => {
   // TODO: This function is just temporary, just there to avoid break something for now.
-  // we have only 1 image for a claim for now 
+  // we have only 1 image for a claim for now
   const claimDao = new ClaimDao();
 
   try {
