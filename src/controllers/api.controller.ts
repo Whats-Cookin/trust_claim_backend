@@ -6,7 +6,7 @@ import { ulid } from "ulid";
 import { prisma } from "../db/prisma";
 import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefined } from "../utils";
 
-import { ClaimDao, NodeDao } from "../dao/api.dao";
+import { ClaimDao, getSignedImagesForClaim, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
 import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
 import { uploadImageToS3 } from "../utils/aws-s3";
@@ -157,7 +157,7 @@ export const getAllClaims = async (_req: Request, res: Response, next: NextFunct
     const claimsData = [];
     for (const claim of claims) {
       const data = await claimDao.getClaimData(claim.id as any);
-      const images = await claimDao.getClaimImages(claim.id as any);
+      const images = await getSignedImagesForClaim(claim.id as any);
       claimsData.push({ data, claim, images });
     }
     const count = await prisma.claim.count({});
@@ -187,7 +187,7 @@ export const claimSearch = async (req: Request, res: Response, next: NextFunctio
       });
       for (const claim of claimsData) {
         const data = await claimDao.getClaimData(claim.id);
-        const images = await claimDao.getClaimImages(claim.id);
+        const images = await getSignedImagesForClaim(claim.id);
         const relatedNodes = await claimDao.getRelatedNodes(claim.id);
         claims.push({ data, claim, images, relatedNodes });
       }

@@ -184,37 +184,19 @@ export class ClaimDao {
 
   getClaimImages = async (claimId: number) => {
     // TODO: This function is just temporary, just there to avoid break something for now.
-    const images = await prisma.image.findMany({
+    return prisma.image.findMany({
       where: {
         claimId,
       },
     });
-
-    // if the image/video is in s3, get a signed url, otherwise return the url as is
-    const signedImages = await Promise.all(images.map(async (img) => {
-      if (!isS3Url(img.url)) return img;
-      return {
-        ...img,
-        url: await getS3SignedUrlIfExisted(img.url.split("/").pop()) || "",
-      };
-    }));
-
-
-    return signedImages;
   };
 
   getClaimImage = async (claimId: number) => {
-    const image = await prisma.image.findFirst({
+    return prisma.image.findFirst({
       where: {
         claimId,
       },
     });
-
-    // if the image/video is in s3, get a signed url, otherwise return the url as is
-    if (image && image.url && isS3Url(image.url))
-        image.url = await getS3SignedUrlIfExisted(image.url.split('/').pop()) || '';
-
-    return image;
   };
 
   searchClaims = async (search: string, page: number, limit: number) => {
@@ -702,22 +684,17 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   const claimDao = new ClaimDao();
 
   const claim_as_node_uri = makeClaimSubjectURL(claimId);
-  let image;
-  let claimData;
-  let relatedNodes;
   const claimToGet = await prisma.claim.findUnique({
     where: {
       id: Number(claimId),
     },
   });
 
-  if (claimToGet) {
-    image = await claimDao.getClaimImage(claimToGet.id);
-    claimData = await claimDao.getClaimData(claimToGet.id);
-    relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
-  }
-
   if (!claimToGet) throw new createError.NotFound("Claim does not exist");
+    const image = await getSignedImageForClaim(claimToGet.id);
+    const claimData = await claimDao.getClaimData(claimToGet.id);
+    const relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
+
 
   const baseQuery = `
         SELECT DISTINCT
@@ -754,15 +731,8 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     `;
 
   for (const validation of validations) {
-    const validationImage = await prisma.image.findFirst({
-      where: {
-        claimId: validation.claim_id,
-      },
-    });
-
-    const accessableImage = await getS3SignedUrlIfExisted(validationImage?.url.split("/").pop());
-
-    validation.image = accessableImage || "";
+    const validationImage = await getSignedImageForClaim(validation.claim_id);
+    validation.image = validationImage?.url || "";
   }
 
   // Now get any other claims about the same subject, if any
@@ -776,15 +746,8 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     `;
 
   for (const attestation of attestations) {
-    const attestationImage = await prisma.image.findFirst({
-      where: {
-        claimId: attestation.claim_id,
-      },
-    });
-
-    const accessableImage = await getS3SignedUrlIfExisted(attestationImage?.url.split("/").pop());
-
-    attestation.image = accessableImage || "";
+    const attestationImage = await getSignedImageForClaim(attestation.claim_id);
+    attestation.image = attestationImage?.url || "";
   }
 
   //
@@ -814,4 +777,44 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     validations,
     attestations,
   } as Report;
+};
+
+export const getSignedImageForClaim = async (claimId: number): Promise<Image | null> => {
+  const claimDao = new ClaimDao();
+  try {
+    const image = await claimDao.getClaimImage(claimId);
+    if (!image) return null;
+
+    // if the image/video is in s3, get a signed url, otherwise return the url as is
+    if (image.url && isS3Url(image.url))
+      image.url = (await getS3SignedUrlIfExisted(image.url.split("/").pop())) || image.url;
+    return image;
+  } catch (error) {
+    console.error("Error signing image URL:", error);
+    return null;
+  }
+};
+
+export const getSignedImagesForClaim = async (claimId: number): Promise<Image[]> => {
+  // TODO: This function is just temporary, just there to avoid break something for now.
+  // we have only 1 image for a claim for now 
+  const claimDao = new ClaimDao();
+
+  try {
+    const images = await claimDao.getClaimImages(claimId);
+
+    return Promise.all(
+      images.map(async (image) => {
+        if (image.url && isS3Url(image.url)) {
+          const filename = image.url.split("/").pop();
+          const signedUrl = await getS3SignedUrlIfExisted(filename);
+          return { ...image, url: signedUrl || image.url };
+        }
+        return image;
+      }),
+    );
+  } catch (error) {
+    console.error("Error signing image URLs:", error);
+    return [];
+  }
 };
