@@ -17,7 +17,6 @@ export function joiValidator(schema: Joi.Schema) {
   };
 }
 
-// MAY BE UNUSED _ PLEASE DELETE IF SO
 export const claimPostSchema = Joi.object({
   subject: Joi.string().required(),
   claim: Joi.string().required(),
