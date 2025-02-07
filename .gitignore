@@ -1,4 +1,5 @@
 /node_modules
+prisma/
 build
 *.env*
 dev.db
@@ -6,3 +7,4 @@ model.json
 .vscode
 .DS_Store
 *.env.test*
+yarn.lock
