@@ -88,7 +88,7 @@ CREATE TABLE "Claim" (
 
 -- CreateTable
 CREATE TABLE "Credential" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "context" JSONB,
     "type" JSONB,
     "issuer" JSONB,
@@ -96,6 +96,7 @@ CREATE TABLE "Credential" (
     "expirationDate" TIMESTAMP(3),
     "credentialSubject" JSONB,
     "proof" JSONB,
+    "sameAs" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

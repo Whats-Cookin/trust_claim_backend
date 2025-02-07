@@ -270,13 +270,16 @@ export class CredentialDao {
         expirationDate: data.expirationDate,
         credentialSubject: data.credentialSubject,
         proof: data.proof,
+        sameAs: data.sameAs || null,
       },
     });
   }
 
   async getCredentialById(id: string) {
+    const numericId = parseInt(id, 10); // or Number(id)
+
     return await prisma.credential.findUnique({
-      where: { id },
+      where: { id: numericId },
     });
   }
 }
@@ -314,6 +317,7 @@ interface FeedEntryV3 {
   statement: string | null;
   stars: number | null;
   effective_date: Date | null;
+  created: Date | null;
 }
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
@@ -460,76 +464,77 @@ export class NodeDao {
       cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
 
       const claimsQuery = Prisma.sql`
-      SELECT
-        n.name AS name,
-        n."nodeUri" AS link,
-        c.id::TEXT AS claim_id,
-        c.statement AS statement,
-        c.stars AS stars,
-        c."effectiveDate" AS effective_date,
-        CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
-      FROM "Claim" c
-      INNER JOIN "Edge" AS e ON c.id = e."claimId"
-      INNER JOIN "Node" AS n ON e."startNodeId" = n.id
-      WHERE
-        n."entType" != 'CLAIM'
-        AND e.label != 'source'
-        AND c."effectiveDate" IS NOT NULL
-        AND c.statement IS NOT NULL
-        AND n.name IS NOT NULL
-        AND n.name != ''
-        AND (
-          c.subject ILIKE COALESCE(${query}, '%') OR
-          c.statement ILIKE COALESCE(${query}, '%') OR
-          n.name ILIKE COALESCE(${query}, '%')
-        )
-      ORDER BY c."effectiveDate" DESC, c.id DESC
-      LIMIT ${limit}
+    SELECT
+      n.name AS name,
+      n."nodeUri" AS link,
+      c.id::TEXT AS claim_id, 
+      c.statement AS statement,
+      c.stars AS stars,
+      c."effectiveDate" AS effective_date,
+      c."createdAt" AS created, -- توحيد اسم العمود إلى "created"
+      CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+    FROM "Claim" c
+    INNER JOIN "Edge" AS e ON c.id = e."claimId"
+    INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+    WHERE
+      n."entType" != 'CLAIM'
+      AND e.label != 'source'
+      AND c."effectiveDate" IS NOT NULL
+      AND c.statement IS NOT NULL
+      AND n.name IS NOT NULL
+      AND n.name != ''
+      AND (
+        c.subject ILIKE COALESCE(${query}, '%') OR
+        c.statement ILIKE COALESCE(${query}, '%') OR
+        n.name ILIKE COALESCE(${query}, '%')
+      )
+    ORDER BY c."effectiveDate" DESC, c.id DESC
+    LIMIT ${limit}
     `;
 
       const credentialsQuery = Prisma.sql`
-      SELECT
-        cr.id AS credential_id,
-        cr.context AS context,
-        cr.type AS credential_type,
-        cr.issuer AS issuer,
-        cr."issuanceDate" AS issuance_date,
-        cr."expirationDate" AS expiration_date,
-        cr."credentialSubject" AS credential_subject,
-        cr.proof AS proof,
-        CONCAT(COALESCE(to_char(cr."issuanceDate", 'YYYYMMDDHH24MISS'), ''), cr.id) AS cursor
-      FROM "Credential" cr
-      WHERE
-        cr."credentialSubject"::TEXT ILIKE COALESCE(${query}, '%')
-      ORDER BY cr."issuanceDate" DESC, cr.id DESC
-      LIMIT ${limit}
+    SELECT
+      cr.id AS claim_id,
+      cr.context AS context,
+      cr.type AS credential_type,
+      cr.issuer AS issuer,
+      cr."issuanceDate" AS effective_date, 
+      cr."credentialSubject" AS credential_subject,
+      cr."createdAt" AS created, 
+      CONCAT(COALESCE(to_char(cr."issuanceDate", 'YYYYMMDDHH24MISS'), ''), cr.id) AS cursor
+    FROM "Credential" cr
+    WHERE
+      cr."credentialSubject"::TEXT ILIKE COALESCE(${query}, '%')
+    ORDER BY cr."issuanceDate" DESC, cr.id DESC
+    LIMIT ${limit}
     `;
 
       const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(claimsQuery);
       const credentials = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(credentialsQuery);
 
-      const lastClaimCursor = claims.at(-1)?.cursor;
-      const lastCredentialCursor = credentials.at(-1)?.cursor;
+      const mergedEntries = [...claims, ...credentials];
 
-      const nextPage =
-        lastClaimCursor || lastCredentialCursor
-          ? Buffer.from(lastClaimCursor || lastCredentialCursor || "").toString("base64")
-          : null;
+      mergedEntries.sort((a, b) => {
+        const dateA = a.created ? new Date(a.created) : null;
+        const dateB = b.created ? new Date(b.created) : null;
 
-      for (let i = 0; i < claims.length; i++) {
-        delete claims[i].cursor;
-      }
+        if (!dateA || !dateB) {
+          throw new Error("Invalid date");
+        }
 
-      for (let i = 0; i < credentials.length; i++) {
-        delete credentials[i].cursor;
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      const lastEntryCursor = mergedEntries.at(-1)?.cursor;
+      const nextPage = lastEntryCursor ? Buffer.from(lastEntryCursor).toString("base64") : null;
+
+      for (let i = 0; i < mergedEntries.length; i++) {
+        delete mergedEntries[i].cursor;
       }
 
       return {
         nextPage,
-        feedEntries: {
-          claims: claims as FeedEntryV3[],
-          credentials: credentials as FeedEntryV3[],
-        },
+        feedEntries: mergedEntries as FeedEntryV3[],
       };
     } catch (error) {
       console.error("Error fetching feed entries:", error);

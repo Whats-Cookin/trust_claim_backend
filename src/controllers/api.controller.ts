@@ -52,15 +52,18 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
 const credentialDao = new CredentialDao();
 export const createCredential = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof } = req.body;
+    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = req.body;
+
     const credential = await credentialDao.createCredential({
       context,
+      id,
       type,
       issuer,
       issuanceDate,
       expirationDate,
       credentialSubject,
       proof,
+      sameAs,
     });
 
     return res.status(201).json({ message: "Credential created successfully!", credential });
