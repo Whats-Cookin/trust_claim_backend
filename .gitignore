@@ -1,5 +1,5 @@
 /node_modules
-prisma/
+/prisma
 build
 *.env*
 dev.db
