@@ -6,13 +6,13 @@ import { ulid } from "ulid";
 import { prisma } from "../db/prisma";
 import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefined } from "../utils";
 
-import { ClaimDao, NodeDao, CredentialDao } from "../dao/api.dao";
+import axios from "axios";
+import { config } from "../config";
+import { ClaimDao, CredentialDao, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
 import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
 import { uploadImageToS3 } from "../utils/aws-s3";
 import { calculateBufferHash } from "../utils/hash";
-import { config } from "../config";
-import axios from "axios";
 
 const DEFAULT_LIMIT = 100;
 
@@ -92,65 +92,66 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
   if (!result.success) {
     return next({ data: result.error.errors, statusCode: 422 });
   }
-  const dto = result.data;
 
   try {
-    if (imagesRequestBody?.length !== dto?.images.length) {
-      throw new createError.UnprocessableEntity("Invalid images metadata");
-    }
-
-    const claim = await claimDao.createClaimV2(userId, dto);
-
-    await processClaim(claim.id);
-
-    const name = dto.name;
-    let claimData = null;
-    if (name) {
-      claimData = await claimDao.createClaimData(claim.id, name);
-    }
-
-    let awsImages: { hash: string; url: string }[];
-
-    try {
-      awsImages = await Promise.all(
-        imagesRequestBody.map(async (f) => {
-          const filename = `${ulid()}${path.extname(f.originalname)}`;
-          await uploadImageToS3(filename, f);
-          return {
-            hash: calculateBufferHash(f.buffer),
-            url: `https://${config?.s3?.bucketName}.s3.${config?.s3?.region}.amazonaws.com/${filename}`,
-          };
-        }),
-      );
-    } catch (e) {
-      const _e = e as Error;
-      console.error("Error uploading the images:", _e.message);
-      return passToExpressErrorHandler(
-        {
-          ..._e,
-          message: "Error uploading the images",
-          statusCode: 500,
-        },
-        next,
-      );
-    }
-
-    const images = dto.images.map((x, i) => ({
-      ...x,
-      url: awsImages[i].url,
-      signature: awsImages[i].hash,
-    })) as ImageDto[];
-
-    const claimImages = await claimDao.createImagesV2(claim.id, userId, images);
-
-    return res.status(201).json({
-      claim,
-      claimData,
-      claimImages,
-    });
+    const { claim, claimData, claimImages } = await createAndProcessClaim(result.data, userId, imagesRequestBody);
+    return res.status(201).json({ claim, claimData, claimImages });
   } catch (e) {
-    passToExpressErrorHandler(e, next);
+    return passToExpressErrorHandler(e, next);
   }
+}
+
+async function createAndProcessClaim(claim: CreateClaimV2Dto, userId: number, images: Express.Multer.File[] = []) {
+  if (images.length !== claim.images.length) {
+    throw new createError.UnprocessableEntity("Invalid images metadata");
+  }
+
+  const createdClaim = await claimDao.createClaimV2(userId, claim);
+
+  await processClaim(createdClaim.id);
+
+  const name = claim.name;
+  let claimData = null;
+  if (name) {
+    claimData = await claimDao.createClaimData(createdClaim.id, name);
+  }
+
+  let awsImages: { hash: string; url: string }[];
+
+  try {
+    awsImages = await Promise.all(
+      images.map(async (f) => {
+        const filename = `${ulid()}${path.extname(f.originalname)}`;
+        await uploadImageToS3(filename, f);
+        return {
+          hash: calculateBufferHash(f.buffer),
+          url: `https://${config?.s3?.bucketName}.s3.${config?.s3?.region}.amazonaws.com/${filename}`,
+        };
+      }),
+    );
+  } catch (e) {
+    const _e = e as Error;
+    console.error("Error uploading the images:", _e.message);
+    throw {
+      ..._e,
+      message: "Error uploading the images",
+      statusCode: 500,
+    };
+  }
+
+  const createdImages = claim.images.map((x, i) => ({
+    ...x,
+    url: awsImages[i].url,
+    signature: awsImages[i].hash,
+  })) as ImageDto[];
+
+  const claimImages = await claimDao.createImagesV2(createdClaim.id, userId, createdImages);
+
+  return {
+    claim,
+    claimData,
+    claimImages,
+  };
 }
 
 export const claimGetById = async (req: Request, res: Response, next: NextFunction) => {
