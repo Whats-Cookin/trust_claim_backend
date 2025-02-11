@@ -151,6 +151,39 @@ export const CreateClaimV2Dto = z
 
 export type CreateClaimV2Dto = z.infer<typeof CreateClaimV2Dto>;
 
+export const CreateCredentialV2Dto = z.object({
+  context: z.string().nullable().optional(),
+  id: z.string().nullable().optional(),
+  issuer: z.string().nullable().optional(),
+  issuanceDate: z.coerce.date().nullable().optional(),
+  expirationDate: z.coerce.date().nullable().optional(),
+  credentialSubject: z
+    .object({
+      id: z.string().nullable().optional(),
+      type: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  proof: z.string().nullable().optional(),
+  sameAs: z.string().nullable().optional(),
+  images: z
+    .array(
+      z.object({
+        metadata: z
+          .object({
+            description: z.string().nullable().optional(),
+            caption: z.string().nullable().optional(),
+          })
+          .optional(),
+        effectiveDate: z.coerce.date().nullable().optional(),
+        digestMultibase: z.string().nullable().optional(),
+      }),
+    )
+    .default([]),
+});
+
+export type CreateCredentialV2Dto = z.infer<typeof CreateCredentialV2Dto>;
+
 function stripCurrencyToFloat(val: string): number | null {
   const strippedValue = val.replace(/\$|\s+/g, "");
   const num = parseFloat(strippedValue);

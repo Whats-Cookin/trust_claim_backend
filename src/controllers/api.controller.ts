@@ -10,14 +10,16 @@ import axios from "axios";
 import { config } from "../config";
 import { ClaimDao, CredentialDao, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
-import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
+import { CreateClaimV2Dto, ImageDto, CreateCredentialV2Dto } from "../middlewares/validators/claim.validator";
 import { uploadImageToS3 } from "../utils/aws-s3";
 import { calculateBufferHash } from "../utils/hash";
+import { any } from "joi";
 
 const DEFAULT_LIMIT = 100;
 
 const claimDao = new ClaimDao();
 const nodeDao = new NodeDao();
+const credentialDao = new CredentialDao();
 
 export const claimPost = async (req: Request, res: Response, next: NextFunction) => {
   let claim;
@@ -30,7 +32,7 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
     rawClaim = poormansNormalizer(rawClaim);
     rawClaim.effectiveDate = new Date(rawClaim.effectiveDate);
 
-    claim = await claimDao.createClaim(userId, rawClaim);
+    claim = await claimDao.createEntity(userId, rawClaim);
 
     await processClaim(claim.id);
 
@@ -49,12 +51,11 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
   return res.status(201).json({ claim, claimData, claimImages });
 };
 
-const credentialDao = new CredentialDao();
 export const createCredential = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = req.body;
 
-    const credential = await credentialDao.createCredential({
+    const credential = await credentialDao.createEntity({
       context,
       id,
       type,
@@ -75,83 +76,90 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
 export async function createClaimV2(req: Request, res: Response, next: NextFunction) {
   const _req = req as ProtectedMulterRequest;
   const { userId } = _req;
-
   const { files } = _req;
-  const dtoRequestBody = files?.dto ?? {};
-  const imagesRequestBody = files?.images ?? [];
 
-  let body: any;
-
-  if (Array.isArray(dtoRequestBody) && dtoRequestBody.length > 0) {
-    body = JSON.parse(dtoRequestBody[0]?.buffer.toString("utf-8"));
-  } else {
+  if (!files?.dto || !Array.isArray(files.dto) || files.dto.length === 0) {
     return next({ message: "No DTO provided", statusCode: 400 });
   }
 
-  const result = CreateClaimV2Dto.safeParse(body);
+  let body: any;
+  try {
+    body = JSON.parse(files.dto[0].buffer.toString("utf-8"));
+  } catch {
+    return next({ message: "Invalid DTO format", statusCode: 400 });
+  }
+
+  const entityType = body.type;
+  if (!["claim", "credential"].includes(entityType)) {
+    return next({ message: "Invalid entity type", statusCode: 400 });
+  }
+
+  const validationSchema = entityType === "claim" ? CreateClaimV2Dto : CreateCredentialV2Dto;
+  const result = validationSchema.safeParse(body);
   if (!result.success) {
     return next({ data: result.error.errors, statusCode: 422 });
   }
 
   try {
-    const { claim, claimData, claimImages } = await createAndProcessClaim(result.data, userId, imagesRequestBody);
-    return res.status(201).json({ claim, claimData, claimImages });
+    const { entity, entityMetadata, entityImages } = await createAndProcessEntity(
+      entityType as "claim" | "credential",
+      result.data,
+      userId,
+      files.images ?? [],
+    );
+
+    return res.status(201).json({ entity, entityMetadata, entityImages });
   } catch (e) {
     return passToExpressErrorHandler(e, next);
   }
 }
 
-async function createAndProcessClaim(claim: CreateClaimV2Dto, userId: number, images: Express.Multer.File[] = []) {
-  if (images.length !== claim.images.length) {
+async function createAndProcessEntity(
+  entityType: "claim" | "credential",
+  entityData: any,
+  userId: number,
+  images: Express.Multer.File[] = [],
+) {
+  if (!entityData.images || images.length !== entityData.images.length) {
     throw new createError.UnprocessableEntity("Invalid images metadata");
   }
 
-  const createdClaim = await claimDao.createClaimV2(userId, claim);
+  // اختيار كائن DAO المناسب
+  const entityDao = entityType === "claim" ? claimDao : credentialDao;
 
-  await processClaim(createdClaim.id);
+  // إنشاء الكيان في قاعدة البيانات
+  const createdEntity = await entityDao.createEntity(userId, entityData);
 
-  const name = claim.name;
-  let claimData = null;
-  if (name) {
-    claimData = await claimDao.createClaimData(createdClaim.id, name);
+  await processClaim(createdEntity.id); // يمكن تعديلها لـ processCredential إذا لزم الأمر
+
+  let entityMetadata = null;
+  if (entityType === "claim" && entityData.name) {
+    entityMetadata = await (entityDao as ClaimDao).createClaimData(createdEntity.id, entityData.name);
   }
 
-  let awsImages: { hash: string; url: string }[];
+  let entityImages: any[] = [];
+  if (entityType === "claim" && images.length > 0) {
+    try {
+      const createdImages = await Promise.all(
+        images.map(async (f, i) => {
+          const filename = `${ulid()}${path.extname(f.originalname)}`;
+          await uploadImageToS3(filename, f);
+          return {
+            ...entityData.images[i],
+            url: `https://${config?.s3?.bucketName}.s3.${config?.s3?.region}.amazonaws.com/${filename}`,
+            signature: calculateBufferHash(f.buffer),
+          };
+        }),
+      );
 
-  try {
-    awsImages = await Promise.all(
-      images.map(async (f) => {
-        const filename = `${ulid()}${path.extname(f.originalname)}`;
-        await uploadImageToS3(filename, f);
-        return {
-          hash: calculateBufferHash(f.buffer),
-          url: `https://${config?.s3?.bucketName}.s3.${config?.s3?.region}.amazonaws.com/${filename}`,
-        };
-      }),
-    );
-  } catch (e) {
-    const _e = e as Error;
-    console.error("Error uploading the images:", _e.message);
-    throw {
-      ..._e,
-      message: "Error uploading the images",
-      statusCode: 500,
-    };
+      entityImages = await (entityDao as ClaimDao).createImagesV2(createdEntity.id, userId, createdImages);
+    } catch (e) {
+      console.error(`Error uploading images for ${entityType}:`, (e as Error).message);
+      throw new createError.InternalServerError(`Error uploading images for ${entityType}`);
+    }
   }
 
-  const createdImages = claim.images.map((x, i) => ({
-    ...x,
-    url: awsImages[i].url,
-    signature: awsImages[i].hash,
-  })) as ImageDto[];
-
-  const claimImages = await claimDao.createImagesV2(createdClaim.id, userId, createdImages);
-
-  return {
-    claim,
-    claimData,
-    claimImages,
-  };
+  return { entity: createdEntity, entityMetadata, entityImages };
 }
 
 export const claimGetById = async (req: Request, res: Response, next: NextFunction) => {
