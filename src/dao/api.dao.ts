@@ -4,6 +4,7 @@ import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto, CreateCredentialDto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
+import { getSignedImageForClaim } from "../controllers/api.controller";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -183,7 +184,16 @@ export class ClaimDao {
   };
 
   getClaimImages = async (claimId: number) => {
-    return await prisma.image.findMany({
+    // TODO: This function is just temporary, just there to avoid break something for now.
+    return prisma.image.findMany({
+      where: {
+        claimId,
+      },
+    });
+  };
+
+  getClaimImage = async (claimId: number) => {
+    return prisma.image.findFirst({
       where: {
         claimId,
       },
@@ -718,22 +728,16 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   const claimDao = new ClaimDao();
 
   const claim_as_node_uri = makeClaimSubjectURL(claimId);
-  let images;
-  let claimData;
-  let relatedNodes;
   const claimToGet = await prisma.claim.findUnique({
     where: {
       id: Number(claimId),
     },
   });
 
-  if (claimToGet) {
-    images = await claimDao.getClaimImages(claimToGet.id);
-    claimData = await claimDao.getClaimData(claimToGet.id);
-    relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
-  }
-
   if (!claimToGet) throw new createError.NotFound("Claim does not exist");
+  const image = await getSignedImageForClaim(claimToGet.id);
+  const claimData = await claimDao.getClaimData(claimToGet.id);
+  const relatedNodes = await claimDao.getRelatedNodes(claimToGet.id);
 
   const baseQuery = `
         SELECT DISTINCT
@@ -769,6 +773,11 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       OFFSET ${offset}
     `;
 
+  for (const validation of validations) {
+    const validationImage = await getSignedImageForClaim(validation.claim_id);
+    validation.image = validationImage?.url || "";
+  }
+
   // Now get any other claims about the same subject, if any
   // the subject of the claim is claim.subject, not the url of the claim itself
   const attestations = await prisma.$queryRaw<ReportI[]>`
@@ -778,6 +787,11 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       LIMIT ${limit}
       OFFSET ${offset}
     `;
+
+  for (const attestation of attestations) {
+    const attestationImage = await getSignedImageForClaim(attestation.claim_id);
+    attestation.image = attestationImage?.url || "";
+  }
 
   //
   // later we might want a second level call where we ALSO get other claims about the nodes who were the source or issuer of the attestations
@@ -793,28 +807,18 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     },
   });
 
-  // the Node of the Claim is the one representing the claim, not the subject
-  // we may later want to put an image of the subject instead, we'll decide in design
-  const NodeOfClaim = await prisma.node.findFirst({
-    where: {
-      nodeUri: claim_as_node_uri,
-    },
-  });
-
   const claim = {
     claim: claimToGet,
-    images: images,
+    image: image?.url,
     claimData: claimData,
     relatedNodes: relatedNodes,
   };
 
   return {
     edge,
-    claim: {
-      ...claim,
-      image: NodeOfClaim?.image,
-    },
+    claim,
     validations,
     attestations,
   } as Report;
 };
+

@@ -235,6 +235,7 @@ pm2 logs index
 ### Update from git and install dependencies
 
 ```bash
+nvm use 20
 cd /data/trust_claim_backend
 git pull
 npm i
