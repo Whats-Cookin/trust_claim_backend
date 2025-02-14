@@ -1,4 +1,4 @@
-import {type RequestHandler, Router } from "express";
+import { type RequestHandler, Router } from "express";
 import { claimPostNormalizer } from "../../middlewares/normalizers";
 import {
   claimPost,
