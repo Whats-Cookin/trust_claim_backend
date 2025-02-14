@@ -91,6 +91,7 @@ export class ClaimDao {
         issuerId: `${process.env.BASE_URL}/users/${userId}`,
         issuerIdType: "URL",
         subject: claim.subject,
+        claimAddress: claim.claimAddress,
         amt: claim.amt,
         claim: claim.claim,
         object: claim.object,

@@ -57,8 +57,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       return next({ data: result.error.errors, statusCode: 422 });
     }
 
-    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs, achievement } =
-      result.data;
+    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = result.data;
 
     const credential = await credentialDao.createCredential({
       context,
@@ -73,18 +72,19 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
     });
 
     const name = credentialSubject?.name || "Credential";
-    const _achievement = (achievement?.[0] as { id: string } | undefined)?.id;
+    const _achievement = (credentialSubject?.achievement?.[0] as { id: string; description: string } | undefined);
     const created = await createAndProcessClaim(
       {
         subject: name,
-        claimAddress: id,
+        // TODO: we should use the achievement did when we fix pipeline
+        claimAddress: credentialSubject?.evidenceLink || _achievement?.id || id,
         name: name,
         object: "",
         claim: "",
         issuerId: issuer.id,
         effectiveDate: issuanceDate,
-        statement: credentialSubject?.evidenceDescription || _achievement || "",
-        sourceURI: credentialSubject?.evidenceLink || _achievement || "",
+        statement: credentialSubject?.evidenceDescription || _achievement?.description || "",
+        sourceURI: credentialSubject?.evidenceLink || _achievement?.id || "",
         images: [],
       },
       issuer.id,

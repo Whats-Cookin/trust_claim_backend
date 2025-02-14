@@ -10,14 +10,6 @@ export const CreateCredentialDto = z.object({
   }),
   issuanceDate: z.coerce.date().nullable().optional(),
   expirationDate: z.coerce.date().nullable().optional(),
-  achievement: z.array(
-    z
-      .object({
-        id: z.string(),
-        type: z.array(z.string()),
-      })
-      .or(z.unknown()),
-  ),
   credentialSubject: z
     .object({
       name: z.string().nullable().optional(),
@@ -41,12 +33,12 @@ export const CreateCredentialDto = z.object({
             .optional()
             .nullable(),
         }),
-      ),
+      ).optional().nullable(),
     })
     .nullable()
     .optional(),
-  proof: z.string().nullable().optional(),
-  sameAs: z.string().nullable().optional(),
+  proof: z.any().nullable().optional(),
+  sameAs: z.any().nullable().optional(),
 });
 
 export type CreateCredentialDto = z.infer<typeof CreateCredentialDto>;
