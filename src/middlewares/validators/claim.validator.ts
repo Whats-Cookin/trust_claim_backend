@@ -115,7 +115,7 @@ export const CreateClaimV2Dto = z
       .optional(),
     sourceURI: z.string().nullable().optional().default(""),
     effectiveDate: z.coerce.date().nullable().optional(),
-    confidence: z.number().min(0).max(1).nullable().optional().default(1),
+    confidence: z.number().min(0).max(1).nullable().optional(),
     claimAddress: z.string().nullable().optional(),
     stars: z
       .union([

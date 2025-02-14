@@ -2,7 +2,7 @@ import { Prisma, type Image, type Claim, type Edge, type Node, type ClaimData } 
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
-import { CreateClaimV2Dto } from "../middlewares/validators";
+import { CreateClaimV2Dto, CreateCredentialDto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
@@ -85,7 +85,7 @@ export class ClaimDao {
     return createdClaim;
   };
 
-  async createClaimV2(userId: number, claim: CreateClaimV2Dto) {
+  async createClaimV2(userId: number | string, claim: CreateClaimV2Dto) {
     const createdClaim = await prisma.claim.create({
       data: {
         issuerId: `${process.env.BASE_URL}/users/${userId}`,
@@ -107,7 +107,7 @@ export class ClaimDao {
     return createdClaim;
   }
 
-  async createImagesV2(claimId: number, userId: number, images: ImageDto[]): Promise<Image[]> {
+  async createImagesV2(claimId: number, userId: number | string, images: ImageDto[]): Promise<Image[]> {
     if (!images.length) return [];
 
     return prisma.$transaction(

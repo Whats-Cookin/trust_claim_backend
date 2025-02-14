@@ -10,7 +10,7 @@ import axios from "axios";
 import { config } from "../config";
 import { ClaimDao, CredentialDao, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
-import { CreateClaimV2Dto, ImageDto } from "../middlewares/validators/claim.validator";
+import { CreateClaimV2Dto, ImageDto, CreateCredentialDto } from "../middlewares/validators";
 import { uploadImageToS3 } from "../utils/aws-s3";
 import { calculateBufferHash } from "../utils/hash";
 
@@ -52,7 +52,13 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
 const credentialDao = new CredentialDao();
 export const createCredential = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = req.body;
+    const result = CreateCredentialDto.safeParse(req.body);
+    if (!result.success) {
+      return next({ data: result.error.errors, statusCode: 422 });
+    }
+
+    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs, achievement } =
+      result.data;
 
     const credential = await credentialDao.createCredential({
       context,
@@ -66,7 +72,25 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       sameAs,
     });
 
-    return res.status(201).json({ message: "Credential created successfully!", credential });
+    const name = credentialSubject?.name || "Credential";
+    const _achievement = (achievement?.[0] as { id: string } | undefined)?.id;
+    const created = await createAndProcessClaim(
+      {
+        subject: name,
+        claimAddress: id,
+        name: name,
+        object: "",
+        claim: "",
+        issuerId: issuer.id,
+        effectiveDate: issuanceDate,
+        statement: credentialSubject?.evidenceDescription || _achievement || "",
+        sourceURI: credentialSubject?.evidenceLink || _achievement || "",
+        images: [],
+      },
+      issuer.id,
+    );
+
+    return res.status(201).json({ message: "Credential created successfully!", credential, ...created });
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
@@ -101,7 +125,11 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
   }
 }
 
-async function createAndProcessClaim(claim: CreateClaimV2Dto, userId: number, images: Express.Multer.File[] = []) {
+async function createAndProcessClaim(
+  claim: CreateClaimV2Dto,
+  userId: number | string,
+  images: Express.Multer.File[] = [],
+) {
   if (images.length !== claim.images.length) {
     throw new createError.UnprocessableEntity("Invalid images metadata");
   }
