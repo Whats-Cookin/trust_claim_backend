@@ -6,8 +6,6 @@ import { ulid } from "ulid";
 import { prisma } from "../db/prisma";
 import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefined } from "../utils";
 
-import axios from "axios";
-import { config } from "../config";
 import { ClaimDao, CredentialDao, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
 import { CreateClaimV2Dto, ImageDto, CreateCredentialDto } from "../middlewares/validators";
@@ -75,7 +73,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
     });
 
     const name = credentialSubject?.name || "Credential";
-    const _achievement = (credentialSubject?.achievement?.[0] as { id: string; description: string } | undefined);
+    const _achievement = credentialSubject?.achievement?.[0] as { id: string; description: string } | undefined;
     const created = await createAndProcessClaim(
       {
         subject: name,
@@ -345,7 +343,6 @@ async function processClaim(claimId: string | number) {
     throw e;
   }
 }
-
 
 export const getSignedImageForClaim = async (claimId: number): Promise<Image | null> => {
   const claimDao = new ClaimDao();
