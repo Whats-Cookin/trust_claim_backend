@@ -33,7 +33,11 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
 
     claim = await claimDao.createClaim(userId, rawClaim);
 
-    await processClaim(claim.id);
+    try {
+      await processClaim(claim.id);
+    } catch (e) {
+      console.error("Couldn't process the claim", e);
+    }
 
     const name = rawClaim.name;
     if (name) {
@@ -137,7 +141,11 @@ async function createAndProcessClaim(
 
   const createdClaim = await claimDao.createClaimV2(userId, claim);
 
-  await processClaim(createdClaim.id);
+  try {
+    await processClaim(createdClaim.id);
+  } catch (e) {
+    console.error("Couldn't process the claim", e);
+  }
 
   const name = claim.name;
   let claimData = null;
