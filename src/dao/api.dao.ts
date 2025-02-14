@@ -2,7 +2,7 @@ import { Prisma, type Image, type Claim, type Edge, type Node, type ClaimData } 
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
 import { makeClaimSubjectURL } from "../utils";
-import { CreateClaimV2Dto } from "../middlewares/validators";
+import { CreateClaimV2Dto, CreateCredentialDto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
 
@@ -86,12 +86,13 @@ export class ClaimDao {
     return createdClaim;
   };
 
-  async createClaimV2(userId: number, claim: CreateClaimV2Dto) {
+  async createClaimV2(userId: number | string, claim: CreateClaimV2Dto) {
     const createdClaim = await prisma.claim.create({
       data: {
         issuerId: `${process.env.BASE_URL}/users/${userId}`,
         issuerIdType: "URL",
         subject: claim.subject,
+        claimAddress: claim.claimAddress,
         amt: claim.amt,
         claim: claim.claim,
         object: claim.object,
@@ -108,7 +109,7 @@ export class ClaimDao {
     return createdClaim;
   }
 
-  async createImagesV2(claimId: number, userId: number, images: ImageDto[]): Promise<Image[]> {
+  async createImagesV2(claimId: number, userId: number | string, images: ImageDto[]): Promise<Image[]> {
     if (!images.length) return [];
 
     return prisma.$transaction(
@@ -269,6 +270,31 @@ export class ClaimDao {
   };
 }
 
+export class CredentialDao {
+  async createCredential(data: any) {
+    return await prisma.credential.create({
+      data: {
+        context: data.context || ["https://www.w3.org/2018/credentials/v1"],
+        type: data.type,
+        issuer: data.issuer,
+        issuanceDate: data.issuanceDate,
+        expirationDate: data.expirationDate,
+        credentialSubject: data.credentialSubject,
+        proof: data.proof,
+        sameAs: data.sameAs || null,
+      },
+    });
+  }
+
+  async getCredentialById(id: string) {
+    const numericId = parseInt(id, 10); // or Number(id)
+
+    return await prisma.credential.findUnique({
+      where: { id: numericId },
+    });
+  }
+}
+
 interface FeedEntry {
   name: string;
   thumbnail: string | null;
@@ -302,6 +328,7 @@ interface FeedEntryV3 {
   statement: string | null;
   stars: number | null;
   effective_date: Date | null;
+  created: Date | null;
 }
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
@@ -447,61 +474,78 @@ export class NodeDao {
       query = query ? `%${query}%` : null;
       cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
 
-      const rawQ = Prisma.sql`
-        WITH RankedClaims AS (
-          SELECT
-            n.name AS name,
-            n."nodeUri" AS link,
-            c.id AS claim_id,
-            c.statement AS statement,
-            c.stars AS stars,
-            c."effectiveDate" AS effective_date,
-            ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
-            CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
-          FROM "Claim" c
-          INNER JOIN "Edge" AS e ON c.id = e."claimId"
-          INNER JOIN "Node" AS n ON e."startNodeId" = n.id
-          WHERE
-            n."entType" != 'CLAIM'
-            AND e.label != 'source'
-            AND c."effectiveDate" IS NOT NULL
-            AND c.statement IS NOT NULL
-            AND n.name IS NOT NULL
-            AND n.name != ''
-            AND (
-              c.subject ILIKE COALESCE(${query}, '%') OR
-              c.statement ILIKE COALESCE(${query}, '%') OR
-              n.name ILIKE COALESCE(${query}, '%')
-            )
-          ORDER BY c."effectiveDate" DESC, c.id DESC
-        )
-        SELECT 
-          name,
-          link,
-          claim_id,
-          statement,
-          stars,
-          effective_date,
-          cursor
-        FROM RankedClaims
-        WHERE
-          row_num = 1
-          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
-        LIMIT ${limit}
-      `;
+      const claimsQuery = Prisma.sql`
+    SELECT
+      n.name AS name,
+      n."nodeUri" AS link,
+      c.id::TEXT AS claim_id, 
+      c.statement AS statement,
+      c.stars AS stars,
+      c."effectiveDate" AS effective_date,
+      c."createdAt" AS created, -- توحيد اسم العمود إلى "created"
+      CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+    FROM "Claim" c
+    INNER JOIN "Edge" AS e ON c.id = e."claimId"
+    INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+    WHERE
+      n."entType" != 'CLAIM'
+      AND e.label != 'source'
+      AND c."effectiveDate" IS NOT NULL
+      AND c.statement IS NOT NULL
+      AND n.name IS NOT NULL
+      AND n.name != ''
+      AND (
+        c.subject ILIKE COALESCE(${query}, '%') OR
+        c.statement ILIKE COALESCE(${query}, '%') OR
+        n.name ILIKE COALESCE(${query}, '%')
+      )
+    ORDER BY c."effectiveDate" DESC, c.id DESC
+    LIMIT ${limit}
+    `;
 
-      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
+      const credentialsQuery = Prisma.sql`
+    SELECT
+      cr.id AS claim_id,
+      cr.context AS context,
+      cr.type AS credential_type,
+      cr.issuer AS issuer,
+      cr."issuanceDate" AS effective_date, 
+      cr."credentialSubject" AS credential_subject,
+      cr."createdAt" AS created, 
+      CONCAT(COALESCE(to_char(cr."issuanceDate", 'YYYYMMDDHH24MISS'), ''), cr.id) AS cursor
+    FROM "Credential" cr
+    WHERE
+      cr."credentialSubject"::TEXT ILIKE COALESCE(${query}, '%')
+    ORDER BY cr."issuanceDate" DESC, cr.id DESC
+    LIMIT ${limit}
+    `;
 
-      const lastCursor = claims.at(-1)?.cursor;
-      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(claimsQuery);
+      const credentials = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(credentialsQuery);
 
-      for (let i = 0; i < claims.length; i++) {
-        delete claims[i].cursor;
+      const mergedEntries = [...claims, ...credentials];
+
+      mergedEntries.sort((a, b) => {
+        const dateA = a.created ? new Date(a.created) : null;
+        const dateB = b.created ? new Date(b.created) : null;
+
+        if (!dateA || !dateB) {
+          throw new Error("Invalid date");
+        }
+
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      const lastEntryCursor = mergedEntries.at(-1)?.cursor;
+      const nextPage = lastEntryCursor ? Buffer.from(lastEntryCursor).toString("base64") : null;
+
+      for (let i = 0; i < mergedEntries.length; i++) {
+        delete mergedEntries[i].cursor;
       }
 
       return {
         nextPage,
-        claims: claims as FeedEntryV3[],
+        feedEntries: mergedEntries as FeedEntryV3[],
       };
     } catch (error) {
       console.error("Error fetching feed entries:", error);

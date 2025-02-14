@@ -1,5 +1,6 @@
 export {
   claimPost,
+  createCredential,
   claimsGet,
   claimGraph,
   claimsFeed,
