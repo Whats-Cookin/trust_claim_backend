@@ -288,7 +288,7 @@ async function processClaim(claimId: string | number) {
     await axios.post(`${url}/process_claim/${claimId}`);
   } catch (e) {
     console.error(`Error while processing a claim (${claimId}): ${e}`);
-    throw e;
+    // throw e;
   }
 }
 
