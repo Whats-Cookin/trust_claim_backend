@@ -52,25 +52,22 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
 };
 
 export const createCredential = async (req: Request, res: Response, next: NextFunction) => {
+  let credential;
+
   try {
-    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = req.body;
-
-    const credential = await credentialDao.createEntity({
-      context,
-      id,
-      type,
-      issuer,
-      issuanceDate,
-      expirationDate,
-      credentialSubject,
-      proof,
-      sameAs,
-    });
-
-    return res.status(201).json({ message: "Credential created successfully!", credential });
+    credential = await credentialDao.createEntity(req.body as any);
   } catch (err) {
     passToExpressErrorHandler(err, next);
+    return;
   }
+
+  try {
+    await processCredential(credential.id);
+  } catch (err) {
+    console.error(`Error while processing credential (${credential.id}):`, err);
+  }
+
+  return res.status(201).json({ message: "Credential created successfully!", credential });
 };
 
 export async function createClaimV2(req: Request, res: Response, next: NextFunction) {
