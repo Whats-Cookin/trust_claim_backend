@@ -134,14 +134,24 @@ export class ClaimDao {
     claimImages = await Promise.all(
       validImages.map(async (img: any) => {
         if (img.effectiveDate) {
-          img.effectiveDate = new Date(img.effectiveDate);
+          try {
+            img.effectiveDate = new Date(img.effectiveDate);
+            if (isNaN(img.effectiveDate.getTime())) {
+              throw new Error("Invalid effectiveDate format");
+            }
+          } catch (error) {
+            console.error(`Invalid effectiveDate for image: ${img.url}`);
+            img.effectiveDate = null; // Set to null if invalid
+          }
         }
 
         const image = await prisma.image.create({
           data: {
             claimId: claimId,
             owner: `${process.env.DATABASE_URL}/users/${userId}`,
-            ...img,
+            url: img.url,
+            signature: img.signature || null,
+            effectiveDate: img.effectiveDate || null, // Ensure it's set
           },
         });
         return image;

@@ -78,7 +78,7 @@ export async function createClaimV2(req: Request, res: Response, next: NextFunct
   const { userId } = _req;
   const { files } = _req;
 
-  if (!files?.dto || !Array.isArray(files.dto) || files.dto.length === 0) {
+  if (!files?.dto || (!Array.isArray(files.dto) && typeof files.dto !== "string")) {
     return next({ message: "No DTO provided", statusCode: 400 });
   }
 
@@ -124,14 +124,15 @@ async function createAndProcessEntity(
     throw new createError.UnprocessableEntity("Invalid images metadata");
   }
 
-  // اختيار كائن DAO المناسب
   const entityDao = entityType === "claim" ? claimDao : credentialDao;
 
-  // إنشاء الكيان في قاعدة البيانات
   const createdEntity = await entityDao.createEntity(userId, entityData);
 
-  await processClaim(createdEntity.id); // يمكن تعديلها لـ processCredential إذا لزم الأمر
-
+  if (entityType === "claim") {
+    await processClaim(createdEntity.id);
+  } else {
+    await processCredential(createdEntity.id);
+  }
   let entityMetadata = null;
   if (entityType === "claim" && entityData.name) {
     entityMetadata = await (entityDao as ClaimDao).createClaimData(createdEntity.id, entityData.name);
@@ -316,9 +317,21 @@ async function processClaim(claimId: string | number) {
   if (!url) return;
 
   try {
-    await axios.post(`${url}/process_claim/${claimId}`);
+    await axios.post(`${url}/process_entity/claim/${claimId}`);
   } catch (e) {
     console.error(`Error while processing a claim (${claimId}): ${e}`);
+    throw e;
+  }
+}
+
+async function processCredential(credentialId: string | number) {
+  const { url } = config.dataPipeline;
+  if (!url) return;
+
+  try {
+    await axios.post(`${url}/process_entity/credential/${credentialId}`);
+  } catch (e) {
+    console.error(`Error while processing a credential (${credentialId}): ${e}`);
     throw e;
   }
 }
