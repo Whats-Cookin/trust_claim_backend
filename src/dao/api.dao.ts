@@ -86,12 +86,13 @@ export class ClaimDao {
     return createdClaim;
   };
 
-  async createClaimV2(userId: number, claim: CreateClaimV2Dto) {
+  async createClaimV2(userId: number | string, claim: CreateClaimV2Dto) {
     const createdClaim = await prisma.claim.create({
       data: {
         issuerId: `${process.env.BASE_URL}/users/${userId}`,
         issuerIdType: "URL",
         subject: claim.subject,
+        claimAddress: claim.claimAddress,
         amt: claim.amt,
         claim: claim.claim,
         object: claim.object,
@@ -108,7 +109,7 @@ export class ClaimDao {
     return createdClaim;
   }
 
-  async createImagesV2(claimId: number, userId: number, images: ImageDto[]): Promise<Image[]> {
+  async createImagesV2(claimId: number, userId: number | string, images: ImageDto[]): Promise<Image[]> {
     if (!images.length) return [];
 
     return prisma.$transaction(
@@ -269,6 +270,31 @@ export class ClaimDao {
   };
 }
 
+export class CredentialDao {
+  async createCredential(data: any) {
+    return await prisma.credential.create({
+      data: {
+        context: data.context || ["https://www.w3.org/2018/credentials/v1"],
+        type: data.type,
+        issuer: data.issuer,
+        issuanceDate: data.issuanceDate,
+        expirationDate: data.expirationDate,
+        credentialSubject: data.credentialSubject,
+        proof: data.proof,
+        sameAs: data.sameAs || null,
+      },
+    });
+  }
+
+  async getCredentialById(id: string) {
+    const numericId = parseInt(id, 10); // or Number(id)
+
+    return await prisma.credential.findUnique({
+      where: { id: numericId },
+    });
+  }
+}
+
 interface FeedEntry {
   name: string;
   thumbnail: string | null;
@@ -302,6 +328,7 @@ interface FeedEntryV3 {
   statement: string | null;
   stars: number | null;
   effective_date: Date | null;
+  created: Date | null;
 }
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
@@ -777,4 +804,3 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     attestations,
   } as Report;
 };
-
