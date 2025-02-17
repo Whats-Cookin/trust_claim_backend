@@ -274,6 +274,7 @@ export class CredentialDao {
   async createCredential(data: any) {
     return await prisma.credential.create({
       data: {
+        id: data.id,
         context: data.context || ["https://www.w3.org/2018/credentials/v1"],
         type: data.type,
         issuer: data.issuer,
@@ -287,10 +288,10 @@ export class CredentialDao {
   }
 
   async getCredentialById(id: string) {
-    const numericId = parseInt(id, 10); // or Number(id)
+    // const numericId = parseInt(id, 10); // or Number(id)
 
     return await prisma.credential.findUnique({
-      where: { id: numericId },
+      where: { id },
     });
   }
 }
@@ -757,8 +758,11 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     `;
 
   for (const validation of validations) {
-    const validationImage = await getSignedImageForClaim(validation.claim_id);
-    validation.image = validationImage?.url || "";
+    if (! validation.image) {
+
+        const validationImage = await getSignedImageForClaim(validation.claim_id);
+        validation.image = validationImage?.url || "";
+    }
   }
 
   // Now get any other claims about the same subject, if any
