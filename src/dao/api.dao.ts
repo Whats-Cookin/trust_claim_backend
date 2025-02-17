@@ -758,8 +758,11 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     `;
 
   for (const validation of validations) {
-    const validationImage = await getSignedImageForClaim(validation.claim_id);
-    validation.image = validationImage?.url || "";
+    if (! validation.image) {
+
+        const validationImage = await getSignedImageForClaim(validation.claim_id);
+        validation.image = validationImage?.url || "";
+    }
   }
 
   // Now get any other claims about the same subject, if any
