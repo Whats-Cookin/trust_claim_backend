@@ -129,7 +129,7 @@ model Claim {
 }
 
 model Credential {
-  id                   Int    @id @default(autoincrement())
+  id                   String    @id
   context              Json?
   type                 Json?
   issuer               Json?
