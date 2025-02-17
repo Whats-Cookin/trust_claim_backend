@@ -64,6 +64,11 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
 
     const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = result.data;
 
+    const existingCredential = await credentialDao.getCredentialById(id || "");
+    if (existingCredential) {
+      return res.status(409).json({ message: "Credential already exists" });
+    }
+
     const credential = await credentialDao.createCredential({
       context,
       id,
@@ -86,7 +91,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
         claimAddress: `https://linkedcreds.allskillscount.org/view/${id}`,
         name: name,
         object: "",
-        claim: "",
+        claim: name,
         issuerId: issuer.id,
         effectiveDate: issuanceDate,
         statement: credentialSubject?.evidenceDescription || _achievement?.description || "",
