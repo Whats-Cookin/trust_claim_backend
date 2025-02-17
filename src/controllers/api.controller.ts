@@ -64,6 +64,11 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
 
     const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = result.data;
 
+    const existingCredential = await credentialDao.getCredentialById(id || "");
+    if (existingCredential) {
+      return res.status(409).json({ message: "Credential already exists" });
+    }
+
     const credential = await credentialDao.createCredential({
       context,
       id,
@@ -78,14 +83,15 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
 
     const name = credentialSubject?.name || "Credential";
     const _achievement = credentialSubject?.achievement?.[0] as { id: string; description: string } | undefined;
+
     const created = await createAndProcessClaim(
       {
         subject: name,
         // TODO: we should use the achievement did when we fix pipeline
-        claimAddress: credentialSubject?.evidenceLink || _achievement?.id || id,
+        claimAddress: `https://linkedcreds.allskillscount.org/view/${id}`,
         name: name,
         object: "",
-        claim: "",
+        claim: name,
         issuerId: issuer.id,
         effectiveDate: issuanceDate,
         statement: credentialSubject?.evidenceDescription || _achievement?.description || "",
@@ -94,7 +100,6 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       },
       issuer.id,
     );
-
     return res.status(201).json({ message: "Credential created successfully!", credential, ...created });
   } catch (err) {
     passToExpressErrorHandler(err, next);
