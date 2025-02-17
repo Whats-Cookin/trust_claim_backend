@@ -91,7 +91,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
         claimAddress: `https://linkedcreds.allskillscount.org/view/${id}`,
         name: name,
         object: "",
-        claim: name,
+        claim: "credential",
         issuerId: issuer.id,
         effectiveDate: issuanceDate,
         statement: credentialSubject?.evidenceDescription || _achievement?.description || "",
