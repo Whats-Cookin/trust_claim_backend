@@ -74,11 +74,12 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
 
     const name = credentialSubject?.name || "Credential";
     const _achievement = credentialSubject?.achievement?.[0] as { id: string; description: string } | undefined;
+
     const created = await createAndProcessClaim(
       {
         subject: name,
         // TODO: we should use the achievement did when we fix pipeline
-        claimAddress: credentialSubject?.evidenceLink || _achievement?.id || id,
+        claimAddress: `https://linkedcreds.allskillscount.org/view/${id}`,
         name: name,
         object: "",
         claim: "",
@@ -90,7 +91,6 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       },
       issuer.id,
     );
-
     return res.status(201).json({ message: "Credential created successfully!", credential, ...created });
   } catch (err) {
     passToExpressErrorHandler(err, next);
