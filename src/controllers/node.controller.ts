@@ -73,7 +73,9 @@ export const claimReport = async (req: Request, res: Response, next: NextFunctio
 
     const offset = (page - 1) * limit;
 
-    const result = await GetClaimReport(claimId, offset, limit);
+    const host = req.get("host") ?? "live.linkedtrust.us";
+
+    const result = await GetClaimReport(claimId, offset, limit, host);
 
     //
     // TODO ALSO get other claims about the same subject ie about the subject url of the original claim
