@@ -90,7 +90,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       {
         subject: name,
         // TODO: we should use the achievement did when we fix pipeline
-        claimAddress: `https://linkedcreds.allskillscount.org/view/${id}`,
+        claimAddress: `https://linkedclaims.com/view/${id}`,
         object: "",
         claim: "credential",
         issuerId: issuer.id,
