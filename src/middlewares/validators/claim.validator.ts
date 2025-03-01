@@ -107,7 +107,6 @@ export const CreateClaimV2Dto = z
           })
           .transform(stripCurrencyToFloat),
       ),
-    name: z.string().nullable().optional(),
     issuerId: z.string().nullable().optional(),
     howKnown: z
       .enum(Object.values(HowKnown) as NotEmpty<HowKnown>)
