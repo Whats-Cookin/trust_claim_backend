@@ -81,8 +81,10 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       sameAs,
     });
 
-    const name = credentialSubject?.name || "Credential";
-    const _achievement = credentialSubject?.achievement?.[0] as { id: string; description: string } | undefined;
+    const _achievement = credentialSubject?.achievement?.[0] as
+      | { id: string; description: string; name: string }
+      | undefined;
+    const name = _achievement?.name || "Credential";
 
     const created = await createAndProcessClaim(
       {
