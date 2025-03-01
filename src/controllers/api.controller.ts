@@ -89,7 +89,6 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
         subject: name,
         // TODO: we should use the achievement did when we fix pipeline
         claimAddress: `https://linkedcreds.allskillscount.org/view/${id}`,
-        name: name,
         object: "",
         claim: "credential",
         issuerId: issuer.id,
@@ -152,11 +151,7 @@ async function createAndProcessClaim(
     console.error("Couldn't process the claim", e);
   }
 
-  const name = claim.name;
-  let claimData = null;
-  if (name) {
-    claimData = await claimDao.createClaimData(createdClaim.id, name);
-  }
+  const claimData = await claimDao.createClaimData(createdClaim.id, claim.subject);
 
   let awsImages: { hash: string; url: string }[];
 
