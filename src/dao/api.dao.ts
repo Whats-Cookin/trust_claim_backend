@@ -327,6 +327,7 @@ interface FeedEntryV3 {
   link: string;
   claim_id: number;
   statement: string | null;
+  claim: string | null;
   stars: number | null;
   effective_date: Date | null;
   created: Date | null;
@@ -387,6 +388,7 @@ export class NodeDao {
             n1."descrip" AS description,
             c.id AS claim_id,
             c.statement,
+            c.claim,
             c.stars,
             c.score,
             c.amt,
@@ -427,6 +429,7 @@ export class NodeDao {
           n1."descrip" AS description,
           c.id AS claim_id,
           c.statement,
+          c.claim,
           c.stars,
           c.score,
           c.amt,
@@ -453,6 +456,7 @@ export class NodeDao {
           AND n1.name != ''
           AND (
             c.statement ILIKE '%${search}%' OR
+            c.claim ILIKE '%${search}%' OR
             c."sourceURI" ILIKE '%${search}%' OR
             c."subject" ILIKE '%${search}%' OR
             n1.name ILIKE '%${search}%' OR
@@ -482,6 +486,7 @@ export class NodeDao {
             n."nodeUri" AS link,
             c.id AS claim_id,
             c.statement AS statement,
+            c.claim AS claim,
             c.stars AS stars,
             c."effectiveDate" AS effective_date,
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
@@ -499,6 +504,7 @@ export class NodeDao {
             AND (
               c.subject ILIKE COALESCE(${query}, '%') OR
               c.statement ILIKE COALESCE(${query}, '%') OR
+              c.claim ILIKE COALESCE(${query}, '%') OR
               n.name ILIKE COALESCE(${query}, '%')
             )
           ORDER BY c."effectiveDate" DESC, c.id DESC
@@ -508,6 +514,7 @@ export class NodeDao {
           link,
           claim_id,
           statement,
+          claim,
           stars,
           effective_date,
           cursor
