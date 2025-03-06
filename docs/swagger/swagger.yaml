@@ -295,6 +295,12 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/responses/Error"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
         "500":
           description: Invalid body/internal server error
           content:
