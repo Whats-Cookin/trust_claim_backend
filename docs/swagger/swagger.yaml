@@ -269,6 +269,39 @@ paths:
               schema:
                 "$ref": "#/components/responses/Error"
 
+  "/api/credential":
+    post:
+      tags:
+        - Credentials
+      description: Create Claim from Linked Claims' credential
+      summary: Create Claim from Linked Claims' credential
+      security:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/requestBodies/CreateCredential"
+
+      responses:
+        "201":
+          description: Created the claim successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CreatedClaim"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+        "500":
+          description: Invalid body/internal server error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/responses/Error"
+
 components:
   schemas:
     Claims:
@@ -425,6 +458,7 @@ components:
         password:
           type: string
           format: password
+
     RefreshToken:
       type: object
       required:
@@ -432,6 +466,7 @@ components:
       properties:
         refreshToken:
           type: string
+
     CreateClaim:
       type: object
       required:
@@ -608,6 +643,128 @@ components:
                   digestMultibase:
                     type: string
                     nullable: true
+
+    CreateCredential:
+      type: object
+      properties:
+        "@contenxt":
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: object
+                properties:
+                  duration:
+                    type: string
+                  fullName:
+                    type: string
+                  portfolio:
+                    type: string
+                  evidenceLink:
+                    type: string
+                  evidenceDescription:
+                    type: string
+                  credentialType:
+                    type: string
+        id:
+          type: string
+        type:
+          type: array
+          items:
+            type: string
+        issuer:
+          type: object
+          properties:
+            id:
+              type: string
+            type:
+              type: array
+              items:
+                type: string
+        issuanceDate:
+          type: string
+          format: date-time
+        expirationDate:
+          type: string
+          format: date-time
+        credentialSubject:
+          type: object
+          properties:
+            type:
+              type: array
+              items:
+                type: string
+            name:
+              type: string
+            portfolio:
+              type: array
+              items:
+                type: object
+                properties:
+                  "@type":
+                    type: string
+                  name:
+                    type: string
+                  url:
+                    type: string
+            evidenceLink:
+              type: string
+            evidenceDescription:
+              type: string
+            duration:
+              type: string
+            credentialType:
+              type: string
+            achievement:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  type:
+                    type: array
+                    items:
+                      type: string
+                  criteria:
+                    type: object
+                    properties:
+                      narrative:
+                        type: string
+                  description:
+                    type: string
+                  name:
+                    type: string
+                  image:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      type:
+                        type: string
+                        enum:
+                          - Image
+        proof:
+          type: object
+          properties:
+            type:
+              type: string
+            created:
+              type: string
+              format: date-time
+            verificationMethod:
+              type: string
+            proofPurpose:
+              type: string
+            proofValue:
+              type: string
+        sameAs:
+          type: object
+          properties:
+            id:
+              type: string
+            did:
+              type: string
 
   responses:
     Authentication:
