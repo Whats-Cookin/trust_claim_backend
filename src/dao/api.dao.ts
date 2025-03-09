@@ -5,6 +5,7 @@ import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
+import { getGraphNode } from "./graph";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -581,62 +582,8 @@ export class NodeDao {
   };
 
   getClaimGraph = async (claimId: string | number) => {
-    console.log("In getClaimGraph");
-    const numericClaimId = typeof claimId === "string" ? parseInt(claimId, 10) : claimId;
-
-    // First find the nodes involved with this claim
-    const nodes = await prisma.node.findMany({
-      where: {
-        OR: [
-          {
-            edgesFrom: {
-              some: {
-                claimId: numericClaimId,
-              },
-            },
-          },
-          {
-            edgesTo: {
-              some: {
-                claimId: numericClaimId,
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        // Include ALL edges connected to these nodes
-        edgesFrom: {
-          include: {
-            claim: true,
-            startNode: true,
-            endNode: true,
-          },
-        },
-        edgesTo: {
-          include: {
-            claim: true,
-            startNode: true,
-            endNode: true,
-          },
-        },
-      },
-    });
-
-    // Debug logging
-    console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`);
-    nodes.forEach((node) => {
-      console.log(`Node ${node.id} (${node.name}):`);
-      console.log(`  ${node.edgesFrom.length} outgoing edges`);
-      console.log(`  ${node.edgesTo.length} incoming edges`);
-    });
-
-    return {
-      nodes,
-      count: nodes.length,
-    };
+    return await getGraphNode(claimId);
   };
-
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
       OR: [
