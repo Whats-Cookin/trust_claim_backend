@@ -23,7 +23,7 @@ interface GraphResponse {
   edges: GraphEdge[];
 }
 
-export const getGraphNode = async (claimId: string | number) => {
+export const getGraphNode = async (claimId: string | number, page: number, limit: number) => {
   try {
     const baseQuery = `
     SELECT DISTINCT ON (c.id)
@@ -46,6 +46,8 @@ export const getGraphNode = async (claimId: string | number) => {
           ${Prisma.raw(baseQuery)}
           WHERE n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
           ORDER BY c.id DESC
+          LIMIT ${limit}
+          OFFSET ${(page - 1) * limit}
         `;
 
     let claimNode = await prisma.$queryRaw<any[]>`
@@ -57,11 +59,12 @@ export const getGraphNode = async (claimId: string | number) => {
       return {
         id: `${claim.node_id}`,
         label: claim.label,
-        
+
         raw: {
           claimId: `${claim.id}`,
           nodeId: `${claim.node_id}`,
           claim: claim.claim,
+          page: 1,
         },
       };
     });
@@ -74,6 +77,7 @@ export const getGraphNode = async (claimId: string | number) => {
           claimId: `${validation.id}`,
           nodeId: `${validation.node_id}`,
           claim: validation.claim,
+          page: 0,
         },
       };
     });
@@ -113,4 +117,16 @@ export const getGraphNode = async (claimId: string | number) => {
   } catch (err) {
     console.error(err);
   }
+};
+
+export const expandGraph = async (claimId: number, page: number, limit: number) => {
+  const graphResponse = await getGraphNode(claimId, page, limit);
+  if (!graphResponse) {
+    throw new Error("Failed to fetch graph nodes and edges");
+  }
+  const { nodes, edges } = graphResponse;
+  return {
+    nodes: nodes.slice(1),
+    edges,
+  };
 };

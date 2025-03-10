@@ -5,7 +5,7 @@ import { makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
-import { getGraphNode } from "./graph";
+import { expandGraph, getGraphNode } from "./graph";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -582,7 +582,7 @@ export class NodeDao {
   };
 
   getClaimGraph = async (claimId: string | number) => {
-    return await getGraphNode(claimId);
+    return await getGraphNode(claimId, 1, 3);
   };
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
@@ -660,6 +660,10 @@ export class NodeDao {
       },
     });
   };
+
+  expandGraph = async (claimId: number, page: number, limit: number) => {
+    return await expandGraph(claimId, page, limit);
+  }
 }
 
 export const GetClaimReport = async (claimId: any, offset: number, limit: number, host: string) => {

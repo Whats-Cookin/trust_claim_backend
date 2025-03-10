@@ -287,6 +287,19 @@ export const claimGraph = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+/* This is for expanding the graph for a given claim */
+export const expandGraph = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { claimId } = req.params;
+    const { page = 1, limit = 3 } = req.query;
+    const result = await nodeDao.expandGraph(Number(claimId), Number(page), Number(limit));
+    res.status(200).json(result);
+    return;
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
+  }
+};
+
 /* This is for the home feed and the search */
 export const claimsFeed = async (req: Request, res: Response, next: NextFunction) => {
   try {
