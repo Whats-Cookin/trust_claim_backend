@@ -57,11 +57,11 @@ export const getGraphNode = async (claimId: string | number) => {
       return {
         id: `${claim.node_id}`,
         label: claim.label,
-        claim: claim.claim,
-
+        
         raw: {
           claimId: `${claim.id}`,
           nodeId: `${claim.node_id}`,
+          claim: claim.claim,
         },
       };
     });
@@ -70,10 +70,10 @@ export const getGraphNode = async (claimId: string | number) => {
       return {
         id: `${validation.node_id}`,
         label: validation.sourceuri || validation.label,
-        claim: validation.claim,
         raw: {
           claimId: `${validation.id}`,
           nodeId: `${validation.node_id}`,
+          claim: validation.claim,
         },
       };
     });
