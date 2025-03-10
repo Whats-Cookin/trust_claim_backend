@@ -81,7 +81,7 @@ export const getGraphNode = async (claimId: string | number) => {
     const edges = validations.map((validation) => {
       return {
         id: `${validation.id}-${claimNode[0].id}`,
-        relation: validation.claim,
+        relation: validation.raw.claim,
         target: claimNode[0].id,
         source: `${validation.id}`,
         label: "validation",
