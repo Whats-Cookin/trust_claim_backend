@@ -279,7 +279,8 @@ export const claimsGet = async (req: Request, res: Response, next: NextFunction)
 export const claimGraph = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
-    const result = await nodeDao.getClaimGraph(claimId);
+    const host = req.get("host") ?? "live.linkedtrust.us";
+    const result = await nodeDao.getClaimGraph(claimId, host);
     res.status(200).json(result);
     return;
   } catch (err) {
@@ -292,7 +293,8 @@ export const expandGraph = async (req: Request, res: Response, next: NextFunctio
   try {
     const { claimId } = req.params;
     const { page = 1, limit = 3 } = req.query;
-    const result = await nodeDao.expandGraph(Number(claimId), Number(page), Number(limit));
+    const host = req.get("host") ?? "live.linkedtrust.us";
+    const result = await nodeDao.expandGraph(Number(claimId), Number(page), Number(limit), host);
     res.status(200).json(result);
     return;
   } catch (err) {
