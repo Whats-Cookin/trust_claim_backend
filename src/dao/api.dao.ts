@@ -581,8 +581,8 @@ export class NodeDao {
     });
   };
 
-  getClaimGraph = async (claimId: string | number) => {
-    return await getGraphNode(claimId, 1, 3);
+  getClaimGraph = async (claimId: string | number, host: string) => {
+    return await getGraphNode(claimId, 1, 3, host);
   };
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
@@ -661,8 +661,8 @@ export class NodeDao {
     });
   };
 
-  expandGraph = async (claimId: number, page: number, limit: number) => {
-    return await expandGraph(claimId, page, limit);
+  expandGraph = async (claimId: number, page: number, limit: number, host: string) => {
+    return await expandGraph(claimId, page, limit, host);
   }
 }
 
