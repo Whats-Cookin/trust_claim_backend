@@ -41,7 +41,7 @@ export const getGraphNode = async (claimId: string | number, page: number, limit
     JOIN "Node" AS n1 ON e."startNodeId" = n1.id
     JOIN "Node" AS n2 ON e."endNodeId" = n2.id
    `;
-  const claim_as_node_uri = makeClaimSubjectURL(claimId.toString(), process.env.BASE_URL || host);
+  const claim_as_node_uri = makeClaimSubjectURL(claimId.toString(), host);
 
   let claimNode = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(baseQuery)}
