@@ -96,3 +96,13 @@ export const decodeGoogleCredential = (accessToken: string) => {
     googleId: sub,
   };
 };
+
+export const getClaimNameFromNodeUri = (nodeUri: string | undefined | null) => {
+  if (!nodeUri) return null;
+  if (!nodeUri.includes("linkedin")) return nodeUri;
+
+  nodeUri = nodeUri.replace(/\/+$/, '');
+
+  const parts = nodeUri.split("/");
+  return parts[parts.length - 1];
+};
