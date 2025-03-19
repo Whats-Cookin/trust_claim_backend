@@ -104,6 +104,7 @@ export class ClaimDao {
         effectiveDate: claim.effectiveDate,
         confidence: claim.confidence,
         stars: claim.stars,
+        author: claim.author,
       },
     });
 
