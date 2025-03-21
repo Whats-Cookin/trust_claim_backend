@@ -1,7 +1,7 @@
 import { Prisma, type Image, type Claim, type Edge, type Node, type ClaimData } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import createError from "http-errors";
-import { makeClaimSubjectURL } from "../utils";
+import { getClaimNameFromNodeUri, makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
@@ -104,7 +104,8 @@ export class ClaimDao {
         effectiveDate: claim.effectiveDate,
         confidence: claim.confidence,
         stars: claim.stars,
-        author: claim.author,
+        author: getClaimNameFromNodeUri(claim.sourceURI), // this is who created the claim
+        curator: getClaimNameFromNodeUri(claim.subject), // this is claim about
       },
     });
 
@@ -489,6 +490,8 @@ export class NodeDao {
             c.id AS claim_id,
             c.statement AS statement,
             c.claim AS claim,
+            c.author AS author,
+            c.curator AS curator,
             c.stars AS stars,
             c."effectiveDate" AS effective_date,
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
@@ -517,6 +520,8 @@ export class NodeDao {
           claim_id,
           statement,
           claim,
+          author,
+          curator,
           stars,
           effective_date,
           cursor
@@ -664,7 +669,7 @@ export class NodeDao {
 
   expandGraph = async (claimId: number, page: number, limit: number, host: string) => {
     return await expandGraph(claimId, page, limit, host);
-  }
+  };
 }
 
 export const GetClaimReport = async (claimId: any, offset: number, limit: number, host: string) => {
