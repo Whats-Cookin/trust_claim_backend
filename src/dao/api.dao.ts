@@ -675,7 +675,7 @@ export class NodeDao {
 export const GetClaimReport = async (claimId: any, offset: number, limit: number, host: string) => {
   const claimDao = new ClaimDao();
 
-  const claim_as_node_uri = makeClaimSubjectURL(claimId, host);
+  const claim_as_node_uri = makeClaimSubjectURL(claimId);
   const claimToGet = await prisma.claim.findUnique({
     where: {
       id: Number(claimId),

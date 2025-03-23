@@ -83,8 +83,8 @@ export const poormansNormalizer = (obj: { [key: string]: any }) => {
   return newObj;
 };
 
-export const makeClaimSubjectURL = (claimId: string, host: string) => {
-  return `https://${host}/claims/${claimId}`;
+export const makeClaimSubjectURL = (claimId: string) => {
+  return `https://live.linkedtrust.us/claims/${claimId}`;
 };
 
 export const decodeGoogleCredential = (accessToken: string) => {

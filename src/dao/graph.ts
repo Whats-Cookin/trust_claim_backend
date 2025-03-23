@@ -26,7 +26,12 @@ interface GraphResponse {
   edges: GraphEdge[];
 }
 
-export const getGraphNode = async (claimId: string | number, page: number, limit: number, host: string): Promise<GraphResponse> => {
+export const getGraphNode = async (
+  claimId: string | number,
+  page: number,
+  limit: number,
+  host: string,
+): Promise<GraphResponse> => {
   const baseQuery = `
     SELECT DISTINCT ON (c.id)
     c.id AS id,
@@ -41,7 +46,11 @@ export const getGraphNode = async (claimId: string | number, page: number, limit
     JOIN "Node" AS n1 ON e."startNodeId" = n1.id
     JOIN "Node" AS n2 ON e."endNodeId" = n2.id
    `;
-  const claim_as_node_uri = makeClaimSubjectURL(claimId.toString(), host);
+  const claim_as_node_uri = makeClaimSubjectURL(claimId.toString());
+
+  console.log("Generated claim_as_node_uri:", claim_as_node_uri);
+
+  console.log("makeClaimSubjectURL result:", makeClaimSubjectURL(claimId.toString()));
 
   let claimNode = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(baseQuery)}
@@ -58,6 +67,13 @@ export const getGraphNode = async (claimId: string | number, page: number, limit
       OFFSET ${(page - 1) * limit}
     `;
 
+  console.log("Validations Result:", validations);
+
+  console.log("Claim Node Result:", claimNode);
+  console.log("Validations Count:", validations.length);
+
+  console.log("Claim as Node URI:", claim_as_node_uri);
+
   claimNode = claimNode.map((claim): GraphNode => {
     return {
       data: {
@@ -73,8 +89,9 @@ export const getGraphNode = async (claimId: string | number, page: number, limit
     };
   });
 
-
   validations = validations.map((validation): GraphNode => {
+    console.log("Raw Data:", validation);
+
     return {
       data: {
         id: `${validation.node_id}`,
@@ -90,6 +107,7 @@ export const getGraphNode = async (claimId: string | number, page: number, limit
   });
 
   const edges = validations.map((validation): GraphEdge => {
+    console.log("Validation Data for Edge:", validation);
     return {
       data: {
         id: `${validation.data.id}-${claimNode[0].data.id}`,
@@ -103,14 +121,13 @@ export const getGraphNode = async (claimId: string | number, page: number, limit
           startClaimId: `${claimNode[0].data.raw.claimId}`,
           endClaimId: `${validation.data.raw.claimId}`,
         },
-      }
+      },
     };
   });
 
-
   return {
     nodes: [...claimNode, ...validations],
-    edges
+    edges,
   };
 };
 
