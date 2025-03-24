@@ -48,10 +48,6 @@ export const getGraphNode = async (
    `;
   const claim_as_node_uri = makeClaimSubjectURL(claimId.toString());
 
-  console.log("Generated claim_as_node_uri:", claim_as_node_uri);
-
-  console.log("makeClaimSubjectURL result:", makeClaimSubjectURL(claimId.toString()));
-
   let claimNode = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(baseQuery)}
     WHERE c."id" = ${Number(claimId)}
@@ -66,13 +62,6 @@ export const getGraphNode = async (
       LIMIT ${limit}
       OFFSET ${(page - 1) * limit}
     `;
-
-  console.log("Validations Result:", validations);
-
-  console.log("Claim Node Result:", claimNode);
-  console.log("Validations Count:", validations.length);
-
-  console.log("Claim as Node URI:", claim_as_node_uri);
 
   claimNode = claimNode.map((claim): GraphNode => {
     return {
@@ -90,8 +79,6 @@ export const getGraphNode = async (
   });
 
   validations = validations.map((validation): GraphNode => {
-    console.log("Raw Data:", validation);
-
     return {
       data: {
         id: `${validation.node_id}`,
@@ -99,7 +86,7 @@ export const getGraphNode = async (
         raw: {
           claimId: `${validation.id}`,
           nodeId: `${validation.node_id}`,
-          claim: validation.claim,
+          claim: validation.claim === "validated" ? validation.claim : "attestation",
           page: 0,
         },
       },
@@ -107,7 +94,6 @@ export const getGraphNode = async (
   });
 
   const edges = validations.map((validation): GraphEdge => {
-    console.log("Validation Data for Edge:", validation);
     return {
       data: {
         id: `${validation.data.id}-${claimNode[0].data.id}`,
