@@ -1,3 +1,4 @@
+import JWT from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
 import { generateJWT, passToExpressErrorHandler, verifyRefreshToken, decodeGoogleCredential } from "../utils";
@@ -137,9 +138,21 @@ export const githubAuthenticator = async (req: Request, res: Response, next: Nex
 
 export const googleAuthenticator = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { googleAuthCode } = req.body;
+    let name, email, googleId;
 
-    const { name, email, googleId } = decodeGoogleCredential(googleAuthCode);
+    if (req.body.token) {
+      const decoded = JWT.verify(req.body.token, process.env.ACCESS_SECRET!) as unknown as {
+        name: string;
+        email: string;
+        googleId: string;
+      };
+      ({ name, email, googleId } = decoded);
+    } else if (req.body.googleAuthCode) {
+      ({ name, email, googleId } = decodeGoogleCredential(req.body.googleAuthCode));
+    } else {
+      throw new Error("Invalid request: missing authentication data.");
+    }
+
     let user;
 
     const alreadyExistingUser = await prisma.user.findFirst({
