@@ -28,6 +28,8 @@ interface ReportI {
   source_name: string;
   source_thumbnail: string;
   source_link: string;
+  author: string;
+  curator: string;
 }
 
 export type Report = {
@@ -704,7 +706,9 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
           c.confidence AS confidence,
           e.label AS claim,
           c."sourceURI" AS source_name,
-          c."sourceURI" AS source_link
+          c."sourceURI" AS source_link,
+          c.author AS author,
+          c.curator AS curator
         FROM "Claim" AS c
         JOIN "Edge" AS e ON c.id = e."claimId"
         JOIN "Node" AS n1 ON e."startNodeId" = n1.id
