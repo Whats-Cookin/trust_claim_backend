@@ -87,26 +87,14 @@ export const makeClaimSubjectURL = (claimId: string, host: string) => {
   return `https://${host}/claims/${claimId}`;
 };
 
-export const decodeGoogleCredential = (accessToken: string): { name: string; email: string; googleId: string } => {
-  if (!process.env.ACCESS_SECRET) {
-    throw new Error("ACCESS_SECRET environment variable is not defined");
-  }
+export const decodeGoogleCredential = (accessToken: string) => {
+  const { name, email, sub } = JWT.decode(accessToken) as GoogleCredentialDecoded;
 
-  try {
-    const decoded = JWT.verify(accessToken, process.env.ACCESS_SECRET) as {
-      name: string;
-      email: string;
-      sub: string;
-    };
-
-    return {
-      name: decoded.name,
-      email: decoded.email,
-      googleId: decoded.sub,
-    };
-  } catch (error) {
-    throw new Error("Invalid or expired Google access token.");
-  }
+  return {
+    name,
+    email,
+    googleId: sub,
+  };
 };
 
 export const getClaimNameFromNodeUri = (nodeUri: string | undefined | null): string | null => {
