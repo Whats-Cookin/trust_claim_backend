@@ -50,26 +50,10 @@ export const getGraphNode = async (
   limit: number,
   host: string,
 ): Promise<GraphResponse> => {
-  const baseQuery = `
-    SELECT DISTINCT ON (c.id)
-    c.id AS id,
-    c.subject AS label,
-    c.claim AS claim,
-    c."sourceURI" AS sourceuri,
-    c.author AS author,
-    c."issuerId" AS issuerId,
-    
-    n2.id AS node_id
-
-    FROM "Claim" AS c
-    JOIN "Edge" AS e ON c.id = e."claimId"
-    JOIN "Node" AS n1 ON e."startNodeId" = n1.id
-    JOIN "Node" AS n2 ON e."endNodeId" = n2.id
-   `;
   const claim_as_node_uri = makeClaimSubjectURL(claimId.toString(), host);
 
   let claimNode = await prisma.$queryRaw<any[]>`
-    ${Prisma.raw(baseQuery)}
+    ${Prisma.raw(getBaseQuery())}
     WHERE c."id" = ${Number(claimId)}
     `;
 
@@ -127,7 +111,7 @@ export const getGraphNode = async (
     };
   } else {
     let validations = await prisma.$queryRaw<any[]>`
-      ${Prisma.raw(baseQuery)}
+      ${Prisma.raw(getBaseQuery())}
       WHERE n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
