@@ -6,6 +6,7 @@ import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
 import { expandGraph, getGraphNode } from "./graph";
+import { ExpandGraphType } from "../types/utils";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -669,8 +670,10 @@ export class NodeDao {
     });
   };
 
-  expandGraph = async (claimId: number, page: number, limit: number, host: string) => {
-    return await expandGraph(claimId, page, limit, host);
+
+
+  expandGraph = async (claimId: string, type: ExpandGraphType, page: number, limit: number, host: string) => {
+    return await expandGraph(claimId, type, page, limit, host);
   };
 }
 
