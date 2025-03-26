@@ -480,7 +480,7 @@ export class NodeDao {
     }
   };
 
-  async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null) {
+  async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null, type: string | null) {
     try {
       query = query ? `%${query}%` : null;
       cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
@@ -536,17 +536,27 @@ export class NodeDao {
       `;
 
       const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
+      let filteredClaims = claims;
 
-      const lastCursor = claims.at(-1)?.cursor;
-      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+      if (type) {
+        filteredClaims = filteredClaims.filter((claim) => {
+          if (type === "claim") return claim.claim === "";
+          if (type === "validation") return claim.claim === "validated";
+          if (type === "credentials") return claim.claim === "credential";
+          return true;
+        });
+      }
 
-      for (let i = 0; i < claims.length; i++) {
-        delete claims[i].cursor;
+      const lastCursor = filteredClaims.at(-1)?.cursor;
+      const nextPage = lastCursor && filteredClaims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+
+      for (let i = 0; i < filteredClaims.length; i++) {
+        delete filteredClaims[i].cursor;
       }
 
       return {
         nextPage,
-        claims: claims as FeedEntryV3[],
+        claims: filteredClaims as FeedEntryV3[],
       };
     } catch (error) {
       console.error("Error fetching feed entries:", error);
@@ -669,8 +679,6 @@ export class NodeDao {
       },
     });
   };
-
-
 
   expandGraph = async (claimId: string, type: ExpandGraphType, page: number, limit: number, host: string) => {
     return await expandGraph(claimId, type, page, limit, host);
