@@ -107,7 +107,7 @@ export class ClaimDao {
         confidence: claim.confidence,
         stars: claim.stars,
         author: getClaimNameFromNodeUri(claim.sourceURI), // this is who created the claim
-        curator: getClaimNameFromNodeUri(claim.subject), // this is claim about
+        curator: getClaimNameFromNodeUri(claim.claimAddress), // this is claim about
       },
     });
 
@@ -487,7 +487,7 @@ export class NodeDao {
       const rawQ = Prisma.sql`
         WITH RankedClaims AS (
           SELECT
-            n.name AS name,
+            c.subject AS name,
             n."nodeUri" AS link,
             c.id AS claim_id,
             c.statement AS statement,
