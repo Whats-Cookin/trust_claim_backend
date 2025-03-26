@@ -87,22 +87,64 @@ export const makeClaimSubjectURL = (claimId: string, host: string) => {
   return `https://${host}/claims/${claimId}`;
 };
 
-export const decodeGoogleCredential = (accessToken: string) => {
-  const { name, email, sub } = JWT.decode(accessToken) as GoogleCredentialDecoded;
+export const decodeGoogleCredential = (accessToken: string): { name: string; email: string; googleId: string } => {
+  if (!process.env.ACCESS_SECRET) {
+    throw new Error("ACCESS_SECRET environment variable is not defined");
+  }
 
-  return {
-    name,
-    email,
-    googleId: sub,
-  };
+  try {
+    const decoded = JWT.verify(accessToken, process.env.ACCESS_SECRET) as {
+      name: string;
+      email: string;
+      sub: string;
+    };
+
+    return {
+      name: decoded.name,
+      email: decoded.email,
+      googleId: decoded.sub,
+    };
+  } catch (error) {
+    throw new Error("Invalid or expired Google access token.");
+  }
 };
 
-export const getClaimNameFromNodeUri = (nodeUri: string | undefined | null) => {
+export const getClaimNameFromNodeUri = (nodeUri: string | undefined | null): string | null => {
   if (!nodeUri) return null;
-  if (!nodeUri.includes("linkedin")) return nodeUri;
 
-  nodeUri = nodeUri.replace(/\/+$/, '');
+  try {
+    const formattedUri = nodeUri.startsWith("http") ? nodeUri : `https://${nodeUri}`;
+    const url = new URL(formattedUri);
 
-  const parts = nodeUri.split("/");
-  return parts[parts.length - 1];
+    const domain = url.hostname.replace(/^www\./, "");
+
+    const pathParts = url.pathname.split("/").filter(Boolean);
+
+    // Define common social media platforms and their username extraction logic
+    const socialMediaPatterns: { [key: string]: number } = {
+      "linkedin.com": 1, // linkedin.com/in/username
+      "twitter.com": 0, // twitter.com/username
+      "x.com": 0, // x.com/username
+      "instagram.com": 0, // instagram.com/username
+      "facebook.com": 0, // facebook.com/username or facebook.com/profile.php?id=xyz
+      "tiktok.com": 1, // tiktok.com/@username
+      "github.com": 0, // github.com/username
+      "youtube.com": 1, // youtube.com/c/username or youtube.com/user/username
+      "medium.com": 0, // medium.com/@username
+      "reddit.com": 1, // reddit.com/user/username
+    };
+
+    // Extract username if domain is a known social media platform
+    const usernameIndex = socialMediaPatterns[domain];
+    if (usernameIndex !== undefined && pathParts.length > usernameIndex) {
+      return capitalizeFirstLetter(pathParts[usernameIndex].replace("@", ""));
+    }
+
+    return capitalizeFirstLetter(domain.replace(".com", ""));
+  } catch (error) {
+    console.error("Failed to parse URL:", error);
+    return null;
+  }
 };
+
+const capitalizeFirstLetter = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1);

@@ -46,8 +46,9 @@ export const githubAuthValidator = async (req: Request, _res: Response, next: Ne
 };
 
 const googleAuthSchema = Joi.object({
-  googleAuthCode: Joi.string().required(),
-});
+  googleAuthCode: Joi.string(),
+  token: Joi.string(),
+}).xor("googleAuthCode", "token");
 
 export const googleAuthValidator = async (req: Request, _res: Response, next: NextFunction) => {
   try {
