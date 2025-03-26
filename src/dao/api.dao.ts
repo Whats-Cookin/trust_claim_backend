@@ -107,7 +107,7 @@ export class ClaimDao {
         effectiveDate: claim.effectiveDate,
         confidence: claim.confidence,
         stars: claim.stars,
-        author: getClaimNameFromNodeUri(claim.sourceURI), // this is who created the claim
+        author: claim.author || getClaimNameFromNodeUri(claim.sourceURI), // this is who created the claim
         curator: getClaimNameFromNodeUri(claim.subject), // this is claim about
       },
     });
