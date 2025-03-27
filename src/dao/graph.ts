@@ -34,6 +34,7 @@ const getBaseQuery = () => {
     c.claim AS claim,
     c."sourceURI" AS sourceuri,
     c.author AS author,
+    c.curator AS creator,
     c."issuerId" AS issuerId,
     
     n2.id AS node_id
@@ -64,7 +65,7 @@ export const getGraphNode = async (
     const autherNode = {
       data: {
         id: `${issuerId}`,
-        label: claimNode[0].author,
+        label: claimNode[0].creator,
         raw: {
           claimId: `${claimNode[0].id}`,
           claim: "author",
@@ -205,11 +206,11 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
   if (claimNode.length === 0) throw new Error("Claim not found");
 
   const issuerId = claimNode[0].issuerid.split("/").pop();
-  const author = claimNode[0].author;
+  const author = claimNode[0].creator;
 
   let credentialsNodes = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(getBaseQuery())}
-    WHERE c."author" = ${author} AND c."id" != ${Number(claimId)}
+    WHERE c."curator" = ${author} AND c."id" != ${Number(claimId)}
     ORDER BY c.id ASC
     LIMIT ${limit}
     OFFSET ${(page - 1) * limit}
