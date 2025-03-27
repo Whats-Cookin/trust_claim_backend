@@ -171,7 +171,6 @@ export const googleAuthenticator = async (req: Request, res: Response, next: Nex
         where: { id: alreadyExistingUser.id },
         data: {
           name,
-          email,
           authType: "OAUTH",
           authProviderId: googleId,
         },
