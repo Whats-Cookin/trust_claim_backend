@@ -94,6 +94,7 @@ export const CreateClaimV2Dto = z
     claim: z.string(),
     object: z.string().nullable().optional().default(""),
     author: z.string().nullable().optional(),
+    curator: z.string().nullable().optional(),
     statement: z.string().nullable().optional().default(""),
     aspect: z.string().nullable().optional(),
     amt: z

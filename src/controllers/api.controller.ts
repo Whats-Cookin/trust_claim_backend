@@ -99,7 +99,8 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
         statement: credentialSubject?.evidenceDescription || _achievement?.description || "",
         sourceURI: credentialSubject?.evidenceLink || _achievement?.id || "",
         images: [],
-        author: credentialSubject?.name,
+        author: "https://linkedclaims.com/",
+        curator: credentialSubject?.name, // TODO: this is who created the credential for now
       },
       issuer.id,
     );
