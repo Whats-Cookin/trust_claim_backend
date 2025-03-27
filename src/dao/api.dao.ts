@@ -540,7 +540,7 @@ export class NodeDao {
 
       if (type) {
         filteredClaims = filteredClaims.filter((claim) => {
-          if (type === "claim") return claim.claim === "";
+          if (type === "claim") return claim.claim !== "validated" && claim.claim !== "credential";
           if (type === "validation") return claim.claim === "validated";
           if (type === "credentials") return claim.claim === "credential";
           return true;
