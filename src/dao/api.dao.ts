@@ -480,83 +480,90 @@ export class NodeDao {
     }
   };
 
+  private getTypeFilter(type: string | null): Prisma.Sql {
+    if (!type) return Prisma.sql``;
+    switch (type) {
+      case "claim":
+        return Prisma.sql`AND c.claim != 'validated' AND c.claim != 'credential'`;
+      case "validation":
+        return Prisma.sql`AND c.claim = 'validated'`;
+      case "credentials":
+        return Prisma.sql`AND c.claim = 'credential'`;
+      default:
+        return Prisma.sql``;
+    }
+  }
+
   async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null, type: string | null) {
     try {
       query = query ? `%${query}%` : null;
       cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
 
+      const typeFilter = this.getTypeFilter(type);
+
       const rawQ = Prisma.sql`
-        WITH RankedClaims AS (
-          SELECT
-            n.name AS name,
-            n."nodeUri" AS link,
-            c.id AS claim_id,
-            c.statement AS statement,
-            c.claim AS claim,
-            c.author AS author,
-            c.curator AS curator,
-            c.stars AS stars,
-            c."effectiveDate" AS effective_date,
-            ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
-            CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
-          FROM "Claim" c
-          INNER JOIN "Edge" AS e ON c.id = e."claimId"
-          INNER JOIN "Node" AS n ON e."startNodeId" = n.id
-          WHERE
-            n."entType" != 'CLAIM'
-            AND e.label != 'source'
-            AND c."effectiveDate" IS NOT NULL
-            AND c.statement IS NOT NULL
-            AND n.name IS NOT NULL
-            AND n.name != ''
-            AND (
-              c.subject ILIKE COALESCE(${query}, '%') OR
-              c.statement ILIKE COALESCE(${query}, '%') OR
-              c.claim ILIKE COALESCE(${query}, '%') OR
-              n.name ILIKE COALESCE(${query}, '%')
-            )
-          ORDER BY c."effectiveDate" DESC, c.id DESC
-        )
-        SELECT 
-          name,
-          link,
-          claim_id,
-          statement,
-          claim,
-          author,
-          curator,
-          stars,
-          effective_date,
-          cursor
-        FROM RankedClaims
+      WITH RankedClaims AS (
+        SELECT
+          n.name AS name,
+          n."nodeUri" AS link,
+          c.id AS claim_id,
+          c.statement AS statement,
+          c.claim AS claim,
+          c.author AS author,
+          c.curator AS curator,
+          c.stars AS stars,
+          c."effectiveDate" AS effective_date,
+          ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
+          CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+        FROM "Claim" c
+        INNER JOIN "Edge" AS e ON c.id = e."claimId"
+        INNER JOIN "Node" AS n ON e."startNodeId" = n.id
         WHERE
-          row_num = 1
-          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
-        LIMIT ${limit}
-      `;
+          n."entType" != 'CLAIM'
+          AND e.label != 'source'
+          AND c."effectiveDate" IS NOT NULL
+          AND c.statement IS NOT NULL
+          AND n.name IS NOT NULL
+          AND n.name != ''
+          ${typeFilter}
+          AND (
+            c.subject ILIKE COALESCE(${query}, '%') OR
+            c.statement ILIKE COALESCE(${query}, '%') OR
+            c.claim ILIKE COALESCE(${query}, '%') OR
+            n.name ILIKE COALESCE(${query}, '%')
+          )
+        ORDER BY c."effectiveDate" DESC, c.id DESC
+      )
+      SELECT
+        name,
+        link,
+        claim_id,
+        statement,
+        claim,
+        author,
+        curator,
+        stars,
+        effective_date,
+        cursor
+      FROM RankedClaims
+      WHERE
+        row_num = 1
+        AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
+      LIMIT ${limit}
+    `;
 
       const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
-      let filteredClaims = claims;
 
-      if (type) {
-        filteredClaims = filteredClaims.filter((claim) => {
-          if (type === "claim") return claim.claim !== "validated" && claim.claim !== "credential";
-          if (type === "validation") return claim.claim === "validated";
-          if (type === "credentials") return claim.claim === "credential";
-          return true;
-        });
-      }
+      const lastCursor = claims.at(-1)?.cursor;
+      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
 
-      const lastCursor = filteredClaims.at(-1)?.cursor;
-      const nextPage = lastCursor && filteredClaims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
-
-      for (let i = 0; i < filteredClaims.length; i++) {
-        delete filteredClaims[i].cursor;
+      for (let i = 0; i < claims.length; i++) {
+        delete claims[i].cursor;
       }
 
       return {
         nextPage,
-        claims: filteredClaims as FeedEntryV3[],
+        claims: claims as FeedEntryV3[],
       };
     } catch (error) {
       console.error("Error fetching feed entries:", error);
