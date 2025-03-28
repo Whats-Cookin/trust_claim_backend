@@ -93,9 +93,9 @@ export const getGraphNode = async (
       return {
         data: {
           id: `${credential.data.id}-${autherNode.data.id}`,
-          relation: "source",
-          source: `${credential.data.id}`,
-          target: `${autherNode.data.id}`,
+          relation: "has_credential",
+          source: `${autherNode.data.id}`,
+          target: `${credential.data.id}`,
           raw: {
             endNodeId: `${credential.data.id}`,
             startNodeId: `${autherNode.data.id}`,
@@ -235,9 +235,9 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
     return {
       data: {
         id: `${credential.data.id}-${issuerId}`,
-        relation: "source",
-        source: `${credential.data.id}`,
-        target: `${issuerId}`,
+        relation: "has_credential",
+        source: `${issuerId}`,
+        target: `${credential.data.id}`,
         raw: {
           endNodeId: `${credential.data.id}`,
           startNodeId: `${issuerId}`,
