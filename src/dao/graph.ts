@@ -7,6 +7,7 @@ interface GraphNode {
   data: {
     id: string;
     label: string;
+    entType: string;
     raw: any;
   };
 }
@@ -66,6 +67,7 @@ export const getGraphNode = async (
       data: {
         id: `${issuerId}`,
         label: claimNode[0].creator,
+        entType: "AUTHOR",
         raw: {
           claimId: `${claimNode[0].id}`,
           claim: "author",
@@ -79,6 +81,7 @@ export const getGraphNode = async (
         data: {
           id: `${claim.node_id}`,
           label: claim.label,
+          entType: "CREDENTIAL",
           raw: {
             claimId: `${claim.id}`,
             nodeId: `${claim.node_id}`,
@@ -124,6 +127,7 @@ export const getGraphNode = async (
         data: {
           id: `${claim.node_id}`,
           label: claim.label,
+          entType: "CLAIM",
           raw: {
             claimId: `${claim.id}`,
             nodeId: `${claim.node_id}`,
@@ -139,6 +143,7 @@ export const getGraphNode = async (
         data: {
           id: `${validation.node_id}`,
           label: getClaimNameFromNodeUri(validation.sourceuri) || validation.label,
+          entType: "VALIDATION",
           raw: {
             claimId: `${validation.id}`,
             nodeId: `${validation.node_id}`,
@@ -221,6 +226,7 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
       data: {
         id: `${claim.node_id}`,
         label: claim.label,
+        entType: "CREDENTIAL",
         raw: {
           claimId: `${claim.id}`,
           nodeId: `${claim.node_id}`,
@@ -282,6 +288,7 @@ const getMoreValidations = async (
       data: {
         id: `${validation.node_id}`,
         label: getClaimNameFromNodeUri(validation.sourceuri) || validation.label,
+        entType: "VALIDATION",
         raw: {
           claimId: `${validation.id}`,
           nodeId: `${validation.node_id}`,
