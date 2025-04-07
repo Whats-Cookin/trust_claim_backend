@@ -488,7 +488,7 @@ export class NodeDao {
       const rawQ = Prisma.sql`
         WITH RankedClaims AS (
           SELECT
-            n.name AS name,
+            cd.name AS name,
             n."nodeUri" AS link,
             c.id AS claim_id,
             c.statement AS statement,
@@ -500,6 +500,7 @@ export class NodeDao {
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
             CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
           FROM "Claim" c
+          LEFT JOIN "ClaimData" cd ON cd."claimId" = c.id
           INNER JOIN "Edge" AS e ON c.id = e."claimId"
           INNER JOIN "Node" AS n ON e."startNodeId" = n.id
           WHERE
@@ -523,8 +524,6 @@ export class NodeDao {
           claim_id,
           statement,
           claim,
-          author,
-          curator,
           stars,
           effective_date,
           cursor
