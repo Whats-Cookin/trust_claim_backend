@@ -333,8 +333,8 @@ export const claimsFeed = async (req: Request, res: Response, next: NextFunction
 
 export async function claimsFeedV3(req: Request, res: Response, next: NextFunction) {
   try {
-    const { search, limit, nextPage } = parseAndValidateClaimsFeedV3Query(req.query);
-    const feedEntries = await nodeDao.getFeedEntriesV3(limit, nextPage, search);
+    const { search, limit, nextPage, type } = parseAndValidateClaimsFeedV3Query(req.query);
+    const feedEntries = await nodeDao.getFeedEntriesV3(limit, nextPage, search, type);
     return res.status(200).json(feedEntries);
   } catch (err) {
     passToExpressErrorHandler(err, next);
@@ -345,6 +345,7 @@ function parseAndValidateClaimsFeedV3Query(query: Request["query"]): {
   limit: number;
   nextPage: string | null;
   search: string | null;
+  type: string | null;
 } {
   const limit = parseInt((query.limit || DEFAULT_LIMIT).toString());
 
@@ -353,10 +354,10 @@ function parseAndValidateClaimsFeedV3Query(query: Request["query"]): {
   }
 
   const search = query.search ? decodeURIComponent(query.search.toString()) : null;
-
+  const type = query.type ? decodeURIComponent(query.type.toString()) : null;
   const nextPage = query.nextPage?.toString() || null;
 
-  return { limit, search, nextPage };
+  return { limit, search, nextPage, type };
 }
 
 async function processClaim(claimId: string | number) {

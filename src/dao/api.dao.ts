@@ -480,10 +480,26 @@ export class NodeDao {
     }
   };
 
-  async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null) {
+  private getTypeFilter(type: string | null): Prisma.Sql {
+    if (!type) return Prisma.sql``;
+    switch (type) {
+      case "claim":
+        return Prisma.sql`AND c.claim != 'validated' AND c.claim != 'credential'`;
+      case "validation":
+        return Prisma.sql`AND c.claim = 'validated'`;
+      case "credentials":
+        return Prisma.sql`AND c.claim = 'credential'`;
+      default:
+        return Prisma.sql``;
+    }
+  }
+
+  async getFeedEntriesV3(limit: number, cursor: string | null, query: string | null, type: string | null) {
     try {
       query = query ? `%${query}%` : null;
       cursor = cursor ? Buffer.from(cursor, "base64").toString() : null;
+
+      const typeFilter = this.getTypeFilter(type);
 
       const rawQ = Prisma.sql`
         WITH RankedClaims AS (
@@ -529,10 +545,38 @@ export class NodeDao {
           cursor
         FROM RankedClaims
         WHERE
-          row_num = 1
-          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
-        LIMIT ${limit}
-      `;
+          n."entType" != 'CLAIM'
+          AND e.label != 'source'
+          AND c."effectiveDate" IS NOT NULL
+          AND c.statement IS NOT NULL
+          AND n.name IS NOT NULL
+          AND n.name != ''
+          ${typeFilter}
+          AND (
+            c.subject ILIKE COALESCE(${query}, '%') OR
+            c.statement ILIKE COALESCE(${query}, '%') OR
+            c.claim ILIKE COALESCE(${query}, '%') OR
+            n.name ILIKE COALESCE(${query}, '%')
+          )
+        ORDER BY c."effectiveDate" DESC, c.id DESC
+      )
+      SELECT
+        name,
+        link,
+        claim_id,
+        statement,
+        claim,
+        author,
+        curator,
+        stars,
+        effective_date,
+        cursor
+      FROM RankedClaims
+      WHERE
+        row_num = 1
+        AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
+      LIMIT ${limit}
+    `;
 
       const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
 
@@ -668,8 +712,6 @@ export class NodeDao {
       },
     });
   };
-
-
 
   expandGraph = async (claimId: string, type: ExpandGraphType, page: number, limit: number, host: string) => {
     return await expandGraph(claimId, type, page, limit, host);
