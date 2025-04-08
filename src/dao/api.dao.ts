@@ -520,31 +520,6 @@ export class NodeDao {
           INNER JOIN "Edge" AS e ON c.id = e."claimId"
           INNER JOIN "Node" AS n ON e."startNodeId" = n.id
           WHERE
-            n."entType" != 'CLAIM'
-            AND e.label != 'source'
-            AND c."effectiveDate" IS NOT NULL
-            AND c.statement IS NOT NULL
-            AND n.name IS NOT NULL
-            AND n.name != ''
-            AND (
-              c.subject ILIKE COALESCE(${query}, '%') OR
-              c.statement ILIKE COALESCE(${query}, '%') OR
-              c.claim ILIKE COALESCE(${query}, '%') OR
-              n.name ILIKE COALESCE(${query}, '%')
-            )
-          ORDER BY c."effectiveDate" DESC, c.id DESC
-        )
-        SELECT 
-          name,
-          link,
-          claim_id,
-          statement,
-          claim,
-          stars,
-          effective_date,
-          cursor
-        FROM RankedClaims
-        WHERE
           n."entType" != 'CLAIM'
           AND e.label != 'source'
           AND c."effectiveDate" IS NOT NULL
