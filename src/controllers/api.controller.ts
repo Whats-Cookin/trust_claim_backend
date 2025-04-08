@@ -156,7 +156,7 @@ async function createAndProcessClaim(
     console.error("Couldn't process the claim", e);
   }
 
-  const claimData = await claimDao.createClaimData(createdClaim.id, claim.subject);
+  const claimData = await claimDao.createClaimData(createdClaim.id, claim.name || claim.subject);
 
   let awsImages: { hash: string; url: string }[];
 

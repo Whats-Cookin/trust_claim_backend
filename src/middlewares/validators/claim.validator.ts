@@ -90,6 +90,7 @@ export type ImageDto = {
 // ValidationSchema Version: 2024-03-26
 export const CreateClaimV2Dto = z
   .object({
+    name: z.string().nullable().optional(),
     subject: z.string(),
     claim: z.string(),
     object: z.string().nullable().optional().default(""),

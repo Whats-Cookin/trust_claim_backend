@@ -502,22 +502,48 @@ export class NodeDao {
       const typeFilter = this.getTypeFilter(type);
 
       const rawQ = Prisma.sql`
-      WITH RankedClaims AS (
-        SELECT
-          n.name AS name,
-          n."nodeUri" AS link,
-          c.id AS claim_id,
-          c.statement AS statement,
-          c.claim AS claim,
-          c.author AS author,
-          c.curator AS curator,
-          c.stars AS stars,
-          c."effectiveDate" AS effective_date,
-          ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
-          CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
-        FROM "Claim" c
-        INNER JOIN "Edge" AS e ON c.id = e."claimId"
-        INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+        WITH RankedClaims AS (
+          SELECT
+            cd.name AS name,
+            n."nodeUri" AS link,
+            c.id AS claim_id,
+            c.statement AS statement,
+            c.claim AS claim,
+            c.author AS author,
+            c.curator AS curator,
+            c.stars AS stars,
+            c."effectiveDate" AS effective_date,
+            ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
+            CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
+          FROM "Claim" c
+          LEFT JOIN "ClaimData" cd ON cd."claimId" = c.id
+          INNER JOIN "Edge" AS e ON c.id = e."claimId"
+          INNER JOIN "Node" AS n ON e."startNodeId" = n.id
+          WHERE
+            n."entType" != 'CLAIM'
+            AND e.label != 'source'
+            AND c."effectiveDate" IS NOT NULL
+            AND c.statement IS NOT NULL
+            AND n.name IS NOT NULL
+            AND n.name != ''
+            AND (
+              c.subject ILIKE COALESCE(${query}, '%') OR
+              c.statement ILIKE COALESCE(${query}, '%') OR
+              c.claim ILIKE COALESCE(${query}, '%') OR
+              n.name ILIKE COALESCE(${query}, '%')
+            )
+          ORDER BY c."effectiveDate" DESC, c.id DESC
+        )
+        SELECT 
+          name,
+          link,
+          claim_id,
+          statement,
+          claim,
+          stars,
+          effective_date,
+          cursor
+        FROM RankedClaims
         WHERE
           n."entType" != 'CLAIM'
           AND e.label != 'source'
