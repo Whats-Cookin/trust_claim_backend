@@ -13,7 +13,6 @@ import {
   claimGraph,
   claimSearch,
   createClaimV2,
-  expandGraph,
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
 import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
@@ -28,7 +27,6 @@ router.post("/claim/v2", upload as unknown as RequestHandler, jwtVerify, createC
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claim_graph/:claimId", claimGraph);
-router.get("/claim_graph/:claimId/expand?", expandGraph);
 router.get("/claims-all", getAllClaims);
 router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);

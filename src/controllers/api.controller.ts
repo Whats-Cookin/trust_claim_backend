@@ -14,7 +14,6 @@ import { getS3SignedUrlIfExisted, isS3Url, uploadImageToS3 } from "../utils/aws-
 import { config } from "../config";
 import axios from "axios";
 import { Image } from "@prisma/client";
-import { ExpandGraphType } from "../types/utils";
 
 const DEFAULT_LIMIT = 100;
 
@@ -282,21 +281,7 @@ export const claimsGet = async (req: Request, res: Response, next: NextFunction)
 export const claimGraph = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
-    const host = req.get("host") ?? "live.linkedtrust.us";
-    const result = await nodeDao.getClaimGraph(claimId, host);
-    res.status(200).json(result);
-    return;
-  } catch (err) {
-    passToExpressErrorHandler(err, next);
-  }
-};
-/* This is for expanding the graph for a given claim */
-export const expandGraph = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { claimId } = req.params;
-    const { page = 1, limit = 3, type = "validated" } = req.query;
-    const host = req.get("host") ?? "live.linkedtrust.us";
-    const result = await nodeDao.expandGraph(claimId, type as ExpandGraphType, Number(page), Number(limit), host);
+    const result = await nodeDao.getClaimGraph(claimId);
     res.status(200).json(result);
     return;
   } catch (err) {
