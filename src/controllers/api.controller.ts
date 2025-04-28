@@ -4,7 +4,12 @@ import path from "node:path";
 import { ulid } from "ulid";
 
 import { prisma } from "../db/prisma";
-import { passToExpressErrorHandler, poormansNormalizer, turnFalsyPropsToUndefined } from "../utils";
+import {
+  getClaimNameFromNodeUri,
+  passToExpressErrorHandler,
+  poormansNormalizer,
+  turnFalsyPropsToUndefined,
+} from "../utils";
 
 import { ClaimDao, CredentialDao, NodeDao } from "../dao/api.dao";
 import { ProtectedMulterRequest } from "../middlewares/upload/multer.upload";
@@ -42,7 +47,12 @@ export const claimPost = async (req: Request, res: Response, next: NextFunction)
 
     const name = rawClaim.name;
     if (name) {
-      claimData = await claimDao.createClaimData(claim.id, name);
+      claimData = await claimDao.createClaimData(
+        claim.id,
+        rawClaim.subject_name || "",
+        rawClaim.issuer_name || "",
+        name,
+      );
     }
 
     if (rawClaim.images && rawClaim.images.length > 0) {
@@ -99,10 +109,11 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
         statement: credentialSubject?.evidenceDescription || _achievement?.description || "",
         sourceURI: credentialSubject?.evidenceLink || _achievement?.id || "",
         images: [],
-        author: "https://linkedclaims.com/",
-        curator: credentialSubject?.name, // TODO: this is who created the credential for now
       },
       issuer.id,
+      [],
+      "https://linkedclaims.com/",
+      credentialSubject?.name ?? undefined,
     );
     return res.status(201).json({ message: "Credential created successfully!", credential, ...created });
   } catch (err) {
@@ -143,6 +154,8 @@ async function createAndProcessClaim(
   claim: CreateClaimV2Dto,
   userId: number | string,
   images: Express.Multer.File[] = [],
+  issuerNameOverride?: string,
+  subjectNameOverride?: string,
 ) {
   if (images.length !== claim.images.length) {
     throw new createError.UnprocessableEntity("Invalid images metadata");
@@ -156,7 +169,16 @@ async function createAndProcessClaim(
     console.error("Couldn't process the claim", e);
   }
 
-  const claimData = await claimDao.createClaimData(createdClaim.id, claim.name || claim.subject);
+  // Extract names from URIs
+  const subjectName = subjectNameOverride ?? getClaimNameFromNodeUri(claim.subject) ?? claim.name ?? null;
+  const issuerName = getClaimNameFromNodeUri(claim.sourceURI) ?? issuerNameOverride ?? claim.name ?? null;
+
+  const claimData = await claimDao.createClaimData(
+    createdClaim.id,
+    subjectName,
+    issuerName,
+    claim.name ?? claim.subject,
+  );
 
   let awsImages: { hash: string; url: string }[];
 
