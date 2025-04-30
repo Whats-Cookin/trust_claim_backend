@@ -129,35 +129,36 @@ model Claim {
 }
 
 model Credential {
-  id                   String    @id
-  context              Json?
-  type                 Json?
-  issuer               Json?
-  issuanceDate         DateTime?
-  expirationDate       DateTime?
-  credentialSubject    Json?
-  proof                Json?
-  sameAs               Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                String    @id
+  email             String?
+  context           Json?
+  type              Json?
+  issuer            Json?
+  issuanceDate      DateTime?
+  expirationDate    DateTime?
+  credentialSubject Json?
+  proof             Json?
+  sameAs            Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
-
 
 // this model is to connect between the claim and the data that supports it
 // like the name of the claim, the image, the source, etc.
 // maybe to add another atts in future like the urls that can be related to the claim, like the website, the social media, etc.
-model  ClaimData {
-  id      Int @id @default(autoincrement())
-  claimId Int @unique
-
-  name  String
+model ClaimData {
+  id           Int    @id @default(autoincrement())
+  claimId      Int    @unique
+  subject_name String?
+  issuer_name  String?
+  name String
   // image Image[]
 }
 
 // this model is to store the image of the claim
 model Image {
   id      Int @id @default(autoincrement())
-  claimId Int  // @unique
+  claimId Int // @unique
   // claimDataId Int
 
   url             String
@@ -173,11 +174,11 @@ model Image {
 
 // this is for validator service
 model CandidUserInfo {
-  id               Int     @id @default(autoincrement())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  claimId          Int?    @unique
+  claimId          Int?            @unique
   firstName        String?
   lastName         String?
   candid_entity_id String
@@ -187,9 +188,9 @@ model CandidUserInfo {
 }
 
 model ValidationRequest {
-  id                Int              @id @default(autoincrement())
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   context           String
   validatorName     String
@@ -197,7 +198,7 @@ model ValidationRequest {
   claimId           Int
   validationClaimId Int?             @unique
   validationStatus  ValidationStatus @default(PENDING)
-  response          ResponseStatus   
+  response          ResponseStatus
   rating            Int?
   validationDate    DateTime?
   statement         String?
