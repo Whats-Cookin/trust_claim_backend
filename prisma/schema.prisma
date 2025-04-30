@@ -130,7 +130,7 @@ model Claim {
 
 model Credential {
   id                String    @id
-  email             String
+  email             String?
   context           Json?
   type              Json?
   issuer            Json?
@@ -149,9 +149,8 @@ model Credential {
 model ClaimData {
   id           Int    @id @default(autoincrement())
   claimId      Int    @unique
-  subject_name String
-  issuer_name  String
-
+  subject_name String?
+  issuer_name  String?
   name String
   // image Image[]
 }
