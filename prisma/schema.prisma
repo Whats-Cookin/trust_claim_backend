@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "./node_modules/@prisma/client"  // Add this line to specify the output path
 }
 
 datasource db {
@@ -130,7 +131,9 @@ model Claim {
 
 model Credential {
   id                String    @id
+
   email             String?
+
   context           Json?
   type              Json?
   issuer            Json?

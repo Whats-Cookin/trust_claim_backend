@@ -34,13 +34,12 @@ const getBaseQuery = () => {
     c.subject AS label,
     c.claim AS claim,
     c."sourceURI" AS sourceuri,
-    c.author AS author,
-    c.curator AS creator,
+    cd.subject_name AS subject_name,
+    cd.issuer_name AS issuer_name,
     c."issuerId" AS issuerId,
-    
     n2.id AS node_id
-
     FROM "Claim" AS c
+    JOIN "ClaimData" AS cd ON c.id = cd."claimId"
     JOIN "Edge" AS e ON c.id = e."claimId"
     JOIN "Node" AS n1 ON e."startNodeId" = n1.id
     JOIN "Node" AS n2 ON e."endNodeId" = n2.id
@@ -66,7 +65,7 @@ export const getGraphNode = async (
     const autherNode = {
       data: {
         id: `${issuerId}`,
-        label: claimNode[0].creator,
+        label: claimNode[0].subject_name || claimNode[0].label ,
         entType: "AUTHOR",
         raw: {
           claimId: `${claimNode[0].id}`,
@@ -211,11 +210,11 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
   if (claimNode.length === 0) throw new Error("Claim not found");
 
   const issuerId = claimNode[0].issuerid.split("/").pop();
-  const author = claimNode[0].creator;
+  const author = claimNode[0].subject_name;
 
   let credentialsNodes = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(getBaseQuery())}
-    WHERE c."curator" = ${author} AND c."id" != ${Number(claimId)}
+    WHERE cd."subject_name" = ${author} AND c."id" != ${Number(claimId)}
     ORDER BY c.id ASC
     LIMIT ${limit}
     OFFSET ${(page - 1) * limit}
@@ -225,7 +224,7 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
     return {
       data: {
         id: `${claim.node_id}`,
-        label: claim.label,
+        label: claim.subject_name || claim.label,
         entType: "CREDENTIAL",
         raw: {
           claimId: `${claim.id}`,
