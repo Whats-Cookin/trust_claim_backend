@@ -130,7 +130,9 @@ model Claim {
 
 model Credential {
   id                String    @id
+
   email             String?
+
   context           Json?
   type              Json?
   issuer            Json?
@@ -147,10 +149,10 @@ model Credential {
 // like the name of the claim, the image, the source, etc.
 // maybe to add another atts in future like the urls that can be related to the claim, like the website, the social media, etc.
 model ClaimData {
-  id           Int     @id @default(autoincrement())
-  claimId      Int     @unique
-  issuer_name  String?
+  id           Int    @id @default(autoincrement())
+  claimId      Int    @unique
   subject_name String?
+  issuer_name  String?
 
   name String
   // image Image[]

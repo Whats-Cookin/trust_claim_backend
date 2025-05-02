@@ -29,8 +29,6 @@ interface ReportI {
   source_name: string;
   source_thumbnail: string;
   source_link: string;
-  author: string;
-  curator: string;
 }
 
 export type Report = {
@@ -107,8 +105,6 @@ export class ClaimDao {
         effectiveDate: claim.effectiveDate,
         confidence: claim.confidence,
         stars: claim.stars,
-        author: claim.author || getClaimNameFromNodeUri(claim.sourceURI), // this is who created the claim
-        curator: claim.curator || getClaimNameFromNodeUri(claim.subject), // this is claim about
       },
     });
 
@@ -159,10 +155,12 @@ export class ClaimDao {
     return claimImages;
   };
 
-  createClaimData = async (id: number, name: string) => {
+  createClaimData = async (id: number, subject_name: string | null, issuer_name: string | null, name: string) => {
     return await prisma.claimData.create({
       data: {
         claimId: id,
+        subject_name: subject_name,
+        issuer_name: issuer_name,
         name: name,
       },
     });
@@ -510,8 +508,8 @@ export class NodeDao {
             c.id AS claim_id,
             c.statement AS statement,
             c.claim AS claim,
-            c.author AS author,
-            c.curator AS curator,
+            cd.subject_name AS subject_name,
+            cd.issuer_name AS issuer_name,
             c.stars AS stars,
             c."effectiveDate" AS effective_date,
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
@@ -542,8 +540,8 @@ export class NodeDao {
         claim_id,
         statement,
         claim,
-        author,
-        curator,
+        subject_name,
+        issuer_name,
         stars,
         effective_date,
         cursor
@@ -727,9 +725,10 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
           e.label AS claim,
           c."sourceURI" AS source_name,
           c."sourceURI" AS source_link,
-          c.author AS author,
-          c.curator AS curator
+          cd.subject_name AS subject_name,
+          cd.issuer_name AS issuer_name
         FROM "Claim" AS c
+        JOIN "ClaimData" AS cd ON c.id = cd."claimId"
         JOIN "Edge" AS e ON c.id = e."claimId"
         JOIN "Node" AS n1 ON e."startNodeId" = n1.id
         JOIN "Node" AS n2 ON e."endNodeId" = n2.id
