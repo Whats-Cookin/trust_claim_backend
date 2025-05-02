@@ -153,6 +153,7 @@ model ClaimData {
   claimId      Int    @unique
   subject_name String?
   issuer_name  String?
+
   name String
   // image Image[]
 }

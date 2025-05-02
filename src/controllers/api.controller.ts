@@ -73,7 +73,9 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       return next({ data: result.error.errors, statusCode: 422 });
     }
 
-    const { context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } = result.data;
+    const { email, context, id, type, issuer, issuanceDate, expirationDate, credentialSubject, proof, sameAs } =
+      result.data;
+    console.log(email);
 
     const existingCredential = await credentialDao.getCredentialById(id || "");
     if (existingCredential) {
@@ -81,6 +83,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
     }
 
     const credential = await credentialDao.createCredential({
+      email,
       context,
       id,
       type,

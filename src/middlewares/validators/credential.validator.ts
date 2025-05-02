@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CreateCredentialDto = z.object({
+  email: z.string().optional(),
   context: z.string().nullable().optional(),
   id: z.string().nullable().optional(),
   type: z.array(z.string().nullable().optional()).optional().nullable(),
@@ -18,22 +19,25 @@ export const CreateCredentialDto = z.object({
       evidenceDescription: z.string().nullable().optional(),
       duration: z.string().nullable().optional(),
       credentialType: z.string().nullable().optional(),
-      achievement: z.array(
-        z.object({
-          id: z.string(),
-          type: z.array(z.string()),
-          criterial: z.any(),
-          description: z.string().optional().nullable(),
-          name: z.string().optional().nullable(),
-          image: z
-            .object({
-              id: z.string().optional().nullable(),
-              type: z.string().optional().nullable(),
-            })
-            .optional()
-            .nullable(),
-        }),
-      ).optional().nullable(),
+      achievement: z
+        .array(
+          z.object({
+            id: z.string(),
+            type: z.array(z.string()),
+            criterial: z.any(),
+            description: z.string().optional().nullable(),
+            name: z.string().optional().nullable(),
+            image: z
+              .object({
+                id: z.string().optional().nullable(),
+                type: z.string().optional().nullable(),
+              })
+              .optional()
+              .nullable(),
+          }),
+        )
+        .optional()
+        .nullable(),
     })
     .nullable()
     .optional(),

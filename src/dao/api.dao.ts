@@ -278,6 +278,7 @@ export class CredentialDao {
   async createCredential(data: any) {
     return await prisma.credential.create({
       data: {
+        email: data.email,
         id: data.id,
         context: data.context || ["https://www.w3.org/2018/credentials/v1"],
         type: data.type,
