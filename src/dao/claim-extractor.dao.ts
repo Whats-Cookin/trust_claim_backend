@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma";
 import { CreateClaimExtractorDto } from "../middlewares/validators/claim-extractor.validator";
 import createError from "http-errors";
+import { Prisma, IssuerIdType } from "@prisma/client";
 
 export class ClaimExtractorDao {
   // Create a new claim from an extractor
@@ -9,9 +10,10 @@ export class ClaimExtractorDao {
       const claim = await prisma.claimExtractor.create({
         data: {
           ...data,
-          status: "pending", // Always start as pending
+          issuerIdType: data.issuerIdType && IssuerIdType[data.issuerIdType as keyof typeof IssuerIdType] || null,
+          status: "pending",
         },
-      });
+      });      
       return claim;
     } catch (error) {
       console.error("Error creating claim extractor:", error);
