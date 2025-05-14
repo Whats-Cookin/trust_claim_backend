@@ -40,7 +40,7 @@ router.get("/my-node", getNodeForLoggedInUser);
 router.get("/report/:claimId?", claimReport);
 
 // Claim Extractor Routes
-router.post("/claims", submitClaim); // No auth required
-router.patch("/claims/:id/link", jwtVerify, linkClaimToUser); // Auth required
+router.post("/claim-extractor", submitClaim);
+router.patch("/claim-extractor/:id/link", jwtVerify, linkClaimToUser);
 
 export default router;
