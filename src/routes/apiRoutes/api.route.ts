@@ -19,6 +19,7 @@ import { jwtVerify } from "../../middlewares";
 import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
 import { claimPostSchema, joiValidator } from "../../middlewares/validators/claim.validator";
 import { upload } from "../../middlewares/upload/multer.upload";
+import { submitClaim, linkClaimToUser } from "../../controllers/claim-extractor.controller";
 
 const router = Router();
 console.log("setting up routes");
@@ -37,5 +38,9 @@ router.get("/node/search", searchNodes);
 router.get("/node/:nodeId?", getNodeById);
 router.get("/my-node", getNodeForLoggedInUser);
 router.get("/report/:claimId?", claimReport);
+
+// Claim Extractor Routes
+router.post("/claims", submitClaim); // No auth required
+router.patch("/claims/:id/link", jwtVerify, linkClaimToUser); // Auth required
 
 export default router;
