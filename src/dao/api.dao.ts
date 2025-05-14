@@ -336,6 +336,7 @@ interface FeedEntryV3 {
   stars: number | null;
   effective_date: Date | null;
   created: Date | null;
+  status?: string | null;
 }
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
@@ -502,6 +503,7 @@ export class NodeDao {
 
       const rawQ = Prisma.sql`
         WITH RankedClaims AS (
+          -- Regular claims from Claim table
           SELECT
             cd.name AS name,
             n."nodeUri" AS link,
@@ -512,6 +514,8 @@ export class NodeDao {
             cd.issuer_name AS issuer_name,
             c.stars AS stars,
             c."effectiveDate" AS effective_date,
+            c."createdAt" AS created,
+            NULL as status,
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
             CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
           FROM "Claim" c
@@ -519,38 +523,69 @@ export class NodeDao {
           INNER JOIN "Edge" AS e ON c.id = e."claimId"
           INNER JOIN "Node" AS n ON e."startNodeId" = n.id
           WHERE
-          n."entType" != 'CLAIM'
-          AND e.label != 'source'
-          AND c."effectiveDate" IS NOT NULL
-          AND c.statement IS NOT NULL
-          AND n.name IS NOT NULL
-          AND n.name != ''
-          ${typeFilter}
-          AND (
-            c.subject ILIKE COALESCE(${query}, '%') OR
-            c.statement ILIKE COALESCE(${query}, '%') OR
-            c.claim ILIKE COALESCE(${query}, '%') OR
-            n.name ILIKE COALESCE(${query}, '%')
-          )
-        ORDER BY c."effectiveDate" DESC, c.id DESC
-      )
-      SELECT
-        name,
-        link,
-        claim_id,
-        statement,
-        claim,
-        subject_name,
-        issuer_name,
-        stars,
-        effective_date,
-        cursor
-      FROM RankedClaims
-      WHERE
-        row_num = 1
-        AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
-      LIMIT ${limit}
-    `;
+            n."entType" != 'CLAIM'
+            AND e.label != 'source'
+            AND c."effectiveDate" IS NOT NULL
+            AND c.statement IS NOT NULL
+            AND n.name IS NOT NULL
+            AND n.name != ''
+            ${typeFilter}
+            AND (
+              c.subject ILIKE COALESCE(${query}, '%') OR
+              c.statement ILIKE COALESCE(${query}, '%') OR
+              c.claim ILIKE COALESCE(${query}, '%') OR
+              n.name ILIKE COALESCE(${query}, '%')
+            )
+
+          UNION ALL
+
+          -- Claims from ClaimExtractor table
+          SELECT
+            ce.subject AS name,
+            ce.subject AS link, -- Using subject as link since extractor claims don't have nodes
+            ce.id AS claim_id,
+            ce.statement AS statement,
+            ce.claim AS claim,
+            ce.subject AS subject_name,
+            ce.source AS issuer_name,
+            ce.stars AS stars,
+            ce."effectiveDate" AS effective_date,
+            ce."createdAt" AS created,
+            ce.status,
+            ROW_NUMBER() OVER (PARTITION BY ce.id) AS row_num,
+            CONCAT(COALESCE(to_char(ce."effectiveDate", 'YYYYMMDDHH24MISS'), ''), ce.id::TEXT) AS cursor
+          FROM "ClaimExtractor" ce
+          WHERE
+            ce."effectiveDate" IS NOT NULL
+            AND ce.statement IS NOT NULL
+            AND ce.subject IS NOT NULL
+            AND ce.subject != ''
+            AND (
+              ce.subject ILIKE COALESCE(${query}, '%') OR
+              ce.statement ILIKE COALESCE(${query}, '%') OR
+              ce.claim ILIKE COALESCE(${query}, '%')
+            )
+        )
+        SELECT
+          name,
+          link,
+          claim_id,
+          statement,
+          claim,
+          subject_name,
+          issuer_name,
+          stars,
+          effective_date,
+          created,
+          status,
+          cursor
+        FROM RankedClaims
+        WHERE
+          row_num = 1
+          AND cursor < COALESCE(${cursor}, ${MAX_POSSIBLE_CURSOR})
+        ORDER BY effective_date DESC, claim_id DESC
+        LIMIT ${limit}
+      `;
 
       const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
 
