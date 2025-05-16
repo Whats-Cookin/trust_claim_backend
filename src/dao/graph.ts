@@ -53,7 +53,7 @@ export const getGraphNode = async (
 ): Promise<GraphResponse> => {
   const claim_as_node_uri = makeClaimSubjectURL(claimId.toString(), host);
 
-  let claimNode = await prisma.$queryRaw<any[]>`
+  const claimNode = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(getBaseQuery())}
     WHERE c."id" = ${Number(claimId)}
     `;
@@ -62,20 +62,29 @@ export const getGraphNode = async (
 
   if (claimNode[0].claim === "credential") {
     const issuerId = claimNode[0].issuerid.split("/").pop();
-    const autherNode = {
+    const subjectName = claimNode[0].subject_name;
+    
+    // Create central subject node
+    const subjectNode = {
       data: {
-        id: `${issuerId}`,
-        label: claimNode[0].subject_name || claimNode[0].label ,
-        entType: "AUTHOR",
+        id: `subject_${subjectName}`,
+        label: subjectName,
+        entType: "SUBJECT",
         raw: {
-          claimId: `${claimNode[0].id}`,
-          claim: "author",
+          subject_name: subjectName,
           page: 0,
         },
       },
     };
 
-    claimNode = claimNode.map((claim): GraphNode => {
+    // Get all credentials with same subject_name
+    let credentialsNodes = await prisma.$queryRaw<any[]>`
+      ${Prisma.raw(getBaseQuery())}
+      WHERE cd."subject_name" = ${subjectName}
+      ORDER BY c.id ASC
+    `;
+
+    credentialsNodes = credentialsNodes.map((claim): GraphNode => {
       return {
         data: {
           id: `${claim.node_id}`,
@@ -91,17 +100,18 @@ export const getGraphNode = async (
       };
     });
 
-    const edges = claimNode.map((credential): GraphEdge => {
+    // Create edges from subject to all credentials
+    const edges = credentialsNodes.map((credential): GraphEdge => {
       return {
         data: {
-          id: `${credential.data.id}-${autherNode.data.id}`,
+          id: `${subjectNode.data.id}-${credential.data.id}`,
           relation: "has_credential",
-          source: `${autherNode.data.id}`,
-          target: `${credential.data.id}`,
+          source: subjectNode.data.id,
+          target: credential.data.id,
           raw: {
             endNodeId: `${credential.data.id}`,
-            startNodeId: `${autherNode.data.id}`,
-            startClaimId: `${autherNode.data.raw.claimId}`,
+            startNodeId: `${subjectNode.data.id}`,
+            subject_name: subjectName,
             endClaimId: `${credential.data.raw.claimId}`,
           },
         },
@@ -109,19 +119,33 @@ export const getGraphNode = async (
     });
 
     return {
-      nodes: [autherNode, ...claimNode],
+      nodes: [subjectNode, ...credentialsNodes],
       edges,
     };
   } else {
-    let validations = await prisma.$queryRaw<any[]>`
+    const subjectName = claimNode[0].subject_name;
+    
+    // Create central subject node
+    const subjectNode = {
+      data: {
+        id: `subject_${subjectName}`,
+        label: subjectName,
+        entType: "SUBJECT",
+        raw: {
+          subject_name: subjectName,
+          page: 0,
+        },
+      },
+    };
+
+    // Get all claims with same subject_name
+    let allClaims = await prisma.$queryRaw<any[]>`
       ${Prisma.raw(getBaseQuery())}
-      WHERE n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
+      WHERE cd."subject_name" = ${subjectName}
       ORDER BY c.id DESC
-      LIMIT ${limit}
-      OFFSET ${(page - 1) * limit}
     `;
 
-    claimNode = claimNode.map((claim): GraphNode => {
+    allClaims = allClaims.map((claim): GraphNode => {
       return {
         data: {
           id: `${claim.node_id}`,
@@ -131,47 +155,32 @@ export const getGraphNode = async (
             claimId: `${claim.id}`,
             nodeId: `${claim.node_id}`,
             claim: claim.claim,
-            page: 1,
-          },
-        },
-      };
-    });
-
-    validations = validations.map((validation): GraphNode => {
-      return {
-        data: {
-          id: `${validation.node_id}`,
-          label: getClaimNameFromNodeUri(validation.sourceuri) || validation.label,
-          entType: "VALIDATION",
-          raw: {
-            claimId: `${validation.id}`,
-            nodeId: `${validation.node_id}`,
-            claim: validation.claim,
             page: 0,
           },
         },
       };
     });
 
-    const edges = validations.map((validation): GraphEdge => {
+    // Create edges from subject to all claims
+    const edges = allClaims.map((claim): GraphEdge => {
       return {
         data: {
-          id: `${validation.data.id}-${claimNode[0].data.id}`,
-          relation: validation.data.raw.claim,
-          target: claimNode[0].data.id,
-          source: `${validation.data.id}`,
+          id: `${subjectNode.data.id}-${claim.data.id}`,
+          relation: claim.data.raw.claim,
+          source: subjectNode.data.id,
+          target: claim.data.id,
           raw: {
-            endNodeId: `${validation.data.id}`,
-            startNodeId: `${claimNode[0].data.id}`,
-            startClaimId: `${claimNode[0].data.raw.claimId}`,
-            endClaimId: `${validation.data.raw.claimId}`,
+            endNodeId: `${claim.data.id}`,
+            startNodeId: `${subjectNode.data.id}`,
+            subject_name: subjectName,
+            endClaimId: `${claim.data.raw.claimId}`,
           },
         },
       };
     });
 
     return {
-      nodes: [...claimNode, ...validations],
+      nodes: [subjectNode, ...allClaims],
       edges,
     };
   }
@@ -209,12 +218,12 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
 
   if (claimNode.length === 0) throw new Error("Claim not found");
 
-  const issuerId = claimNode[0].issuerid.split("/").pop();
-  const author = claimNode[0].subject_name;
+  const subjectName = claimNode[0].subject_name;
 
+  // Get all credentials with same subject_name
   let credentialsNodes = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(getBaseQuery())}
-    WHERE cd."subject_name" = ${author} AND c."id" != ${Number(claimId)}
+    WHERE cd."subject_name" = ${subjectName} AND c."id" != ${Number(claimId)}
     ORDER BY c.id ASC
     LIMIT ${limit}
     OFFSET ${(page - 1) * limit}
@@ -224,7 +233,7 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
     return {
       data: {
         id: `${claim.node_id}`,
-        label: claim.subject_name || claim.label,
+        label: claim.label,
         entType: "CREDENTIAL",
         raw: {
           claimId: `${claim.id}`,
@@ -236,17 +245,29 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
     };
   });
 
+  const subjectNode = {
+    data: {
+      id: `subject_${subjectName}`,
+      label: subjectName,
+      entType: "SUBJECT",
+      raw: {
+        subject_name: subjectName,
+        page: 0,
+      },
+    },
+  };
+
   const edges = credentialsNodes.map((credential): GraphEdge => {
     return {
       data: {
-        id: `${credential.data.id}-${issuerId}`,
+        id: `${subjectNode.data.id}-${credential.data.id}`,
         relation: "has_credential",
-        source: `${issuerId}`,
-        target: `${credential.data.id}`,
+        source: subjectNode.data.id,
+        target: credential.data.id,
         raw: {
           endNodeId: `${credential.data.id}`,
-          startNodeId: `${issuerId}`,
-          startClaimId: `${claimNode[0].id}`,
+          startNodeId: `${subjectNode.data.id}`,
+          subject_name: subjectName,
           endClaimId: `${credential.data.raw.claimId}`,
         },
       },
@@ -254,7 +275,7 @@ const getMoreAuthorCredentials = async (claimId: number, limit: number, page: nu
   });
 
   return {
-    nodes: credentialsNodes,
+    nodes: [subjectNode, ...credentialsNodes],
     edges,
   };
 };
@@ -265,8 +286,6 @@ const getMoreValidations = async (
   page: number,
   host: string,
 ): Promise<GraphResponse> => {
-  const claim_as_node_uri = makeClaimSubjectURL(claimId.toString(), host);
-
   const claimNode = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(getBaseQuery())}
     WHERE c."id" = ${Number(claimId)}
@@ -274,49 +293,64 @@ const getMoreValidations = async (
 
   if (claimNode.length === 0) throw new Error("Claim not found");
 
-  let validations = await prisma.$queryRaw<any[]>`
+  const subjectName = claimNode[0].subject_name;
+
+  // Get all claims with same subject_name
+  let allClaims = await prisma.$queryRaw<any[]>`
     ${Prisma.raw(getBaseQuery())}
-    WHERE n1."nodeUri" = ${claim_as_node_uri} AND c."id" != ${Number(claimId)}
+    WHERE cd."subject_name" = ${subjectName} AND c."id" != ${Number(claimId)}
     ORDER BY c.id DESC
     LIMIT ${limit}
     OFFSET ${(page - 1) * limit}
   `;
 
-  validations = validations.map((validation): GraphNode => {
+  allClaims = allClaims.map((claim): GraphNode => {
     return {
       data: {
-        id: `${validation.node_id}`,
-        label: getClaimNameFromNodeUri(validation.sourceuri) || validation.label,
-        entType: "VALIDATION",
+        id: `${claim.node_id}`,
+        label: claim.label,
+        entType: "CLAIM",
         raw: {
-          claimId: `${validation.id}`,
-          nodeId: `${validation.node_id}`,
-          claim: validation.claim,
+          claimId: `${claim.id}`,
+          nodeId: `${claim.node_id}`,
+          claim: claim.claim,
           page: 0,
         },
       },
     };
   });
 
-  const edges = validations.map((validation): GraphEdge => {
+  const subjectNode = {
+    data: {
+      id: `subject_${subjectName}`,
+      label: subjectName,
+      entType: "SUBJECT",
+      raw: {
+        subject_name: subjectName,
+        page: 0,
+      },
+    },
+  };
+
+  const edges = allClaims.map((claim): GraphEdge => {
     return {
       data: {
-        id: `${validation.data.id}-${claimNode[0].node_id}`,
-        relation: validation.data.raw.claim,
-        target: claimNode[0].node_id,
-        source: `${validation.data.id}`,
+        id: `${subjectNode.data.id}-${claim.data.id}`,
+        relation: claim.data.raw.claim,
+        source: subjectNode.data.id,
+        target: claim.data.id,
         raw: {
-          endNodeId: `${validation.data.id}`,
-          startNodeId: `${claimNode[0].node_id}`,
-          startClaimId: `${claimNode[0].id}`,
-          endClaimId: `${validation.data.raw.claimId}`,
+          endNodeId: `${claim.data.id}`,
+          startNodeId: `${subjectNode.data.id}`,
+          subject_name: subjectName,
+          endClaimId: `${claim.data.raw.claimId}`,
         },
       },
     };
   });
 
   return {
-    nodes: validations,
+    nodes: [subjectNode, ...allClaims],
     edges,
   };
 };

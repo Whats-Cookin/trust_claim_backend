@@ -752,10 +752,10 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
   }
 
   // Now get any other claims about the same subject, if any
-  // the subject of the claim is claim.subject, not the url of the claim itself
+  // Using subject_name to find related claims about the same subject
   const attestations = await prisma.$queryRaw<ReportI[]>`
       ${Prisma.raw(baseQuery)}
-      WHERE c."subject" = ${claimToGet?.subject} AND c."id" != ${Number(claimId)}
+      WHERE cd."subject_name" = ${claimData?.subject_name} AND c."id" != ${Number(claimId)}
       ORDER BY c.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
