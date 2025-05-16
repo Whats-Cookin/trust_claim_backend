@@ -8,6 +8,7 @@ export {
   claimSearch,
   createClaimV2,
   expandGraph,
+  expandGraphNode,
 } from "./api.controller";
 export { login, signup, refreshToken, githubAuthenticator, googleAuthenticator } from "./auth.controller";
 

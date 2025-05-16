@@ -5,8 +5,9 @@ import { getClaimNameFromNodeUri, makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
-import { expandGraph, getGraphNode } from "./graph";
+import { expandGraph as expandGraphFromDao, getGraphNode } from "./graph";
 import { ExpandGraphType } from "../types/utils";
+import { GraphResponse } from "./graph";
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -688,8 +689,363 @@ export class NodeDao {
   };
 
   expandGraph = async (claimId: string, type: ExpandGraphType, page: number, limit: number, host: string) => {
-    return await expandGraph(claimId, type, page, limit, host);
+    console.log(`[DAO] Calling expandGraph from NodeDao with claimId=${claimId}, type=${type}`);
+    return await expandGraphFromDao(claimId, type, page, limit, host);
   };
+
+  /**
+   * Expand a subject node to show all claims with the same subject_name
+   */
+  async expandSubjectNode(subjectName: string, limit: number, host: string): Promise<GraphResponse> {
+    console.log(`[DAO] Expanding subject node: "${subjectName}"`);
+    try {
+      if (!subjectName || !subjectName.trim()) {
+        console.error(`[DAO] Empty subject name provided`);
+        throw new Error('Subject name cannot be empty');
+      }
+      
+      // Central subject node
+      const subjectNode = {
+        data: {
+          id: `subject_${subjectName}`,
+          label: subjectName,
+          entType: "SUBJECT",
+          raw: { subject_name: subjectName, page: 0 },
+        },
+      };
+      console.log(`[DAO] Created subject node: ${JSON.stringify(subjectNode.data.id)}`);
+
+      // Get claims with this subject_name
+      console.log(`[DAO] Querying for claims with subject_name=${subjectName}, limit=${limit}`);
+      const allClaims = await prisma.$queryRaw<any[]>`
+        SELECT c.id, cd.name, cd.issuer_name, cd.subject_name, c.subject
+        FROM "Claim" AS c
+        JOIN "ClaimData" AS cd ON c.id = cd."claimId"
+        WHERE cd.subject_name = ${subjectName}
+        LIMIT ${limit}
+      `;
+      console.log(`[DAO] Query returned ${allClaims?.length || 0} claims`);
+      
+      if (allClaims?.length > 0) {
+        console.log(`[DAO] First claim:`, JSON.stringify(allClaims[0]));
+      }
+
+      // If no claims found, just return the subject node
+      if (!allClaims || allClaims.length === 0) {
+        console.log(`[DAO] No claims found for subject: ${subjectName}`);
+        return { nodes: [subjectNode], edges: [] };
+      }
+
+      // Build nodes and edges
+      const nodes: any[] = [subjectNode];
+      const edges: any[] = [];
+
+      for (const claim of allClaims) {
+        console.log(`[DAO] Processing claim ID: ${claim.id}, name: ${claim.name || 'unnamed'}`);
+        
+        // Use claim.name or fallback to claim.subject if name is missing
+        const claimLabel = claim.name || claim.subject || 'Unnamed Claim';
+        
+        // Claim node
+        const claimNodeObj = {
+          data: {
+            id: `claim_${claim.id}`,
+            label: claimLabel,
+            entType: "CLAIM",
+            raw: { claimId: claim.id, claim: claimLabel, subject_name: subjectName, page: 0 },
+          },
+        };
+        nodes.push(claimNodeObj);
+
+        // Edge: claim -> subject (about)
+        edges.push({
+          data: {
+            id: `edge_${claimNodeObj.data.id}_${subjectNode.data.id}`,
+            relation: "about",
+            source: claimNodeObj.data.id,
+            target: subjectNode.data.id,
+            raw: { claim_name: claimLabel, subject_name: subjectName },
+          },
+        });
+
+        // Issuer node
+        if (claim.issuer_name) {
+          console.log(`[DAO] Processing issuer: ${claim.issuer_name} for claim ${claim.id}`);
+          const issuerNode = {
+            data: {
+              id: `issuer_${claim.issuer_name}`,
+              label: claim.issuer_name,
+              entType: "ISSUER",
+              raw: { issuer_name: claim.issuer_name, subject_name: subjectName, page: 0 },
+            },
+          };
+          
+          // Only add if not already present
+          if (!nodes.find(n => n.data.id === issuerNode.data.id)) {
+            nodes.push(issuerNode);
+          }
+          
+          // Edge: issuer -> claim (issued)
+          edges.push({
+            data: {
+              id: `edge_${issuerNode.data.id}_${claimNodeObj.data.id}`,
+              relation: "issued",
+              source: issuerNode.data.id,
+              target: claimNodeObj.data.id,
+              raw: { issuer_name: claim.issuer_name, claim_name: claimLabel },
+            },
+          });
+        }
+      }
+
+      console.log(`[DAO] Subject expansion complete. Created ${nodes.length} nodes and ${edges.length} edges`);
+      return { nodes, edges };
+    } catch (error) {
+      console.error(`[DAO] ERROR expanding subject node "${subjectName}":`, error);
+      console.error(`[DAO] Stack trace:`, error instanceof Error ? error.stack : 'No stack');
+      throw error; // Re-throw to be handled by the controller
+    }
+  }
+
+  /**
+   * Expand a claim node to show issuer and validators
+   */
+  async expandClaimNode(claimId: string, limit: number, host: string): Promise<GraphResponse> {
+    console.log(`[DAO] Expanding claim node: "${claimId}"`);
+    try {
+      const claimIdNum = parseInt(claimId, 10);
+      
+      if (isNaN(claimIdNum)) {
+        console.error(`[DAO] Invalid claim ID format: "${claimId}"`);
+        throw new Error(`Invalid claim ID: ${claimId}`);
+      }
+      
+      // First, fetch the claim
+      console.log(`[DAO] Fetching claim with ID: ${claimIdNum}`);
+      const claim = await prisma.claim.findUnique({
+        where: { id: claimIdNum }
+      });
+
+      if (!claim) {
+        console.error(`[DAO] Claim not found with ID: ${claimId}`);
+        throw new Error(`Claim not found with ID: ${claimId}`);
+      }
+      
+      console.log(`[DAO] Found claim: ${JSON.stringify({
+        id: claim.id,
+        subject: claim.subject,
+        claim: claim.claim
+      })}`);
+
+      // Then fetch the claim data separately
+      console.log(`[DAO] Fetching claim data for claim ID: ${claim.id}`);
+      const claimData = await prisma.claimData.findUnique({
+        where: { claimId: claim.id }
+      });
+
+      if (!claimData) {
+        console.error(`[DAO] Claim data not found for claim ID: ${claimId}`);
+        throw new Error(`Claim data not found for claim ID: ${claimId}`);
+      }
+      
+      console.log(`[DAO] Found claim data: ${JSON.stringify({
+        subject_name: claimData.subject_name,
+        name: claimData.name,
+        issuer_name: claimData.issuer_name
+      })}`);
+
+      const { subject_name, name, issuer_name } = claimData;
+
+      // Nodes array
+      const nodes: any[] = [];
+      // Edges array
+      const edges: any[] = [];
+
+      // Claim node
+      const claimNode = {
+        data: {
+          id: `claim_${claim.id}`,
+          label: name || claim.subject, // Fallback to claim.subject if name is null
+          entType: "CLAIM",
+          raw: { claimId: claim.id, claim: name || claim.subject, subject_name: subject_name || claim.subject, page: 0 },
+        },
+      };
+      nodes.push(claimNode);
+      console.log(`[DAO] Created claim node: ${JSON.stringify(claimNode.data.id)}`);
+
+      // Subject node
+      if (subject_name) {
+        console.log(`[DAO] Creating subject node for: ${subject_name}`);
+        const subjectNode = {
+          data: {
+            id: `subject_${subject_name}`,
+            label: subject_name,
+            entType: "SUBJECT",
+            raw: { subject_name, page: 0 },
+          },
+        };
+        nodes.push(subjectNode);
+
+        // Edge: claim -> subject
+        edges.push({
+          data: {
+            id: `edge_${claimNode.data.id}_${subjectNode.data.id}`,
+            relation: "about",
+            source: claimNode.data.id,
+            target: subjectNode.data.id,
+            raw: { claim_name: name || claim.subject, subject_name },
+          },
+        });
+      } else {
+        console.log(`[DAO] No subject_name found for claim, skipping subject node creation`);
+      }
+
+      // Issuer node
+      if (issuer_name) {
+        console.log(`[DAO] Creating issuer node for: ${issuer_name}`);
+        const issuerNode = {
+          data: {
+            id: `issuer_${issuer_name}`,
+            label: issuer_name,
+            entType: "ISSUER",
+            raw: { issuer_name, subject_name: subject_name || claim.subject, page: 0 },
+          },
+        };
+        nodes.push(issuerNode);
+
+        // Edge: issuer -> claim
+        edges.push({
+          data: {
+            id: `edge_${issuerNode.data.id}_${claimNode.data.id}`,
+            relation: "issued",
+            source: issuerNode.data.id,
+            target: claimNode.data.id,
+            raw: { issuer_name, claim_name: name || claim.subject },
+          },
+        });
+      } else {
+        console.log(`[DAO] No issuer_name found for claim, skipping issuer node creation`);
+      }
+
+      console.log(`[DAO] Claim expansion complete. Created ${nodes.length} nodes and ${edges.length} edges`);
+      return { nodes, edges };
+    } catch (error) {
+      console.error(`[DAO] ERROR expanding claim node (ID: ${claimId}):`, error);
+      console.error(`[DAO] Stack trace:`, error instanceof Error ? error.stack : 'No stack');
+      throw error; // Re-throw to be handled by the controller
+    }
+  }
+
+  /**
+   * Expand a validator node to show claims validated by this validator
+   */
+  async expandValidatorNode(validatorName: string, limit: number, host: string): Promise<GraphResponse> {
+    console.log(`[DAO] Expanding validator/issuer node: "${validatorName}"`);
+    try {
+      if (!validatorName || !validatorName.trim()) {
+        console.error(`[DAO] Empty validator/issuer name provided`);
+        throw new Error('Validator/issuer name cannot be empty');
+      }
+
+      // TODO: Replace with actual validator query logic when you have validator data
+      const validatorNode = {
+        data: {
+          id: `validator_${validatorName}`,
+          label: validatorName,
+          entType: "VALIDATOR",
+          raw: { validator_name: validatorName, page: 0 },
+        },
+      };
+      console.log(`[DAO] Created validator/issuer node: ${JSON.stringify(validatorNode.data.id)}`);
+
+      const nodes: any[] = [validatorNode];
+      const edges: any[] = [];
+
+      // Try to find claims where this validator/issuer is involved as an issuer
+      console.log(`[DAO] Querying for claims with issuer_name=${validatorName}, limit=${limit}`);
+      const issuedClaims = await prisma.$queryRaw<any[]>`
+        SELECT c.id, cd.name, cd.subject_name, cd.issuer_name
+        FROM "Claim" AS c
+        JOIN "ClaimData" AS cd ON c.id = cd."claimId"
+        WHERE cd.issuer_name = ${validatorName}
+        LIMIT ${limit}
+      `;
+      console.log(`[DAO] Found ${issuedClaims?.length || 0} claims issued by ${validatorName}`);
+
+      // Process claims where this entity is the issuer
+      if (issuedClaims && issuedClaims.length > 0) {
+        console.log(`[DAO] Processing claims issued by ${validatorName}`);
+        
+        for (const claim of issuedClaims) {
+          console.log(`[DAO] Processing claim ID: ${claim.id}, name: ${claim.name || 'unnamed'}`);
+          
+          // Use claim.name or fallback to a default if name is missing
+          const claimLabel = claim.name || `Claim ${claim.id}`;
+          
+          // Claim node
+          const claimNode = {
+            data: {
+              id: `claim_${claim.id}`,
+              label: claimLabel,
+              entType: "CLAIM",
+              raw: { claimId: claim.id, claim: claimLabel, page: 0 },
+            },
+          };
+          nodes.push(claimNode);
+          
+          // Edge: issuer -> claim
+          edges.push({
+            data: {
+              id: `edge_${validatorNode.data.id}_${claimNode.data.id}`,
+              relation: "issued",
+              source: validatorNode.data.id,
+              target: claimNode.data.id,
+              raw: { issuer_name: validatorName, claim_name: claimLabel },
+            },
+          });
+          
+          // If the claim has a subject, create a subject node too
+          if (claim.subject_name) {
+            console.log(`[DAO] Creating subject node for: ${claim.subject_name}`);
+            const subjectNodeId = `subject_${claim.subject_name}`;
+            
+            // Check if this subject node already exists to avoid duplicates
+            if (!nodes.find(n => n.data.id === subjectNodeId)) {
+              const subjectNode = {
+                data: {
+                  id: subjectNodeId,
+                  label: claim.subject_name,
+                  entType: "SUBJECT",
+                  raw: { subject_name: claim.subject_name, page: 0 },
+                },
+              };
+              nodes.push(subjectNode);
+            }
+            
+            // Edge: claim -> subject
+            edges.push({
+              data: {
+                id: `edge_${claimNode.data.id}_${subjectNodeId}`,
+                relation: "about",
+                source: claimNode.data.id,
+                target: subjectNodeId,
+                raw: { claim_name: claimLabel, subject_name: claim.subject_name },
+              },
+            });
+          }
+        }
+      } else {
+        console.log(`[DAO] No claims found where ${validatorName} is the issuer`);
+      }
+
+      console.log(`[DAO] Validator/issuer expansion complete. Created ${nodes.length} nodes and ${edges.length} edges`);
+      return { nodes, edges };
+    } catch (error) {
+      console.error(`[DAO] ERROR expanding validator/issuer node "${validatorName}":`, error);
+      console.error(`[DAO] Stack trace:`, error instanceof Error ? error.stack : 'No stack');
+      throw error; // Re-throw to be handled by the controller
+    }
+  }
 }
 
 export const GetClaimReport = async (claimId: any, offset: number, limit: number, host: string) => {

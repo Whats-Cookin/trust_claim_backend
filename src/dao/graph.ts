@@ -22,7 +22,7 @@ interface GraphEdge {
   };
 }
 
-interface GraphResponse {
+export interface GraphResponse {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
@@ -124,63 +124,78 @@ export const getGraphNode = async (
     };
   } else {
     const subjectName = claimNode[0].subject_name;
-    
-    // Create central subject node
+
+    // Central subject node
     const subjectNode = {
       data: {
         id: `subject_${subjectName}`,
         label: subjectName,
         entType: "SUBJECT",
-        raw: {
-          subject_name: subjectName,
-          page: 0,
-        },
+        raw: { subject_name: subjectName, page: 0 },
       },
     };
 
-    // Get all claims with same subject_name
-    let allClaims = await prisma.$queryRaw<any[]>`
-      ${Prisma.raw(getBaseQuery())}
-      WHERE cd."subject_name" = ${subjectName}
-      ORDER BY c.id DESC
+    // Get all claims with the same subject_name
+    const allClaims = await prisma.$queryRaw<any[]>`
+      SELECT c.id, cd.name, cd.issuer_name, cd.subject_name
+      FROM "Claim" AS c
+      JOIN "ClaimData" AS cd ON c.id = cd."claimId"
+      WHERE cd.subject_name = ${subjectName}
     `;
 
-    allClaims = allClaims.map((claim): GraphNode => {
-      return {
+    // Build nodes and edges
+    const nodes = [subjectNode];
+    const edges = [];
+    for (const claim of allClaims) {
+      // Claim node
+      const claimNodeObj = {
         data: {
-          id: `${claim.node_id}`,
-          label: claim.label,
+          id: `claim_${claim.id}`,
+          label: claim.name,
           entType: "CLAIM",
-          raw: {
-            claimId: `${claim.id}`,
-            nodeId: `${claim.node_id}`,
-            claim: claim.claim,
-            page: 0,
-          },
+          raw: { claimId: claim.id, claim: claim.name, subject_name: subjectName, page: 0 },
         },
       };
-    });
-
-    // Create edges from subject to all claims
-    const edges = allClaims.map((claim): GraphEdge => {
-      return {
+      nodes.push(claimNodeObj);
+      // Edge: claim -> subject (about)
+      edges.push({
         data: {
-          id: `${subjectNode.data.id}-${claim.data.id}`,
-          relation: claim.data.raw.claim,
-          source: subjectNode.data.id,
-          target: claim.data.id,
-          raw: {
-            endNodeId: `${claim.data.id}`,
-            startNodeId: `${subjectNode.data.id}`,
-            subject_name: subjectName,
-            endClaimId: `${claim.data.raw.claimId}`,
-          },
+          id: `edge_${claimNodeObj.data.id}_${subjectNode.data.id}`,
+          relation: "about",
+          source: claimNodeObj.data.id,
+          target: subjectNode.data.id,
+          raw: { claim_name: claim.name, subject_name: subjectName },
         },
-      };
-    });
-
+      });
+      // Issuer node
+      if (claim.issuer_name) {
+        const issuerNode = {
+          data: {
+            id: `issuer_${claim.issuer_name}`,
+            label: claim.issuer_name,
+            entType: "ISSUER",
+            raw: { issuer_name: claim.issuer_name, subject_name: subjectName, page: 0 },
+          },
+        };
+        // Only add if not already present
+        if (!nodes.find(n => n.data.id === issuerNode.data.id)) {
+          nodes.push(issuerNode);
+        }
+        // Edge: issuer -> claim (issued)
+        edges.push({
+          data: {
+            id: `edge_${issuerNode.data.id}_${claimNodeObj.data.id}`,
+            relation: "issued",
+            source: issuerNode.data.id,
+            target: claimNodeObj.data.id,
+            raw: { issuer_name: claim.issuer_name, claim_name: claim.name },
+          },
+        });
+      }
+      // TODO: Add validator nodes/edges if your data model supports it
+    }
     return {
-      nodes: [subjectNode, ...allClaims],
+      nodes,
       edges,
     };
   }
