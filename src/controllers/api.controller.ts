@@ -372,7 +372,7 @@ export const expandGraphNode = async (req: Request, res: Response, next: NextFun
   console.log(`Request query params:`, JSON.stringify(req.query));
   
   try {
-    const { nodeType, nodeValue } = req.query;
+    const { nodeType, nodeValue, expandType } = req.query;
     const host = req.get("host") ?? "live.linkedtrust.us";
     console.log(`Host: ${host}`);
     
@@ -387,9 +387,11 @@ export const expandGraphNode = async (req: Request, res: Response, next: NextFun
     
     const nodeTypeStr = String(nodeType).toLowerCase();
     const nodeValueStr = String(nodeValue);
+    // Default to left-click behavior if expandType is not specified
+    const expandTypeStr = expandType ? String(expandType).toLowerCase() : 'click';
     const limit = Number(req.query.limit || 5);
     
-    console.log(`Expanding node: type=${nodeTypeStr}, value=${nodeValueStr}, limit=${limit}`);
+    console.log(`Expanding node: type=${nodeTypeStr}, value=${nodeValueStr}, expandType=${expandTypeStr}, limit=${limit}`);
     
     let result;
     
@@ -397,21 +399,36 @@ export const expandGraphNode = async (req: Request, res: Response, next: NextFun
       switch (nodeTypeStr) {
         case 'subject':
           console.log(`Expanding subject node: ${nodeValueStr}`);
-          // Expand subject - get all claims with this subject_name
-          result = await nodeDao.expandSubjectNode(nodeValueStr, limit, host);
+          if (expandTypeStr === 'rightclick') {
+            // Right-click on subject - expand to show all attestations with the same subject
+            result = await nodeDao.expandSubjectNode(nodeValueStr, limit * 2, host); // Allow more results for right-click
+          } else {
+            // Regular click on subject - just show related claims
+            result = await nodeDao.expandSubjectNode(nodeValueStr, limit, host);
+          }
           console.log(`Subject expansion success. Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
           break;
         case 'claim':
           console.log(`Expanding claim node: ${nodeValueStr}`);
-          // Expand claim - get issuer and validators for a claim
-          result = await nodeDao.expandClaimNode(nodeValueStr, limit, host);
+          if (expandTypeStr === 'rightclick') {
+            // Right-click on claim - expand to show validators and issuers
+            result = await nodeDao.expandClaimNode(nodeValueStr, limit * 2, host); // Allow more results for right-click
+          } else {
+            // Regular click on claim - show basic info
+            result = await nodeDao.expandClaimNode(nodeValueStr, limit, host);
+          }
           console.log(`Claim expansion success. Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
           break;
         case 'validator':
         case 'issuer':
           console.log(`Expanding ${nodeTypeStr} node: ${nodeValueStr}`);
-          // Expand validator/issuer - get claims where this validator/issuer is involved
-          result = await nodeDao.expandValidatorNode(nodeValueStr, limit, host);
+          if (expandTypeStr === 'rightclick') {
+            // Right-click on validator/issuer - show all related claims and validations
+            result = await nodeDao.expandValidatorNode(nodeValueStr, limit * 2, host); // Allow more results for right-click
+          } else {
+            // Regular click on validator/issuer
+            result = await nodeDao.expandValidatorNode(nodeValueStr, limit, host);
+          }
           console.log(`${nodeTypeStr} expansion success. Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
           break;
         default:
@@ -430,7 +447,8 @@ export const expandGraphNode = async (req: Request, res: Response, next: NextFun
       return res.status(200).json({
         success: true,
         nodeType: nodeTypeStr,
-        nodeValue: nodeValueStr, 
+        nodeValue: nodeValueStr,
+        expandType: expandTypeStr,
         nodes: result.nodes,
         edges: result.edges,
         count: {
