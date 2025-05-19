@@ -14,6 +14,7 @@ import {
   claimSearch,
   createClaimV2,
   expandGraph,
+  getCredential,
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
 import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
@@ -37,5 +38,6 @@ router.get("/node/search", searchNodes);
 router.get("/node/:nodeId?", getNodeById);
 router.get("/my-node", getNodeForLoggedInUser);
 router.get("/report/:claimId?", claimReport);
+router.get("/getCredentialential/:id", getCredential);
 
 export default router;
