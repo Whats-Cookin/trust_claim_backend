@@ -89,6 +89,16 @@ export class ClaimDao {
   };
 
   async createClaimV2(userId: number | string, claim: CreateClaimV2Dto) {
+    // For credentials, ensure subject contains the verification URL (from claimAddress if available)
+    // For regular claims, keep the existing behavior
+    if (claim.claim === "credential") {
+      // If claimAddress is provided, use it as the subject (verification URL)
+      if (claim.claimAddress) {
+        claim.subject = claim.claimAddress;
+      }
+      // Note: name already contains the credential topic/focus
+    }
+
     const createdClaim = await prisma.claim.create({
       data: {
         issuerId: `${process.env.BASE_URL}/users/${userId}`,
@@ -105,6 +115,7 @@ export class ClaimDao {
         effectiveDate: claim.effectiveDate,
         confidence: claim.confidence,
         stars: claim.stars,
+        // Note: name is handled separately in createClaimData
       },
     });
 
@@ -155,11 +166,34 @@ export class ClaimDao {
     return claimImages;
   };
 
+  /**
+   * Creates a ClaimData record for a claim
+   * 
+   * @param id - The ID of the claim
+   * @param subject_name - For credentials: the topic/focus of the credential (from name field)
+   *                       For regular claims: the subject name
+   * @param issuer_name - The name of the issuer
+   * @param name - For credentials: the topic/focus (same as subject_name)
+   *               For regular claims: descriptive name of the claim
+   * @returns The created ClaimData record
+   */
   createClaimData = async (id: number, subject_name: string | null, issuer_name: string | null, name: string) => {
+    // Get the claim to check if it's a credential
+    const claim = await prisma.claim.findUnique({
+      where: { id }
+    });
+    
+    // For credentials, ensure the name contains the credential topic (subject_name), not the URL
+    // This is a failsafe to fix any issues with passing the wrong name value
+    if (claim?.claim === "credential" && subject_name) {
+      // For credentials, the name should be the same as subject_name (the credential topic)
+      name = subject_name;
+    }
+    
     return await prisma.claimData.create({
       data: {
         claimId: id,
-        subject_name: subject_name,
+        subject_name: subject_name, 
         issuer_name: issuer_name,
         name: name,
       },
@@ -527,10 +561,13 @@ export class NodeDao {
           AND n.name != ''
           ${typeFilter}
           AND (
-            c.subject ILIKE COALESCE(${query}, '%') OR
-            c.statement ILIKE COALESCE(${query}, '%') OR
-            c.claim ILIKE COALESCE(${query}, '%') OR
-            n.name ILIKE COALESCE(${query}, '%')
+            CASE WHEN c.claim = 'credential'
+              THEN cd.name ILIKE COALESCE(${query}, '%') -- Search name (topic) for credentials
+              ELSE c.subject ILIKE COALESCE(${query}, '%') -- Search subject for regular claims
+            END
+            OR c.statement ILIKE COALESCE(${query}, '%')
+            OR c.claim ILIKE COALESCE(${query}, '%')
+            OR n.name ILIKE COALESCE(${query}, '%')
           )
         ORDER BY c."effectiveDate" DESC, c.id DESC
       )

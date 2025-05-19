@@ -5,6 +5,21 @@ import { passToExpressErrorHandler } from "../../utils";
 import { NotEmpty } from "../../types/utils";
 import { HowKnown } from "@prisma/client";
 
+/**
+ * Credential Field Semantics - Updated 2024
+ * 
+ * For credentials, we've changed how data is stored and referenced:
+ * 
+ * - name: Stores what credential is about (focus/topic) - previously in subject field
+ * - subject: Stores the URL where credential can be verified - previously in claimAddress
+ * - claimAddress: Kept for backward compatibility, same as subject for credentials
+ * 
+ * For regular claims, the original semantics remain unchanged.
+ * 
+ * This change allows better differentiation between credential topics and verification URLs,
+ * improving both data structure and UI presentation.
+ */
+
 export function joiValidator(schema: Joi.Schema) {
   return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
     try {
@@ -90,8 +105,14 @@ export type ImageDto = {
 // ValidationSchema Version: 2024-03-26
 export const CreateClaimV2Dto = z
   .object({
+    // For credentials: stores the credential topic/focus (what the credential is about)
+    // For regular claims: descriptive name of the claim
     name: z.string().nullable().optional(),
+    
+    // For credentials: stores the URL where credential can be verified (previously in claimAddress)
+    // For regular claims: continues to work as before
     subject: z.string(),
+    
     claim: z.string(),
     object: z.string().nullable().optional().default(""),
     statement: z.string().nullable().optional().default(""),
@@ -116,7 +137,10 @@ export const CreateClaimV2Dto = z
     sourceURI: z.string().nullable().optional().default(""),
     effectiveDate: z.coerce.date().nullable().optional(),
     confidence: z.number().min(0).max(1).nullable().optional(),
+    
+    // Kept for backward compatibility, for credentials it's the same as subject
     claimAddress: z.string().nullable().optional(),
+    
     stars: z
       .union([
         z.number().min(0),
