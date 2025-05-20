@@ -5,21 +5,6 @@ import { passToExpressErrorHandler } from "../../utils";
 import { NotEmpty } from "../../types/utils";
 import { HowKnown } from "@prisma/client";
 
-/**
- * Credential Field Semantics - Updated 2024
- * 
- * For credentials, we've changed how data is stored and referenced:
- * 
- * - name: Stores what credential is about (focus/topic) - previously in subject field
- * - subject: Stores the URL where credential can be verified - previously in claimAddress
- * - claimAddress: Kept for backward compatibility, same as subject for credentials
- * 
- * For regular claims, the original semantics remain unchanged.
- * 
- * This change allows better differentiation between credential topics and verification URLs,
- * improving both data structure and UI presentation.
- */
-
 export function joiValidator(schema: Joi.Schema) {
   return async function claimPostValidator(req: Request, _res: Response, next: NextFunction) {
     try {
