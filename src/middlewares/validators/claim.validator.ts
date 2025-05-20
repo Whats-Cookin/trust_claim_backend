@@ -102,17 +102,11 @@ export type ImageDto = {
   signature: string;
 };
 
-// ValidationSchema Version: 2024-03-26
 export const CreateClaimV2Dto = z
   .object({
-    // For credentials: stores the credential topic/focus (what the credential is about)
-    // For regular claims: descriptive name of the claim
+  
     name: z.string().nullable().optional(),
-    
-    // For credentials: stores the URL where credential can be verified (previously in claimAddress)
-    // For regular claims: continues to work as before
     subject: z.string(),
-    
     claim: z.string(),
     object: z.string().nullable().optional().default(""),
     statement: z.string().nullable().optional().default(""),
@@ -134,11 +128,10 @@ export const CreateClaimV2Dto = z
       .enum(Object.values(HowKnown) as NotEmpty<HowKnown>)
       .nullable()
       .optional(),
-    sourceURI: z.string().nullable().optional().default(""),
+  
+    sourceURI: z.string().nullable().optional().default(""), 
     effectiveDate: z.coerce.date().nullable().optional(),
     confidence: z.number().min(0).max(1).nullable().optional(),
-    
-    // Kept for backward compatibility, for credentials it's the same as subject
     claimAddress: z.string().nullable().optional(),
     
     stars: z

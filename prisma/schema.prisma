@@ -76,6 +76,18 @@ model Edge {
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims
+// 
+// For credential claims (claim = "has skill"):
+// - object: Contains the skill/topic being certified
+// - subject: URI identifying the person
+// - sourceURI: URL where credential can be verified
+// - claimAddress: the link of claim itself 
+// 
+// For regular claims:
+// - subject: Entity the claim is about
+// - object: Related object (optional)
+// - sourceURI: Source of the claim
+// - claimAddress: claim address
 model Claim {
   id            Int       @id @default(autoincrement())
   subject       String
