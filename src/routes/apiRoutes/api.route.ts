@@ -38,6 +38,6 @@ router.get("/node/search", searchNodes);
 router.get("/node/:nodeId?", getNodeById);
 router.get("/my-node", getNodeForLoggedInUser);
 router.get("/report/:claimId?", claimReport);
-router.get("/getCredentialential/:id", getCredential);
+router.get("/getCredential/:id", getCredential);
 
 export default router;
