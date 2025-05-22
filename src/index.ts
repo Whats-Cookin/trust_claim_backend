@@ -6,7 +6,6 @@ import createError from "http-errors";
 import apiRoutes from "./routes/apiRoutes";
 import authRoutes from "./routes/authRoutes";
 import { registerSwagger } from "./swagger";
-import extractorClaimsRouter from './routes/extractorClaims';
 
 const port = process.env.PORT || 9000;
 export const app = express();
@@ -21,7 +20,6 @@ registerSwagger(apiRoutes);
 
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
-app.use('/api', extractorClaimsRouter);
 
 // if nothing matches, this should be before the express error handler
 app.use((_req, _res, next) => {
