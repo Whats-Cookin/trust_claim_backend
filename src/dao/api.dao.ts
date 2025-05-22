@@ -514,8 +514,6 @@ export class NodeDao {
             cd.issuer_name AS issuer_name,
             c.stars AS stars,
             c."effectiveDate" AS effective_date,
-            c."createdAt" AS created,
-            NULL as status,
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
             CONCAT(COALESCE(to_char(c."effectiveDate", 'YYYYMMDDHH24MISS'), ''), c.id::TEXT) AS cursor
           FROM "Claim" c
