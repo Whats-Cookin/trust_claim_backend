@@ -16,22 +16,20 @@ This is a dramatically simplified reimplementation of the LinkedTrust backend, f
 
 ### Migration Steps
 
-1. **Database Migration**
+1. **Run Setup Script**
    ```bash
-   # Run the migration to add entity system
-   npx prisma migrate dev --name add_credential_entity_system
+   # From the trust_claim_backend directory
+   ./setup.sh
    ```
+   
+   This will:
+   - Install dependencies
+   - Generate Prisma client
+   - Run database migrations
+   - Update .env with required variables
 
-2. **Install Dependencies**
+2. **Start Development Server**
    ```bash
-   # Use the new package.json
-   cp package_new.json package.json
-   npm install
-   ```
-
-3. **Start Development Server**
-   ```bash
-   # Uses the new src_new directory
    npm run dev
    ```
 
