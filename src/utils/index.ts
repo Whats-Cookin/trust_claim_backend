@@ -136,3 +136,46 @@ export const getClaimNameFromNodeUri = (nodeUri: string | undefined | null): str
 };
 
 const capitalizeFirstLetter = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1);
+
+/**
+ * Helper function to handle right-click context menu in the trust graph
+ * This can be used by the frontend to register right-click handlers
+ */
+export const registerGraphContextMenu = (cy: any, onNodeRightClick: (nodeId: string, nodeType: string) => void) => {
+  // Register context menu event handler
+  cy.on('cxttap', 'node', function(evt: any) {
+    evt.preventDefault(); // Prevent default context menu
+    
+    const node = evt.target;
+    if (!node) return;
+    
+    const nodeId = node.id();
+    const nodeData = node.data();
+    
+    // Extract node type from ID or entType
+    let nodeType = nodeData.entType?.toLowerCase();
+    if (!nodeType) {
+      if (nodeId.startsWith('subject_')) nodeType = 'subject';
+      else if (nodeId.startsWith('claim_')) nodeType = 'claim';
+      else if (nodeId.startsWith('issuer_')) nodeType = 'issuer';
+      else if (nodeId.startsWith('validator_')) nodeType = 'validator';
+    }
+    
+    // Extract node value
+    let nodeValue = '';
+    if (nodeId.startsWith('subject_')) {
+      nodeValue = nodeId.replace('subject_', '');
+    } else if (nodeId.startsWith('claim_')) {
+      nodeValue = nodeId.replace('claim_', '');
+    } else if (nodeId.startsWith('issuer_')) {
+      nodeValue = nodeId.replace('issuer_', '');
+    } else if (nodeId.startsWith('validator_')) {
+      nodeValue = nodeId.replace('validator_', '');
+    }
+    
+    // Call the callback with node info
+    if (nodeType && nodeValue) {
+      onNodeRightClick(nodeValue, nodeType);
+    }
+  });
+};

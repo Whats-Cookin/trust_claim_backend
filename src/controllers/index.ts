@@ -9,7 +9,8 @@ export {
   createClaimV2,
 
   expandGraph,
-  getCredential,
+
+  expandGraphNode,
 
 } from "./api.controller";
 export { login, signup, refreshToken, githubAuthenticator, googleAuthenticator } from "./auth.controller";

@@ -305,12 +305,178 @@ export const claimsGet = async (req: Request, res: Response, next: NextFunction)
 export const claimGraph = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
-    const result = await nodeDao.getClaimGraph(claimId);
+
+    const host = req.get("host") ?? "live.linkedtrust.us";
+    const result = await nodeDao.getClaimGraph(claimId, host);
     res.status(200).json(result);
     return;
   } catch (err) {
     passToExpressErrorHandler(err, next);
   }
+};
+/* This is for expanding the graph for a given claim */
+export const expandGraph = async (req: Request, res: Response, next: NextFunction) => {
+  console.log("========== EXPAND GRAPH ==========");
+  console.log(`Request params:`, JSON.stringify(req.params));
+  console.log(`Request query:`, JSON.stringify(req.query));
+  
+  try {
+    const { claimId } = req.params;
+    const { page = 1, limit = 3 } = req.query;
+    let { type = "validated" } = req.query;
+    const host = req.get("host") ?? "live.linkedtrust.us";
+    
+    // Map "test" type to "validated" for backward compatibility
+    if (type === "test") {
+      console.log(`Mapping type "test" to "validated" for backward compatibility`);
+      type = "validated";
+    }
+    
+    console.log(`Expanding graph for claim ${claimId} with type=${type}, page=${page}, limit=${limit}, host=${host}`);
+    
+    // Validate that type is a valid ExpandGraphType
+    if (!["validated", "credential", "author", "claim"].includes(String(type))) {
+      console.error(`Invalid expansion type: ${type}`);
+      return res.status(400).json({
+        error: "Invalid type parameter",
+        message: `Type must be one of: validated, credential, author, claim (received: ${type})`,
+        params: { claimId, type, page, limit }
+      });
+    }
+    
+    try {
+      const result = await nodeDao.expandGraph(claimId, type as ExpandGraphType, Number(page), Number(limit), host);
+      console.log(`Expansion successful. Returning ${result.nodes?.length || 0} nodes and ${result.edges?.length || 0} edges`);
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error("Error in nodeDao.expandGraph:", err);
+      console.error("Stack trace:", err instanceof Error ? err.stack : "No stack trace");
+      return res.status(500).json({
+        error: "Error expanding graph",
+        message: err instanceof Error ? err.message : "Unknown error",
+        params: { claimId, type, page, limit }
+      });
+    }
+  } catch (err) {
+    console.error("Unexpected error in expandGraph:", err);
+    console.error("Stack trace:", err instanceof Error ? err.stack : "No stack trace");
+    passToExpressErrorHandler(err, next);
+  }
+  console.log("======================================");
+};
+
+/* This is for expanding nodes in the interactive graph */
+export const expandGraphNode = async (req: Request, res: Response, next: NextFunction) => {
+  console.log("========== EXPAND GRAPH NODE ==========");
+  console.log(`Request query params:`, JSON.stringify(req.query));
+  
+  try {
+    const { nodeType, nodeValue, expandType } = req.query;
+    const host = req.get("host") ?? "live.linkedtrust.us";
+    console.log(`Host: ${host}`);
+    
+    if (!nodeType || !nodeValue) {
+      console.error("Missing required parameters", { nodeType, nodeValue });
+      return res.status(400).json({
+        error: "Missing required parameters",
+        message: "nodeType and nodeValue parameters are required",
+        params: { nodeType, nodeValue }
+      });
+    }
+    
+    const nodeTypeStr = String(nodeType).toLowerCase();
+    const nodeValueStr = String(nodeValue);
+    // Default to left-click behavior if expandType is not specified
+    const expandTypeStr = expandType ? String(expandType).toLowerCase() : 'click';
+    const limit = Number(req.query.limit || 5);
+    
+    console.log(`Expanding node: type=${nodeTypeStr}, value=${nodeValueStr}, expandType=${expandTypeStr}, limit=${limit}`);
+    
+    let result;
+    
+    try {
+      switch (nodeTypeStr) {
+        case 'subject':
+          console.log(`Expanding subject node: ${nodeValueStr}`);
+          if (expandTypeStr === 'rightclick') {
+            // Right-click on subject - expand to show all attestations with the same subject
+            result = await nodeDao.expandSubjectNode(nodeValueStr, limit * 2, host); // Allow more results for right-click
+          } else {
+            // Regular click on subject - just show related claims
+            result = await nodeDao.expandSubjectNode(nodeValueStr, limit, host);
+          }
+          console.log(`Subject expansion success. Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
+          break;
+        case 'claim':
+          console.log(`Expanding claim node: ${nodeValueStr}`);
+          if (expandTypeStr === 'rightclick') {
+            // Right-click on claim - expand to show validators and issuers
+            result = await nodeDao.expandClaimNode(nodeValueStr, limit * 2, host); // Allow more results for right-click
+          } else {
+            // Regular click on claim - show basic info
+            result = await nodeDao.expandClaimNode(nodeValueStr, limit, host);
+          }
+          console.log(`Claim expansion success. Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
+          break;
+        case 'validator':
+        case 'issuer':
+          console.log(`Expanding ${nodeTypeStr} node: ${nodeValueStr}`);
+          if (expandTypeStr === 'rightclick') {
+            // Right-click on validator/issuer - show all related claims and validations
+            result = await nodeDao.expandValidatorNode(nodeValueStr, limit * 2, host); // Allow more results for right-click
+          } else {
+            // Regular click on validator/issuer
+            result = await nodeDao.expandValidatorNode(nodeValueStr, limit, host);
+          }
+          console.log(`${nodeTypeStr} expansion success. Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
+          break;
+        default:
+          console.error(`Invalid nodeType: ${nodeTypeStr}`);
+          return res.status(400).json({
+            error: "Invalid nodeType",
+            message: `nodeType must be one of: subject, claim, validator, issuer (received: ${nodeTypeStr})`,
+            params: { nodeType, nodeValue, limit }
+          });
+      }
+      
+      console.log(`Returning result with ${result.nodes.length} nodes and ${result.edges.length} edges`);
+      console.log("First node:", result.nodes.length > 0 ? JSON.stringify(result.nodes[0]) : "No nodes");
+      console.log("First edge:", result.edges.length > 0 ? JSON.stringify(result.edges[0]) : "No edges");
+      
+      return res.status(200).json({
+        success: true,
+        nodeType: nodeTypeStr,
+        nodeValue: nodeValueStr,
+        expandType: expandTypeStr,
+        nodes: result.nodes,
+        edges: result.edges,
+        count: {
+          nodes: result.nodes.length,
+          edges: result.edges.length
+        }
+      });
+    } catch (err) {
+      console.error("Error expanding node:", err);
+      console.error("Stack trace:", err instanceof Error ? err.stack : "No stack trace");
+      
+      return res.status(500).json({
+        success: false,
+        error: "Error expanding node",
+        message: err instanceof Error ? err.message : "Unknown error",
+        nodeType: nodeTypeStr,
+        nodeValue: nodeValueStr,
+        params: req.query
+      });
+    }
+
+  } catch (err) {
+    console.error("Unexpected error in expandGraphNode:", err);
+    console.error("Stack trace:", err instanceof Error ? err.stack : "No stack trace");
+    console.error("Request query:", JSON.stringify(req.query));
+    
+    passToExpressErrorHandler(err, next);
+  }
+  console.log("======================================");
 };
 
 /* This is for the home feed and the search */
