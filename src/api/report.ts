@@ -220,12 +220,12 @@ export async function getEntityReport(req: Request, res: Response) {
         positive: subjectClaims.filter(c => 
           ['ENDORSES', 'TRUSTS', 'CONFIRMS'].includes(c.claim) || 
           (c.stars && c.stars >= 4) ||
-          (c.rating && c.rating >= 0.7)
+          (c.score !== null && c.score !== undefined && c.score >= 0.7)
         ).length,
         negative: subjectClaims.filter(c => 
           ['DISTRUSTS', 'REFUTES', 'WARNS_ABOUT'].includes(c.claim) ||
           (c.stars && c.stars <= 2) ||
-          (c.rating && c.rating <= 0.3)
+          (c.score !== null && c.score !== undefined && c.score <= 0.3)
         ).length
       },
       asObject: {

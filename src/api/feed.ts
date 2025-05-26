@@ -18,7 +18,7 @@ export async function getFeed(req: Request, res: Response) {
     if (filter === 'ratings') {
       where.OR = [
         { stars: { not: null } },
-        { rating: { not: null } }
+        { score: { not: null } }
       ];
     } else if (filter === 'credentials') {
       where.claim = 'HAS';
@@ -58,14 +58,14 @@ export async function getFeed(req: Request, res: Response) {
         subject: {
           uri: claim.subject,
           name: subjectEntity?.name || claim.edges[0]?.startNode?.name || claim.subject,
-          type: subjectEntity?.entityType || claim.edges[0]?.startNode?.nodeType,
+          type: subjectEntity?.entityType || claim.edges[0]?.startNode?.entType,
           image: subjectEntity?.image || claim.edges[0]?.startNode?.image
         },
         claim: claim.claim,
         object: claim.object ? {
           uri: claim.object,
           name: objectEntity?.name || claim.edges[0]?.endNode?.name || claim.object,
-          type: objectEntity?.entityType || claim.edges[0]?.endNode?.nodeType,
+          type: objectEntity?.entityType || claim.edges[0]?.endNode?.entType,
           image: objectEntity?.image || claim.edges[0]?.endNode?.image
         } : null,
         statement: claim.statement,
@@ -75,8 +75,8 @@ export async function getFeed(req: Request, res: Response) {
         howKnown: claim.howKnown,
         // Include rating/measurement data if present
         ...(claim.stars && { stars: claim.stars }),
-        ...(claim.rating && { rating: claim.rating }),
-        ...(claim.amount && { amount: claim.amount, unit: claim.unit }),
+        ...(claim.score && { score: claim.score }),
+        ...(claim.amt && { amount: claim.amt, unit: claim.unit }),
         ...(claim.aspect && { aspect: claim.aspect })
       };
     }));
@@ -233,7 +233,7 @@ export async function getTrending(req: Request, res: Response) {
         uri: item.subject,
         count: item._count.subject,
         name: entity?.name || node?.name || item.subject,
-        type: entity?.entityType || node?.nodeType,
+        type: entity?.entityType || node?.entType,
         image: entity?.image || node?.image
       };
     }));

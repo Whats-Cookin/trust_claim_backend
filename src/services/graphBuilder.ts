@@ -55,12 +55,13 @@ export async function enhanceNodesWithEntities(nodes: NodeWithEdges[]): Promise<
       })
     : [];
     
-  const credentialMap = new Map(
-    credentials.flatMap(c => [
-      [c.id, c],
-      ...(c.canonicalUri ? [[c.canonicalUri, c]] : [])
-    ])
-  );
+  const credentialMap = new Map<string, typeof credentials[0]>();
+  for (const c of credentials) {
+    credentialMap.set(c.id, c);
+    if (c.canonicalUri) {
+      credentialMap.set(c.canonicalUri, c);
+    }
+  }
   
   // Enhance nodes
   return nodes.map(node => {
@@ -104,7 +105,7 @@ export async function buildGraphFromClaims(claimIds: number[]) {
       if (!nodeMap.has(edge.startNode.nodeUri)) {
         nodeMap.set(edge.startNode.nodeUri, edge.startNode);
       }
-      if (!nodeMap.has(edge.endNode.nodeUri)) {
+      if (edge.endNode && !nodeMap.has(edge.endNode.nodeUri)) {
         nodeMap.set(edge.endNode.nodeUri, edge.endNode);
       }
       
@@ -112,7 +113,7 @@ export async function buildGraphFromClaims(claimIds: number[]) {
       edges.push({
         id: edge.id,
         source: edge.startNode.nodeUri,
-        target: edge.endNode.nodeUri,
+        target: edge.endNode?.nodeUri || '',
         label: edge.label,
         claimId: claim.id,
         confidence: claim.confidence
@@ -170,12 +171,12 @@ export async function getConnectedComponent(uri: string, maxDepth: number = 2) {
       edges.push({
         id: edge.id,
         source: edge.startNode.nodeUri,
-        target: edge.endNode.nodeUri,
+        target: edge.endNode?.nodeUri || '',
         label: edge.label,
         claim: edge.claim
       });
       
-      if (depth < maxDepth && !visited.has(edge.endNode.nodeUri)) {
+      if (edge.endNode && depth < maxDepth && !visited.has(edge.endNode.nodeUri)) {
         toVisit.push({ uri: edge.endNode.nodeUri, depth: depth + 1 });
       }
     }
@@ -186,7 +187,7 @@ export async function getConnectedComponent(uri: string, maxDepth: number = 2) {
         edges.push({
           id: edge.id,
           source: edge.startNode.nodeUri,
-          target: edge.endNode.nodeUri,
+          target: edge.endNode?.nodeUri || edge.startNode.nodeUri,
           label: edge.label,
           claim: edge.claim
         });
@@ -245,8 +246,8 @@ export async function calculateTrustMetrics(nodeUri: string) {
     if (claim.stars) {
       totalRating += claim.stars;
       metrics.ratingCount++;
-    } else if (claim.rating) {
-      totalRating += claim.rating * 5; // Convert 0-1 to 0-5 scale
+    } else if (claim.score !== null && claim.score !== undefined) {
+      totalRating += claim.score * 5; // Convert 0-1 to 0-5 scale
       metrics.ratingCount++;
     }
   }

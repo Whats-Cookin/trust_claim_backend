@@ -17,8 +17,8 @@ export async function createClaim(req: AuthRequest, res: Response) {
       statement,
       aspect,
       stars,
-      rating,
-      amount,
+      score,
+      amt,
       unit
     } = req.body;
     
@@ -40,8 +40,8 @@ export async function createClaim(req: AuthRequest, res: Response) {
         statement,
         aspect,
         stars,
-        rating,
-        amount,
+        score,
+        amt,
         unit,
         issuerId: userId,
         issuerIdType: 'URL',
