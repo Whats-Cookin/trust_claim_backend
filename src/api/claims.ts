@@ -63,7 +63,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 }
 
 // Get claim by ID
-export async function getClaim(req: Request, res: Response) {
+export async function getClaim(req: Request, res: Response): Promise<Response | void> {
   try {
     const { id } = req.params;
     

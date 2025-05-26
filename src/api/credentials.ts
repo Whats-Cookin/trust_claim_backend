@@ -26,7 +26,7 @@ function extractCredentialName(credential: any): string {
   
   // Fall back to type
   const types = Array.isArray(credential.type) ? credential.type : [credential.type];
-  const meaningfulType = types.find(t => t !== 'VerifiableCredential') || 'Credential';
+  const meaningfulType = types.find((t: any) => t !== 'VerifiableCredential') || 'Credential';
   return meaningfulType;
 }
 
@@ -199,7 +199,7 @@ async function extractClaimsFromCredential(credential: any, userId: string) {
 }
 
 // Get credential by URI
-export async function getCredential(req: Request, res: Response): Promise<void> {
+export async function getCredential(req: Request, res: Response): Promise<Response | void> {
   try {
     const { uri } = req.params;
     

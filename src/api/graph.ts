@@ -152,7 +152,7 @@ export async function getFullGraph(req: Request, res: Response) {
 }
 
 // Get neighbors of a node
-export async function getNeighbors(req: Request, res: Response): Promise<void> {
+export async function getNeighbors(req: Request, res: Response): Promise<Response | void> {
   try {
     const { nodeId } = req.params;
     
