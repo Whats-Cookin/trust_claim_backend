@@ -13,8 +13,11 @@ import {
   claimGraph,
   claimSearch,
   createClaimV2,
+
   expandGraph,
+
   expandGraphNode,
+
 } from "../../controllers";
 import { jwtVerify } from "../../middlewares";
 import { claimsFeedV3, getAllClaims } from "../../controllers/api.controller";
@@ -29,6 +32,7 @@ router.post("/claim/v2", upload as unknown as RequestHandler, jwtVerify, createC
 router.get("/claim/search", claimSearch);
 router.get("/claim/:claimId?", claimGetById);
 router.get("/claim_graph/:claimId", claimGraph);
+
 
 // Replace the existing route with a custom handler
 router.get("/claim_graph/:claimId/expand", (req, res, next) => {
@@ -70,6 +74,7 @@ router.get("/claim_graph/:claimId/expand", (req, res, next) => {
   console.log("=========================================");
 });
 
+
 router.get("/claims-all", getAllClaims);
 router.get("/claimsfeed", claimsGet);
 router.get("/claimsfeed2", claimsFeed);
@@ -78,8 +83,10 @@ router.get("/node/search", searchNodes);
 router.get("/node/:nodeId?", getNodeById);
 router.get("/my-node", getNodeForLoggedInUser);
 router.get("/report/:claimId?", claimReport);
+
 router.get("/graph/expand", expandGraphNode);
 router.get("/graph/:claimId", claimGraph);
 router.get("/graph/:claimId/expand", expandGraph);
+
 
 export default router;

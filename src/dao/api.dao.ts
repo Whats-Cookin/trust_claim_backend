@@ -5,9 +5,11 @@ import { getClaimNameFromNodeUri, makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
+
 import { expandGraph as expandGraphFromDao, getGraphNode } from "./graph";
 import { ExpandGraphType } from "../types/utils";
 import { GraphResponse } from "./graph";
+
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -30,6 +32,9 @@ interface ReportI {
   source_name: string;
   source_thumbnail: string;
   source_link: string;
+  object?: string | null;
+  subject_name?: string | null;
+  display_name?: string;
 }
 
 export type Report = {
@@ -40,6 +45,7 @@ export type Report = {
     relatedNodes: Node[];
     images: Image[];
     image: string | null;
+    display?: string;
   };
   validations: ReportI[];
   attestations: ReportI[];
@@ -59,19 +65,19 @@ export type EdgeWithRelations = Edge & {
     })[];
   };
   endNode:
-    | (Node & {
-        edgesFrom: (Edge & {
-          startNode: Node;
-          endNode: Node | null;
-          claim: Claim;
-        })[];
-        edgesTo: (Edge & {
-          startNode: Node;
-          endNode: Node | null;
-          claim: Claim;
-        })[];
-      })
-    | null;
+  | (Node & {
+    edgesFrom: (Edge & {
+      startNode: Node;
+      endNode: Node | null;
+      claim: Claim;
+    })[];
+    edgesTo: (Edge & {
+      startNode: Node;
+      endNode: Node | null;
+      claim: Claim;
+    })[];
+  })
+  | null;
 };
 
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
@@ -90,6 +96,44 @@ export class ClaimDao {
   };
 
   async createClaimV2(userId: number | string, claim: CreateClaimV2Dto) {
+    // Handle the new credential structure (when claim is "has skill")
+    if (claim.claim === "has skill") {
+      // Make sure sourceURI contains the verification URL
+      // No need to modify subject as it should already contain the evidence URI
+      
+      // Ensure claimAddress matches sourceURI (verification URL)
+      if (claim.sourceURI) {
+        claim.claimAddress = claim.sourceURI;
+      }
+      
+      // Ensure object contains the skill name
+      if (!claim.object && claim.name) {
+        claim.object = claim.name;
+      }
+      
+      // Always set name to empty string for "has skill" claims
+      claim.name = "";
+    }
+    // Handle legacy "credential" claim type for backward compatibility
+    else if (claim.claim === "credential") {
+      // Convert to new format
+      claim.claim = "has skill";
+      claim.object = claim.name || "";
+      
+      // If claimAddress is provided, use it as the sourceURI (verification URL)
+      if (claim.claimAddress) {
+        claim.sourceURI = claim.claimAddress;
+      }
+      
+      // If no subject (evidence URI) provided, generate one
+      if (!claim.subject || claim.subject === claim.claimAddress) {
+        claim.subject = `urn:uuid:${crypto.randomUUID()}`;
+      }
+      
+      // Set name to empty string
+      claim.name = "";
+    }
+
     const createdClaim = await prisma.claim.create({
       data: {
         issuerId: `${process.env.BASE_URL}/users/${userId}`,
@@ -156,11 +200,39 @@ export class ClaimDao {
     return claimImages;
   };
 
+  /**
+   * Creates a ClaimData record for a claim
+   * 
+   * @param id - The ID of the claim
+   * @param subject_name - Name of the subject (person who the credential is about)
+   * @param issuer_name - The name of the issuer
+   * @param name - The name to display for the claim
+   * @returns The created ClaimData record
+   */
   createClaimData = async (id: number, subject_name: string | null, issuer_name: string | null, name: string) => {
+    // Get the claim to check if it's a credential ("has skill")
+    const claim = await prisma.claim.findUnique({
+      where: { id }
+    });
+    
+    // For "has skill" claims (credentials), handle empty name
+    if (claim?.claim === "has skill") {
+      // For credentials, if name is empty but object is set, leave name empty
+      // This is the desired behavior for new credential format
+      if (name === "" && claim.object) {
+        // Keep name empty
+      }
+      // For legacy conversions, name might not be set to empty yet
+      else if (claim.object) {
+        // Name should be empty for new credential format
+        name = "";
+      }
+    }
+    
     return await prisma.claimData.create({
       data: {
         claimId: id,
-        subject_name: subject_name,
+        subject_name: subject_name, 
         issuer_name: issuer_name,
         name: name,
       },
@@ -293,7 +365,7 @@ export class CredentialDao {
     });
   }
 
-  async getCredentialById(id: string) {
+  async getCredentialentialById(id: string) {
     // const numericId = parseInt(id, 10); // or Number(id)
 
     return await prisma.credential.findUnique({
@@ -334,9 +406,12 @@ interface FeedEntryV3 {
   claim_id: number;
   statement: string | null;
   claim: string | null;
+  object?: string | null;
+  subject_name?: string | null;
   stars: number | null;
   effective_date: Date | null;
   created: Date | null;
+  display_name?: string;
 }
 // Node Dao is a Class to hold all the Prisma queries related to the Node model
 export class NodeDao {
@@ -509,6 +584,7 @@ export class NodeDao {
             c.id AS claim_id,
             c.statement AS statement,
             c.claim AS claim,
+            c.object AS object,
             cd.subject_name AS subject_name,
             cd.issuer_name AS issuer_name,
             c.stars AS stars,
@@ -528,10 +604,14 @@ export class NodeDao {
           AND n.name != ''
           ${typeFilter}
           AND (
-            c.subject ILIKE COALESCE(${query}, '%') OR
-            c.statement ILIKE COALESCE(${query}, '%') OR
-            c.claim ILIKE COALESCE(${query}, '%') OR
-            n.name ILIKE COALESCE(${query}, '%')
+            CASE WHEN c.claim = 'has skill' OR c.claim = 'credential'
+              THEN c.object ILIKE COALESCE(${query}, '%') -- Search object (skill) for credentials
+              ELSE c.subject ILIKE COALESCE(${query}, '%') -- Search subject for regular claims
+            END
+            OR c.statement ILIKE COALESCE(${query}, '%')
+            OR c.claim ILIKE COALESCE(${query}, '%')
+            OR cd.subject_name ILIKE COALESCE(${query}, '%')
+            OR n.name ILIKE COALESCE(${query}, '%')
           )
         ORDER BY c."effectiveDate" DESC, c.id DESC
       )
@@ -541,6 +621,7 @@ export class NodeDao {
         claim_id,
         statement,
         claim,
+        object,
         subject_name,
         issuer_name,
         stars,
@@ -553,18 +634,21 @@ export class NodeDao {
       LIMIT ${limit}
     `;
 
-      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string })[]>(rawQ);
+      const claims = await prisma.$queryRaw<(FeedEntryV3 & { cursor?: string; object?: string; subject_name?: string })[]>(rawQ);
 
-      const lastCursor = claims.at(-1)?.cursor;
-      const nextPage = lastCursor && claims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
+      // Format the claims for display
+      const formattedClaims = claims.map(claim => formatFeedEntry(claim));
+      
+      const lastCursor = formattedClaims.at(-1)?.cursor;
+      const nextPage = lastCursor && formattedClaims.length >= limit ? Buffer.from(lastCursor).toString("base64") : null;
 
-      for (let i = 0; i < claims.length; i++) {
-        delete claims[i].cursor;
+      for (let i = 0; i < formattedClaims.length; i++) {
+        delete formattedClaims[i].cursor;
       }
 
       return {
         nextPage,
-        claims: claims as FeedEntryV3[],
+        claims: formattedClaims,
       };
     } catch (error) {
       console.error("Error fetching feed entries:", error);
@@ -721,6 +805,7 @@ export class NodeDao {
     }
   };
 
+
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
       OR: [
@@ -797,6 +882,7 @@ export class NodeDao {
       },
     });
   };
+
 
   expandGraph = async (claimId: string, type: ExpandGraphType, page: number, limit: number, host: string) => {
     console.log(`[DAO] Calling expandGraph from NodeDao with claimId=${claimId}, type=${type}`);
@@ -1327,6 +1413,7 @@ export class NodeDao {
       throw error; // Re-throw to be handled by the controller
     }
   }
+
 }
 
 export const GetClaimReport = async (claimId: any, offset: number, limit: number, host: string) => {
@@ -1352,6 +1439,8 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
           n2."image" AS image,
           c.id AS claim_id,
           c.statement AS statement,
+          c.object AS object,
+          c.claim AS claim,
           c.stars AS stars,
           c.score AS score,
           c.amt AS amt,
@@ -1381,12 +1470,16 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       OFFSET ${offset}
     `;
 
-  for (const validation of validations) {
-    if (!validation.image) {
-      const validationImage = await getSignedImageForClaim(validation.claim_id);
-      validation.image = validationImage?.url || "";
+  // Format validations for display
+  const formattedValidations = validations.map(validation => {
+    const formatted = formatFeedEntry(validation);
+    if (!formatted.image) {
+      getSignedImageForClaim(formatted.claim_id).then(image => {
+        formatted.image = image?.url || "";
+      });
     }
-  }
+    return formatted;
+  });
 
   // Now get any other claims about the same subject, if any
   // Using subject_name to find related claims about the same subject
@@ -1398,14 +1491,14 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
       OFFSET ${offset}
     `;
 
-  for (const attestation of attestations) {
-    const attestationImage = await getSignedImageForClaim(attestation.claim_id);
-    attestation.image = attestationImage?.url || "";
-  }
-
-  //
-  // later we might want a second level call where we ALSO get other claims about the nodes who were the source or issuer of the attestations
-  //
+  // Format attestations for display
+  const formattedAttestations = attestations.map(attestation => {
+    const formatted = formatFeedEntry(attestation);
+    getSignedImageForClaim(formatted.claim_id).then(image => {
+      formatted.image = image?.url || "";
+    });
+    return formatted;
+  });
 
   const edge = await prisma.edge.findFirst({
     where: {
@@ -1417,17 +1510,23 @@ export const GetClaimReport = async (claimId: any, offset: number, limit: number
     },
   });
 
+  // Format the main claim display
+  const formattedDisplay = claimToGet && claimData ? 
+    formatClaimDisplayName(claimToGet, claimData.subject_name, claimData.name) : 
+    claimData?.name || "";
+
   const claim = {
     claim: claimToGet,
     image: image?.url,
     claimData: claimData,
     relatedNodes: relatedNodes,
+    display: formattedDisplay
   };
 
   return {
     edge,
     claim,
-    validations,
-    attestations,
+    validations: formattedValidations,
+    attestations: formattedAttestations,
   } as Report;
 };

@@ -13,6 +13,8 @@
     "docker:dev": "nodemon build/index.js",
     "migrate:dev": "dotenv -e .env.dev -- npx prisma migrate dev --name postgres-init",
     "migrate:postgres": "dotenv -e .env.test -- npx prisma migrate deploy",
+    "migrate:credentials": "ts-node scripts/migrate-credentials.ts",
+    "fix:test-credentials": "ts-node scripts/fix-test-credentials.ts",
     "prisma:studio": "dotenv -e .env.dev -- npx prisma studio",
     "format": "prettier -w ./src/**/*",
     "lint": "eslint . --fix",

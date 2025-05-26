@@ -652,6 +652,12 @@ components:
 
     CreateCredential:
       type: object
+      description: >
+        Credential data structure. When processed, this creates a claim with:
+        - claim: "has skill" (type of claim) 
+        - object: Skill or topic being certified (from credentialSubject.name)
+        - subject: person URI 
+        - sourceURI: Verification URL
       properties:
         "@contenxt":
           type: array

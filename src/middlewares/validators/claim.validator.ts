@@ -87,9 +87,9 @@ export type ImageDto = {
   signature: string;
 };
 
-// ValidationSchema Version: 2024-03-26
 export const CreateClaimV2Dto = z
   .object({
+  
     name: z.string().nullable().optional(),
     subject: z.string(),
     claim: z.string(),
@@ -113,10 +113,12 @@ export const CreateClaimV2Dto = z
       .enum(Object.values(HowKnown) as NotEmpty<HowKnown>)
       .nullable()
       .optional(),
-    sourceURI: z.string().nullable().optional().default(""),
+  
+    sourceURI: z.string().nullable().optional().default(""), 
     effectiveDate: z.coerce.date().nullable().optional(),
     confidence: z.number().min(0).max(1).nullable().optional(),
     claimAddress: z.string().nullable().optional(),
+    
     stars: z
       .union([
         z.number().min(0),
