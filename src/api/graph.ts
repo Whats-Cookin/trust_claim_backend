@@ -114,7 +114,7 @@ export async function getFullGraph(req: Request, res: Response) {
     // Get recent nodes with edges
     const nodes = await prisma.node.findMany({
       take: Number(limit),
-      orderBy: { lastUpdated: 'desc' },
+      orderBy: { id: 'desc' },
       include: {
         edgesFrom: {
           include: {
@@ -180,9 +180,9 @@ export async function getNeighbors(req: Request, res: Response) {
     
     // Collect neighbor nodes
     const neighborNodes = [
-      ...node.edgesFrom.map(e => e.endNode),
+      ...node.edgesFrom.map(e => e.endNode).filter(Boolean),
       ...node.edgesTo.map(e => e.startNode)
-    ];
+    ] as any[];
     
     // Enhance with entity data
     const enhanced = await enhanceNodesWithEntities(neighborNodes);

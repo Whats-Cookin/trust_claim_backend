@@ -5,7 +5,7 @@ import { EntityDetector } from '../services/entityDetector';
 import { PipelineTrigger } from '../services/pipelineTrigger';
 
 // Simple claim creation
-export async function createClaim(req: AuthRequest, res: Response) {
+export async function createClaim(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
     const { 
       subject, 

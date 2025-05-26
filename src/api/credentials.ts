@@ -48,7 +48,7 @@ function detectCredentialSchema(credential: any): string {
 }
 
 // Submit a credential
-export async function submitCredential(req: AuthRequest, res: Response) {
+export async function submitCredential(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
     const credential = req.body;
     const userId = req.user?.id;
@@ -199,7 +199,7 @@ async function extractClaimsFromCredential(credential: any, userId: string) {
 }
 
 // Get credential by URI
-export async function getCredential(req: Request, res: Response) {
+export async function getCredential(req: Request, res: Response): Promise<void> {
   try {
     const { uri } = req.params;
     

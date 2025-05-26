@@ -1,4 +1,4 @@
-import { Node, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 
 // Type for node with edges
@@ -112,7 +112,7 @@ export async function buildGraphFromClaims(claimIds: number[]) {
       // Add edge
       edges.push({
         id: edge.id,
-        source: edge.startNode.nodeUri,
+        source: node.nodeUri,
         target: edge.endNode?.nodeUri || '',
         label: edge.label,
         claimId: claim.id,
@@ -187,7 +187,7 @@ export async function getConnectedComponent(uri: string, maxDepth: number = 2) {
         edges.push({
           id: edge.id,
           source: edge.startNode.nodeUri,
-          target: edge.endNode?.nodeUri || edge.startNode.nodeUri,
+          target: node.nodeUri,
           label: edge.label,
           claim: edge.claim
         });

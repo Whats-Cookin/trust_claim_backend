@@ -78,7 +78,7 @@ export class EntityDetector {
     
     if (node) {
       return {
-        entityType: node.nodeType || 'UNKNOWN',
+        entityType: node.entType || 'UNKNOWN',
         entityTable: 'Node',
         entityId: node.id.toString(),
         name: node.name || undefined
