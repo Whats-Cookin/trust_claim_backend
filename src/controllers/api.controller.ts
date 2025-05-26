@@ -75,7 +75,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       result.data;
     console.log(email);
 
-    const existingCredential = await credentialDao.getCredentialById(id || "");
+    const existingCredential = await credentialDao.getCredentialentialById(id || "");
     if (existingCredential) {
       return res.status(409).json({ message: "Credential already exists" });
     }
@@ -418,5 +418,20 @@ export const getSignedImagesForClaim = async (claimId: number): Promise<Image[]>
   } catch (error) {
     console.error("Error signing image URLs:", error);
     return [];
+  }
+};
+
+export const getCredential = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const credential = await credentialDao.getCredentialentialById(id);
+
+    if (!credential) {
+      throw new createError.NotFound("Credential not found");
+    }
+
+    res.status(200).json(credential);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
   }
 };

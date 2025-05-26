@@ -289,7 +289,7 @@ export class CredentialDao {
     });
   }
 
-  async getCredentialById(id: string) {
+  async getCredentialentialById(id: string) {
     // const numericId = parseInt(id, 10); // or Number(id)
 
     return await prisma.credential.findUnique({
