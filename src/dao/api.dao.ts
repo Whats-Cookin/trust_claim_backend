@@ -5,10 +5,12 @@ import { getClaimNameFromNodeUri, makeClaimSubjectURL } from "../utils";
 import { CreateClaimV2Dto } from "../middlewares/validators";
 import { ImageDto } from "../middlewares/validators/claim.validator";
 import { getSignedImageForClaim } from "../controllers/api.controller";
+
 import { expandGraph, getGraphNode } from "./graph";
 import { ExpandGraphType } from "../types/utils";
 import crypto from 'crypto';
 import { formatFeedEntry, formatClaimDisplayName } from "../utils/formatters";
+
 
 const MAX_POSSIBLE_CURSOR = "999999999999";
 
@@ -64,19 +66,19 @@ export type EdgeWithRelations = Edge & {
     })[];
   };
   endNode:
-    | (Node & {
-        edgesFrom: (Edge & {
-          startNode: Node;
-          endNode: Node | null;
-          claim: Claim;
-        })[];
-        edgesTo: (Edge & {
-          startNode: Node;
-          endNode: Node | null;
-          claim: Claim;
-        })[];
-      })
-    | null;
+  | (Node & {
+    edgesFrom: (Edge & {
+      startNode: Node;
+      endNode: Node | null;
+      claim: Claim;
+    })[];
+    edgesTo: (Edge & {
+      startNode: Node;
+      endNode: Node | null;
+      claim: Claim;
+    })[];
+  })
+  | null;
 };
 
 // Claim Dao is a Class to hold all the Prisma queries related to the Claim model
@@ -364,7 +366,7 @@ export class CredentialDao {
     });
   }
 
-  async getCredentialById(id: string) {
+  async getCredentialentialById(id: string) {
     // const numericId = parseInt(id, 10); // or Number(id)
 
     return await prisma.credential.findUnique({
@@ -691,9 +693,61 @@ export class NodeDao {
     });
   };
 
-  getClaimGraph = async (claimId: string | number, host: string) => {
-    return await getGraphNode(claimId, 1, 3, host);
-  };
+  getClaimGraph = async (claimId: string | number) => {
+    const numericClaimId = typeof claimId === "string" ? parseInt(claimId, 10) : claimId;
+    // First find the nodes involved with this claim
+    const nodes = await prisma.node.findMany({
+      where: {
+        OR: [
+          {
+            edgesFrom: {
+              some: {
+                claimId: numericClaimId,
+              },
+            },
+          },
+          {
+            edgesTo: {
+              some: {
+                claimId: numericClaimId,
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        // Include ALL edges connected to these nodes
+        edgesFrom: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+        edgesTo: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+      },
+    });
+
+    // Debug logging
+    console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`);
+    nodes.forEach((node) => {
+      console.log(`Node ${node.id} (${node.name}):`);
+      console.log(`  ${node.edgesFrom.length} outgoing edges`);
+      console.log(`  ${node.edgesTo.length} incoming edges`);
+    });
+
+    return {
+      nodes,
+      count: nodes.length,
+    };
+  }
+
   searchNodes = async (search: string, page: number, limit: number) => {
     const query: Prisma.NodeWhereInput = {
       OR: [
@@ -771,9 +825,6 @@ export class NodeDao {
     });
   };
 
-  expandGraph = async (claimId: string, type: ExpandGraphType, page: number, limit: number, host: string) => {
-    return await expandGraph(claimId, type, page, limit, host);
-  };
 }
 
 export const GetClaimReport = async (claimId: any, offset: number, limit: number, host: string) => {

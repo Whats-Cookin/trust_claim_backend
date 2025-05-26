@@ -19,8 +19,6 @@ import { getS3SignedUrlIfExisted, isS3Url, uploadImageToS3 } from "../utils/aws-
 import { config } from "../config";
 import axios from "axios";
 import { Image } from "@prisma/client";
-import { ExpandGraphType } from "../types/utils";
-
 const DEFAULT_LIMIT = 100;
 
 const claimDao = new ClaimDao();
@@ -77,7 +75,7 @@ export const createCredential = async (req: Request, res: Response, next: NextFu
       result.data;
     console.log(email);
 
-    const existingCredential = await credentialDao.getCredentialById(id || "");
+    const existingCredential = await credentialDao.getCredentialentialById(id || "");
     if (existingCredential) {
       return res.status(409).json({ message: "Credential already exists" });
     }
@@ -307,21 +305,7 @@ export const claimsGet = async (req: Request, res: Response, next: NextFunction)
 export const claimGraph = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { claimId } = req.params;
-    const host = req.get("host") ?? "live.linkedtrust.us";
-    const result = await nodeDao.getClaimGraph(claimId, host);
-    res.status(200).json(result);
-    return;
-  } catch (err) {
-    passToExpressErrorHandler(err, next);
-  }
-};
-/* This is for expanding the graph for a given claim */
-export const expandGraph = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { claimId } = req.params;
-    const { page = 1, limit = 3, type = "validated" } = req.query;
-    const host = req.get("host") ?? "live.linkedtrust.us";
-    const result = await nodeDao.expandGraph(claimId, type as ExpandGraphType, Number(page), Number(limit), host);
+    const result = await nodeDao.getClaimGraph(claimId);
     res.status(200).json(result);
     return;
   } catch (err) {
@@ -434,5 +418,20 @@ export const getSignedImagesForClaim = async (claimId: number): Promise<Image[]>
   } catch (error) {
     console.error("Error signing image URLs:", error);
     return [];
+  }
+};
+
+export const getCredential = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const credential = await credentialDao.getCredentialentialById(id);
+
+    if (!credential) {
+      throw new createError.NotFound("Credential not found");
+    }
+
+    res.status(200).json(credential);
+  } catch (err) {
+    passToExpressErrorHandler(err, next);
   }
 };
