@@ -327,6 +327,7 @@ interface FeedEntryV3 {
   link: string;
   claim_id: number;
   statement: string | null;
+  claim: string;
   stars: number | null;
   effective_date: Date | null;
   created: Date | null;
@@ -482,6 +483,7 @@ export class NodeDao {
             n."nodeUri" AS link,
             c.id AS claim_id,
             c.statement AS statement,
+            e.label AS claim,
             c.stars AS stars,
             c."effectiveDate" AS effective_date,
             ROW_NUMBER() OVER (PARTITION BY c.id) AS row_num,
@@ -508,6 +510,7 @@ export class NodeDao {
           link,
           claim_id,
           statement,
+          claim,
           stars,
           effective_date,
           cursor
