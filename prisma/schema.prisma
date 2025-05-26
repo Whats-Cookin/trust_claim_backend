@@ -38,6 +38,7 @@ enum EntityType {
   PLACE
   UNKNOWN
   OTHER
+  CREDENTIAL
 }
 
 // Derived models
@@ -138,21 +139,34 @@ model Credential {
   credentialSubject    Json?
   proof                Json?
   sameAs               Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  canonicalUri         String?   @map("canonical_uri")
+  name                 String?
+  credentialSchema     String?   @map("credential_schema")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  @@index([canonicalUri])
+}
+
+model UriEntity {
+  id          Int        @id @default(autoincrement())
+  uri         String     @unique
+  entityType  EntityType @map("entity_type")
+  entityTable String     @map("entity_table")
+  entityId    String     @map("entity_id")
+  name        String?
+  image       String?
+  thumbnail   String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  
+  @@index([entityType])
+  @@index([entityTable, entityId])
+  @@map("uri_entities")
 }
 
 
-// this model is to connect between the claim and the data that supports it
-// like the name of the claim, the image, the source, etc.
-// maybe to add another atts in future like the urls that can be related to the claim, like the website, the social media, etc.
-model  ClaimData {
-  id      Int @id @default(autoincrement())
-  claimId Int @unique
-
-  name  String
-  // image Image[]
-}
+// ClaimData removed - replaced by uri_entities
 
 // this model is to store the image of the claim
 model Image {
