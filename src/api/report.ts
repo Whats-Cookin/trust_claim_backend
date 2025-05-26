@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
 // Get claim report with validations
-export async function getClaimReport(req: Request, res: Response): Promise<void> {
+export async function getClaimReport(req: Request, res: Response): Promise<Response | void> {
   try {
     const { claimId } = req.params;
     
@@ -105,7 +105,7 @@ export async function getClaimReport(req: Request, res: Response): Promise<void>
 }
 
 // Submit validation for a claim
-export async function submitValidation(req: Request, res: Response): Promise<void> {
+export async function submitValidation(req: Request, res: Response): Promise<Response | void> {
   try {
     const { claimId } = req.params;
     const { validationType, confidence, statement, evidence } = req.body;

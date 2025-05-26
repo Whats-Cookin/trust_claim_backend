@@ -37,12 +37,12 @@ export async function enhanceNodesWithEntities(nodes: NodeWithEdges[]): Promise<
   });
   
   // Create lookup map
-  const entityMap = new Map(entities.map(e => [e.uri, e]));
+  const entityMap = new Map(entities.map((e: any) => [e.uri, e]));
   
   // Get entity-specific data in batches
   const credentialUris = entities
-    .filter(e => e.entityType === 'CREDENTIAL')
-    .map(e => e.uri);
+    .filter((e: any) => e.entityType === 'CREDENTIAL')
+    .map((e: any) => e.uri);
     
   const credentials = credentialUris.length > 0 
     ? await prisma.credential.findMany({
@@ -112,7 +112,7 @@ export async function buildGraphFromClaims(claimIds: number[]) {
       // Add edge
       edges.push({
         id: edge.id,
-        source: node.nodeUri,
+        source: edge.startNode.nodeUri,
         target: edge.endNode?.nodeUri || '',
         label: edge.label,
         claimId: claim.id,
@@ -170,7 +170,7 @@ export async function getConnectedComponent(uri: string, maxDepth: number = 2) {
     for (const edge of node.edgesFrom) {
       edges.push({
         id: edge.id,
-        source: edge.startNode.nodeUri,
+        source: node.nodeUri,  // The node is the start node for edgesFrom
         target: edge.endNode?.nodeUri || '',
         label: edge.label,
         claim: edge.claim
@@ -187,7 +187,7 @@ export async function getConnectedComponent(uri: string, maxDepth: number = 2) {
         edges.push({
           id: edge.id,
           source: edge.startNode.nodeUri,
-          target: node.nodeUri,
+          target: node.nodeUri,  // The node is the end node for edgesTo
           label: edge.label,
           claim: edge.claim
         });

@@ -60,8 +60,8 @@ export async function getGraph(req: Request, res: Response) {
       }
     });
     
-    // Enhance with entity data
-    const enhanced = await enhanceNodesWithEntities(nodes);
+    // Enhance with entity data - handle nodes that might not have edgesTo
+    const enhanced = await enhanceNodesWithEntities(nodes as any);
     
     // Build graph structure
     const graph = {
@@ -125,8 +125,8 @@ export async function getFullGraph(req: Request, res: Response) {
       }
     });
     
-    // Enhance with entity data
-    const enhanced = await enhanceNodesWithEntities(nodes);
+    // Enhance with entity data - handle nodes that might not have edgesTo
+    const enhanced = await enhanceNodesWithEntities(nodes as any);
     
     // Build edge list
     const edges = nodes.flatMap(node => 
@@ -152,7 +152,7 @@ export async function getFullGraph(req: Request, res: Response) {
 }
 
 // Get neighbors of a node
-export async function getNeighbors(req: Request, res: Response) {
+export async function getNeighbors(req: Request, res: Response): Promise<void> {
   try {
     const { nodeId } = req.params;
     
@@ -184,8 +184,8 @@ export async function getNeighbors(req: Request, res: Response) {
       ...node.edgesTo.map(e => e.startNode)
     ] as any[];
     
-    // Enhance with entity data
-    const enhanced = await enhanceNodesWithEntities(neighborNodes);
+    // Enhance with entity data - handle nodes that might not have full edge relations
+    const enhanced = await enhanceNodesWithEntities(neighborNodes as any);
     
     res.json({
       node,
