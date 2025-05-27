@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './lib/swagger';
 
 // Load environment variables
 dotenv.config();
@@ -21,11 +23,23 @@ import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
 import * as legacyClaimsApi from './api/legacyClaims';
 
+// Import Swagger documentation
+import './api/swagger-docs';
+
 // Create Express app
 const app = express();
 
 // Global middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
 app.use(cors());
 app.use(compression());
 app.use(morgan('combined'));
@@ -34,6 +48,18 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Swagger documentation
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'LinkedTrust API Documentation',
+}));
+
+// Serve Swagger JSON
+app.get('/api/docs.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Health check
 app.get('/health', (_req, res) => {
