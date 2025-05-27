@@ -26,13 +26,11 @@ export class PipelineTrigger {
   static async processMultipleClaims(claimIds: number[]): Promise<void> {
     try {
       console.log(`Triggering pipeline for ${claimIds.length} claims`);
-      
-      const response = await axios.post(`${this.PIPELINE_URL}/process-claims`, {
-        claim_ids: claimIds
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
+
+     const response = await axios.post(`${this.PIPELINE_URL}/process_claim/${claimId}`, {}, {
+         headers: {
+           'Content-Type': 'application/json'
+         },      
         timeout: 60000 // 60 second timeout for batch
       });
       
