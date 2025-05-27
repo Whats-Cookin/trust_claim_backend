@@ -6,16 +6,16 @@ import bcrypt from 'bcryptjs';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Generate tokens
-function generateTokens(userId: number) {
+// Generate tokens - accept number for userId and optional did
+function generateTokens(userId: number, did?: string) {
   const accessToken = jwt.sign(
-    { userId: userId.toString(), type: 'access' },
+    { userId: userId.toString(), type: 'access', did },
     process.env.ACCESS_SECRET || 'access-secret',
     { expiresIn: '1h' }
   );
   
   const refreshToken = jwt.sign(
-    { userId: userId.toString(), type: 'refresh' },
+    { userId: userId.toString(), type: 'refresh', did },
     process.env.REFRESH_SECRET || 'refresh-secret',
     { expiresIn: '7d' }
   );
@@ -216,7 +216,7 @@ export async function walletAuth(req: Request, res: Response): Promise<Response 
       return res.status(400).json({ error: 'Wallet address required' });
     }
     
-    // Find or create user by wallet
+    // Find or create user by wallet and optionally DID
     let user = await prisma.user.findFirst({
       where: { 
         authProviderId: address,
@@ -225,23 +225,29 @@ export async function walletAuth(req: Request, res: Response): Promise<Response 
     });
     
     if (!user) {
+      // Store DID in the name field temporarily or as part of authProviderId
+      const displayName = did 
+        ? `${address.slice(0, 6)}...${address.slice(-4)} (${did.slice(0, 15)}...)`
+        : `User ${address.slice(0, 6)}...${address.slice(-4)}`;
+      
       user = await prisma.user.create({
         data: {
-          authProviderId: address,
-          name: `User ${address.slice(0, 6)}...${address.slice(-4)}`,
+          authProviderId: did || address,  // Prefer DID if available
+          name: displayName,
           authType: 'PASSWORD' as const  // Using PASSWORD as a placeholder for wallet auth
         }
       });
     }
     
-    const { accessToken, refreshToken } = generateTokens(user.id);
+    const { accessToken, refreshToken } = generateTokens(user.id, did);
     
     return res.json({
       accessToken,
       refreshToken,
       user: {
         id: user.id,
-        walletAddress: user.authProviderId,
+        walletAddress: address,
+        did: did || undefined,
         name: user.name
       }
     });
