@@ -7,15 +7,15 @@ import bcrypt from 'bcryptjs';
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Generate tokens
-function generateTokens(userId: string) {
+function generateTokens(userId: number) {
   const accessToken = jwt.sign(
-    { userId, type: 'access' },
+    { userId: userId.toString(), type: 'access' },
     process.env.ACCESS_SECRET || 'access-secret',
     { expiresIn: '1h' }
   );
   
   const refreshToken = jwt.sign(
-    { userId, type: 'refresh' },
+    { userId: userId.toString(), type: 'refresh' },
     process.env.REFRESH_SECRET || 'refresh-secret',
     { expiresIn: '7d' }
   );
@@ -24,7 +24,7 @@ function generateTokens(userId: string) {
 }
 
 // Google OAuth login
-export async function googleAuth(req: Request, res: Response) {
+export async function googleAuth(req: Request, res: Response): Promise<Response | void> {
   try {
     const { googleAuthCode } = req.body;
     
@@ -55,41 +55,40 @@ export async function googleAuth(req: Request, res: Response) {
         data: {
           email: email || '',
           name: name || email?.split('@')[0] || 'User',
-          googleId,
-          profileImage: picture,
-          provider: 'google'
+          authProviderId: googleId,
+          authType: 'OAUTH' as const
         }
       });
     } else {
       // Update Google ID if not set
-      if (!user.googleId) {
+      if (!user.authProviderId && user.authType === 'OAUTH') {
         await prisma.user.update({
           where: { id: user.id },
-          data: { googleId, profileImage: picture }
+          data: { authProviderId: googleId }
         });
       }
     }
     
     const { accessToken, refreshToken } = generateTokens(user.id);
     
-    res.json({
+    return res.json({
       accessToken,
       refreshToken,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        profileImage: user.profileImage
+        profileImage: picture || null
       }
     });
   } catch (error) {
     console.error('Google auth error:', error);
-    res.status(500).json({ error: 'Google authentication failed' });
+    return res.status(500).json({ error: 'Google authentication failed' });
   }
 }
 
 // Email/password login
-export async function login(req: Request, res: Response) {
+export async function login(req: Request, res: Response): Promise<Response | void> {
   try {
     const { email, password } = req.body;
     
@@ -101,35 +100,35 @@ export async function login(req: Request, res: Response) {
       where: { email }
     });
     
-    if (!user || !user.password) {
+    if (!user || !user.passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     const { accessToken, refreshToken } = generateTokens(user.id);
     
-    res.json({
+    return res.json({
       accessToken,
       refreshToken,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        profileImage: user.profileImage
+        profileImage: null
       }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    return res.status(500).json({ error: 'Login failed' });
   }
 }
 
 // Register with email/password
-export async function register(req: Request, res: Response) {
+export async function register(req: Request, res: Response): Promise<Response | void> {
   try {
     const { email, password, name } = req.body;
     
@@ -153,15 +152,15 @@ export async function register(req: Request, res: Response) {
     const user = await prisma.user.create({
       data: {
         email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         name: name || email.split('@')[0],
-        provider: 'email'
+        authType: 'PASSWORD' as const
       }
     });
     
     const { accessToken, refreshToken } = generateTokens(user.id);
     
-    res.json({
+    return res.json({
       accessToken,
       refreshToken,
       user: {
@@ -172,12 +171,12 @@ export async function register(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    return res.status(500).json({ error: 'Registration failed' });
   }
 }
 
 // Refresh token
-export async function refreshToken(req: Request, res: Response) {
+export async function refreshToken(req: Request, res: Response): Promise<Response | void> {
   try {
     const { refreshToken } = req.body;
     
@@ -194,22 +193,22 @@ export async function refreshToken(req: Request, res: Response) {
       return res.status(401).json({ error: 'Invalid token type' });
     }
     
-    const tokens = generateTokens(decoded.userId);
-    res.json(tokens);
+    const tokens = generateTokens(parseInt(decoded.userId));
+    return res.json(tokens);
   } catch (error) {
     console.error('Refresh token error:', error);
-    res.status(401).json({ error: 'Invalid refresh token' });
+    return res.status(401).json({ error: 'Invalid refresh token' });
   }
 }
 
 // GitHub OAuth (placeholder for now)
-export async function githubAuth(req: Request, res: Response) {
+export async function githubAuth(_req: Request, res: Response): Promise<Response | void> {
   // TODO: Implement GitHub OAuth
-  res.status(501).json({ error: 'GitHub auth not implemented yet' });
+  return res.status(501).json({ error: 'GitHub auth not implemented yet' });
 }
 
 // Wallet auth (placeholder)
-export async function walletAuth(req: Request, res: Response) {
+export async function walletAuth(req: Request, res: Response): Promise<Response | void> {
   try {
     const { address, did } = req.body;
     
@@ -218,34 +217,36 @@ export async function walletAuth(req: Request, res: Response) {
     }
     
     // Find or create user by wallet
-    let user = await prisma.user.findUnique({
-      where: { walletAddress: address }
+    let user = await prisma.user.findFirst({
+      where: { 
+        authProviderId: address,
+        authType: 'PASSWORD' as const  // Using PASSWORD as a placeholder for wallet auth
+      }
     });
     
     if (!user) {
       user = await prisma.user.create({
         data: {
-          walletAddress: address,
-          did,
+          authProviderId: address,
           name: `User ${address.slice(0, 6)}...${address.slice(-4)}`,
-          provider: 'wallet'
+          authType: 'PASSWORD' as const  // Using PASSWORD as a placeholder for wallet auth
         }
       });
     }
     
     const { accessToken, refreshToken } = generateTokens(user.id);
     
-    res.json({
+    return res.json({
       accessToken,
       refreshToken,
       user: {
         id: user.id,
-        walletAddress: user.walletAddress,
+        walletAddress: user.authProviderId,
         name: user.name
       }
     });
   } catch (error) {
     console.error('Wallet auth error:', error);
-    res.status(500).json({ error: 'Wallet authentication failed' });
+    return res.status(500).json({ error: 'Wallet authentication failed' });
   }
 }

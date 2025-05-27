@@ -27,7 +27,9 @@ export class PipelineTrigger {
     try {
       console.log(`Triggering pipeline for ${claimIds.length} claims`);
 
-     const response = await axios.post(`${this.PIPELINE_URL}/process_claim/${claimId}`, {}, {
+     const response = await axios.post(`${this.PIPELINE_URL}/process-claims`, {
+       claim_ids: claimIds
+     }, {
          headers: {
            'Content-Type': 'application/json'
          },      

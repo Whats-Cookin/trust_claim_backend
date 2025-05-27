@@ -6,6 +6,21 @@ trust_claim_backend is a Node application for adding Claims, and for presenting 
 
 To generate Nodes and Edges from Claims it is also necessary to run [trust-claim-data-pipeline](https://github.com/Whats-Cookin/trust-claim-data-pipeline)
 
+## API Documentation
+
+**Interactive API documentation is available at `/api/docs` when the server is running.**
+
+- Development: http://localhost:3000/api/docs
+- Production: https://live.linkedtrust.us/api/docs
+
+The documentation includes:
+- All endpoints (legacy v3 and modern v4)
+- Request/response schemas
+- Authentication details
+- Try-it-out functionality
+
+See [SWAGGER_SETUP.md](./SWAGGER_SETUP.md) for more details.
+
 ## Concepts
 
 Claim: a signed set of structured data with the raw claim or attestation, often signed on front end by the user's DID

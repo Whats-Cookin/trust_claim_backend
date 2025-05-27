@@ -68,13 +68,13 @@ app.get('/health', (_req, res) => {
 
 // API Routes
 
-// Auth endpoints (legacy)
+// Auth endpoints
 app.post('/auth/login', authApi.login);
 app.post('/auth/signup', authApi.register);  // 'signup' maps to 'register'
 app.post('/auth/refresh_token', authApi.refreshToken);
 
 // Legacy claim endpoints (v3 compatibility)
-app.post('/api/claim', verifyToken, legacyClaimsApi.createClaimV3);
+app.post('/api/claim', verifyToken, legacyClaimsApi.createClaimV3);          // LEGACY: Create one claim (v3 format)
 app.post('/api/claim/v2', verifyToken, ...legacyClaimsApi.createClaimV3WithImages);
 app.get('/api/claim/:id', legacyClaimsApi.getClaimV3);
 app.get('/api/claim', legacyClaimsApi.getClaimsV3);
@@ -82,7 +82,7 @@ app.get('/api/claim', legacyClaimsApi.getClaimsV3);
 // Modern v4 endpoints
 // Claims endpoints
 app.post('/api/v4/claims', verifyToken, claimsApi.createClaim);
-app.post('/api/claims', verifyToken, claimsApi.createClaim);
+app.post('/api/claims', verifyToken, claimsApi.createClaim);     // MODERN: Create one claim (v4 format)
 app.get('/api/v4/claims/:id', claimsApi.getClaim);
 app.get('/api/claims/:id', claimsApi.getClaim);
 app.get('/api/v4/claims/subject/:uri', claimsApi.getClaimsBySubject);

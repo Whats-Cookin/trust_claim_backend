@@ -12,7 +12,6 @@ export async function getGraph(req: Request, res: Response) {
     const isNumericId = /^\d+$/.test(uri);
     
     let nodes;
-    let allEdges = [];
     
     if (isNumericId) {
       // If numeric, treat as claim ID

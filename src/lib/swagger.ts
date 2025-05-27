@@ -1,5 +1,7 @@
 import swaggerJsdoc from 'swagger-jsdoc';
-import { version } from '../package.json';
+
+// Use environment variable or default version
+const version = process.env.API_VERSION || '2.0.0';
 
 const options: swaggerJsdoc.Options = {
   definition: {
