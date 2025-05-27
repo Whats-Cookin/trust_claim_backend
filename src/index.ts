@@ -17,8 +17,6 @@ import * as credentialsApi from './api/credentials';
 import * as graphApi from './api/graph';
 import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
-import * as authApi from './api/authApi';
-import * as legacyClaimsApi from './api/legacyClaims';
 
 // Create Express app
 const app = express();
@@ -35,14 +33,6 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// Auth Routes (no auth required) - LEGACY ENDPOINTS
-app.post('/auth/google', authApi.googleAuth);
-app.post('/auth/login', authApi.login);
-app.post('/auth/register', authApi.register);
-app.post('/auth/refresh_token', authApi.refreshToken);
-app.post('/auth/github', authApi.githubAuth);
-app.post('/auth/wallet', authApi.walletAuth);
 
 // API Routes
 
