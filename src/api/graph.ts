@@ -2,257 +2,253 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { enhanceNodesWithEntities } from '../services/graphBuilder';
 
-// Get graph for a URI or claim ID
-export async function getGraph(req: Request, res: Response) {
+// Get claim graph - returns all nodes connected to a claim with ALL their edges
+export async function getClaimGraph(req: Request, res: Response): Promise<Response | void> {
   try {
-    const { uri } = req.params;
-    const { depth = 1 } = req.query;
+    const { claimId } = req.params;
+    const numericClaimId = parseInt(claimId, 10);
     
-    // Check if it's a numeric ID (claim ID)
-    const isNumericId = /^\d+$/.test(uri);
-    
-    let nodes;
-    
-    if (isNumericId) {
-      // If numeric, treat as claim ID
-      const claimId = parseInt(uri);
-      
-      // Find all nodes involved with this claim (this gets subject, claim node, source)
-      nodes = await prisma.node.findMany({
-        where: {
-          OR: [
-            {
-              edgesFrom: {
-                some: {
-                  claimId: claimId,
-                },
-              },
-            },
-            {
-              edgesTo: {
-                some: {
-                  claimId: claimId,
-                },
-              },
-            },
-          ],
-        },
-        include: {
-          // Include ALL edges connected to these nodes (for one more hop)
-          edgesFrom: {
-            include: {
-              claim: true,
-              startNode: true,
-              endNode: true,
-            },
-          },
-          edgesTo: {
-            include: {
-              claim: true,
-              startNode: true,
-              endNode: true,
-            },
-          },
-        },
-      });
-      
-      // Debug logging
-      console.log(`Found ${nodes.length} nodes for claim ${claimId}`);
-      nodes.forEach((node) => {
-        console.log(`Node ${node.id} (${node.name}):`);
-        console.log(`  ${node.edgesFrom.length} outgoing edges`);
-        console.log(`  ${node.edgesTo.length} incoming edges`);
-      });
-      
-    } else {
-      // Original URI-based logic
-      const claims = await prisma.claim.findMany({
-        where: {
-          OR: [
-            { subject: uri },
-            { object: uri },
-            { sourceURI: uri }
-          ]
-        }
-      });
-      
-      // Get nodes for these claims
-      nodes = await prisma.node.findMany({
-        where: {
-          OR: [
-            { nodeUri: uri },
-            { 
-              edgesFrom: { 
-                some: { 
-                  claim: { 
-                    id: { in: claims.map(c => c.id) } 
-                  } 
-                } 
-              } 
-            },
-            { 
-              edgesTo: { 
-                some: { 
-                  claim: { 
-                    id: { in: claims.map(c => c.id) } 
-                  } 
-                } 
-              } 
-            }
-          ]
-        },
-        include: {
-          edgesFrom: { 
-            include: { 
-              endNode: true, 
-              claim: true 
-            } 
-          },
-          edgesTo: { 
-            include: { 
-              startNode: true, 
-              claim: true 
-            } 
-          }
-        }
-      });
+    if (isNaN(numericClaimId)) {
+      return res.status(400).json({ error: 'Invalid claim ID' });
     }
-    
-    // Enhance with entity data - handle nodes that might not have edgesTo
-    const enhanced = await enhanceNodesWithEntities(nodes as any);
-    
-    // Build graph structure
-    const graph = {
-      nodes: enhanced,
-      edges: nodes.flatMap(node => [
-        ...node.edgesFrom.map(edge => ({
-          id: edge.id,
-          source: edge.startNodeId,
-          target: edge.endNodeId,
-          label: edge.label,
-          claim: edge.claim
-        })),
-        ...node.edgesTo.map(edge => ({
-          id: edge.id,
-          source: edge.startNodeId,
-          target: edge.endNodeId,
-          label: edge.label,
-          claim: edge.claim
-        }))
-      ]),
-      // Remove duplicates
-      get uniqueEdges() {
-        const seen = new Set();
-        return this.edges.filter(edge => {
-          const key = `${edge.id}`; // Use edge ID as unique key
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-      }
-    };
-    
-    res.json({ 
-      nodes: graph.nodes,
-      edges: graph.uniqueEdges,
-      uri,
-      depth: Number(depth)
-    });
-  } catch (error) {
-    console.error('Error fetching graph:', error);
-    res.status(500).json({ error: 'Failed to fetch graph' });
-  }
-}
 
-// Get full graph (limited for performance)
-export async function getFullGraph(req: Request, res: Response) {
-  try {
-    const { limit = 20 } = req.query;  // Reduce default limit
-    
-    // Get recent nodes with edges
+    // Find all nodes involved with this claim
     const nodes = await prisma.node.findMany({
-      take: Number(limit),
-      orderBy: { id: 'desc' },
+      where: {
+        OR: [
+          {
+            edgesFrom: {
+              some: {
+                claimId: numericClaimId,
+              },
+            },
+          },
+          {
+            edgesTo: {
+              some: {
+                claimId: numericClaimId,
+              },
+            },
+          },
+        ],
+      },
       include: {
+        // Include ALL edges connected to these nodes - this is key for expansion
         edgesFrom: {
           include: {
+            claim: true,
+            startNode: true,
             endNode: true,
-            claim: true
-          }
-        }
-      }
-    });
-    
-    // Enhance with entity data - handle nodes that might not have edgesTo
-    const enhanced = await enhanceNodesWithEntities(nodes as any);
-    
-    // Build edge list
-    const edges = nodes.flatMap(node => 
-      node.edgesFrom.map(edge => ({
-        id: edge.id,
-        source: edge.startNodeId,
-        target: edge.endNodeId,
-        label: edge.label
-        // Removed claim to reduce payload
-      }))
-    );
-    
-    res.json({ 
-      nodes: enhanced,
-      edges,
-      totalNodes: await prisma.node.count(),
-      totalEdges: await prisma.edge.count()
-    });
-  } catch (error) {
-    console.error('Error fetching full graph:', error);
-    res.status(500).json({ error: 'Failed to fetch graph' });
-  }
-}
-
-// Get neighbors of a node
-export async function getNeighbors(req: Request, res: Response): Promise<Response | void> {
-  try {
-    const { nodeId } = req.params;
-    
-    const node = await prisma.node.findUnique({
-      where: { id: parseInt(nodeId) },
-      include: {
-        edgesFrom: {
-          include: {
-            endNode: true,
-            claim: true
-          }
+          },
         },
         edgesTo: {
           include: {
+            claim: true,
             startNode: true,
-            claim: true
-          }
-        }
-      }
+            endNode: true,
+          },
+        },
+      },
     });
+
+    // Debug logging
+    console.log(`Found ${nodes.length} nodes for claim ${numericClaimId}`);
+    nodes.forEach((node) => {
+      console.log(`Node ${node.id} (${node.name}):`);
+      console.log(`  ${node.edgesFrom.length} outgoing edges`);
+      console.log(`  ${node.edgesTo.length} incoming edges`);
+    });
+
+    // Enhance with entity data if available
+    const enhanced = await enhanceNodesWithEntities(nodes as any);
+
+    return res.json({
+      nodes: enhanced,
+      count: nodes.length,
+    });
+  } catch (error) {
+    console.error('Error fetching claim graph:', error);
+    return res.status(500).json({ error: 'Failed to fetch claim graph' });
+  }
+}
+
+// Get node by ID with all its edges - useful for expansion
+export async function getNodeById(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const { nodeId } = req.params;
+    const numericNodeId = parseInt(nodeId, 10);
     
+    if (isNaN(numericNodeId)) {
+      return res.status(400).json({ error: 'Invalid node ID' });
+    }
+
+    const node = await prisma.node.findUnique({
+      where: {
+        id: numericNodeId,
+      },
+      include: {
+        edgesFrom: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+        edgesTo: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+      },
+    });
+
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
     }
-    
-    // Collect neighbor nodes
-    const neighborNodes = [
-      ...node.edgesFrom.map(e => e.endNode).filter(Boolean),
-      ...node.edgesTo.map(e => e.startNode)
-    ] as any[];
-    
-    // Enhance with entity data - handle nodes that might not have full edge relations
-    const enhanced = await enhanceNodesWithEntities(neighborNodes as any);
-    
-    res.json({
-      node,
-      neighbors: enhanced,
-      outgoingEdges: node.edgesFrom,
-      incomingEdges: node.edgesTo
-    });
+
+    // Enhance with entity data
+    const enhanced = await enhanceNodesWithEntities([node] as any);
+
+    return res.json(enhanced[0] || node);
   } catch (error) {
-    console.error('Error fetching neighbors:', error);
-    res.status(500).json({ error: 'Failed to fetch neighbors' });
+    console.error('Error fetching node:', error);
+    return res.status(500).json({ error: 'Failed to fetch node' });
   }
 }
+
+// Search nodes
+export async function searchNodes(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const { search, page = 1, limit = 10 } = req.query;
+    
+    if (!search) {
+      return res.status(400).json({ error: 'Search term required' });
+    }
+
+    const searchTerm = decodeURIComponent(search.toString());
+    
+    const query = {
+      OR: [
+        { id: { equals: parseInt(searchTerm, 10) || -1 } },
+        { name: { contains: searchTerm, mode: 'insensitive' as const } },
+        { descrip: { contains: searchTerm, mode: 'insensitive' as const } },
+        { nodeUri: { contains: searchTerm, mode: 'insensitive' as const } },
+      ],
+    };
+
+    const nodes = await prisma.node.findMany({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      where: query,
+      include: {
+        edgesFrom: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+        edgesTo: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+      },
+    });
+
+    const count = await prisma.node.count({ where: query });
+
+    // Enhance with entity data
+    const enhanced = await enhanceNodesWithEntities(nodes as any);
+
+    return res.json({ nodes: enhanced, count });
+  } catch (error) {
+    console.error('Error searching nodes:', error);
+    return res.status(500).json({ error: 'Failed to search nodes' });
+  }
+}
+
+// Get nodes by multiple claim IDs - useful for batch expansion
+export async function getNodesByClaimIds(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const { claimIds } = req.body;
+    
+    if (!Array.isArray(claimIds) || claimIds.length === 0) {
+      return res.status(400).json({ error: 'claimIds array required' });
+    }
+
+    const numericClaimIds = claimIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    
+    if (numericClaimIds.length === 0) {
+      return res.status(400).json({ error: 'No valid claim IDs provided' });
+    }
+
+    // Find all nodes involved with these claims
+    const nodes = await prisma.node.findMany({
+      where: {
+        OR: [
+          {
+            edgesFrom: {
+              some: {
+                claimId: {
+                  in: numericClaimIds,
+                },
+              },
+            },
+          },
+          {
+            edgesTo: {
+              some: {
+                claimId: {
+                  in: numericClaimIds,
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        edgesFrom: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+        edgesTo: {
+          include: {
+            claim: true,
+            startNode: true,
+            endNode: true,
+          },
+        },
+      },
+    });
+
+    // Enhance with entity data
+    const enhanced = await enhanceNodesWithEntities(nodes as any);
+
+    return res.json({
+      nodes: enhanced,
+      count: nodes.length,
+      claimIds: numericClaimIds,
+    });
+  } catch (error) {
+    console.error('Error fetching nodes by claim IDs:', error);
+    return res.status(500).json({ error: 'Failed to fetch nodes' });
+  }
+}
+
+// DEPRECATED: This endpoint should not be used
+export async function getFullGraph(_req: Request, res: Response): Promise<Response | void> {
+  return res.status(400).json({ 
+    error: 'Full graph endpoint is deprecated. Please use /api/claim_graph/:claimId with a specific starting point.' 
+  });
+}
+
+// Alias for backwards compatibility
+export const getGraph = getClaimGraph;

@@ -106,13 +106,25 @@ app.post('/api/credentials', verifyToken, credentialsApi.submitCredential);
 app.get('/api/v4/credentials/:uri', credentialsApi.getCredential);
 app.get('/api/credentials/:uri', credentialsApi.getCredential);
 
-// Graph endpoints
+// Graph endpoints - claim-based exploration
+app.get('/api/claim_graph/:claimId', graphApi.getClaimGraph);  // Main graph endpoint
+app.get('/api/v4/claim_graph/:claimId', graphApi.getClaimGraph);
+app.get('/api/graph/:uri', graphApi.getGraph);  // Backwards compatibility
 app.get('/api/v4/graph/:uri', graphApi.getGraph);
-app.get('/api/graph/:uri', graphApi.getGraph);
+
+// Node endpoints
+app.get('/api/node/:nodeId', graphApi.getNodeById);
+app.get('/api/v4/node/:nodeId', graphApi.getNodeById);
+app.get('/api/node/search', graphApi.searchNodes);
+app.get('/api/v4/node/search', graphApi.searchNodes);
+
+// Batch expansion endpoint
+app.post('/api/nodes/by-claims', graphApi.getNodesByClaimIds);
+app.post('/api/v4/nodes/by-claims', graphApi.getNodesByClaimIds);
+
+// Deprecated full graph endpoints
 app.get('/api/v4/graph', graphApi.getFullGraph);
 app.get('/api/graph', graphApi.getFullGraph);
-app.get('/api/v4/graph/node/:nodeId/neighbors', graphApi.getNeighbors);
-app.get('/api/graph/node/:nodeId/neighbors', graphApi.getNeighbors);
 
 // Feed endpoints
 app.get('/api/v4/feed', feedApi.getFeed);
