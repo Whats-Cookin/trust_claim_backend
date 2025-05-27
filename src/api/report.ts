@@ -37,6 +37,32 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       }
     });
     
+    // Transform validations to include entity objects
+    const transformedValidations = await Promise.all(validations.map(async (validation) => {
+      // Get entity info for subject if it's not the claim URI
+      const subjectEntity = validation.subject !== claimUri ? 
+        await prisma.uriEntity.findUnique({ where: { uri: validation.subject } }) : null;
+      
+      const objectEntity = validation.object ? 
+        await prisma.uriEntity.findUnique({ where: { uri: validation.object } }) : null;
+      
+      return {
+        ...validation,
+        subject: validation.subject === claimUri ? validation.subject : {
+          uri: validation.subject,
+          name: subjectEntity?.name || validation.edges?.[0]?.startNode?.name || validation.subject,
+          type: subjectEntity?.entityType || validation.edges?.[0]?.startNode?.entType,
+          image: subjectEntity?.image || validation.edges?.[0]?.startNode?.image
+        },
+        object: validation.object ? {
+          uri: validation.object,
+          name: objectEntity?.name || validation.edges?.[0]?.endNode?.name || validation.object,
+          type: objectEntity?.entityType || validation.edges?.[0]?.endNode?.entType,
+          image: objectEntity?.image || validation.edges?.[0]?.endNode?.image
+        } : null
+      };
+    }));
+    
     // Get other claims about same subject
     const relatedClaims = await prisma.claim.findMany({
       where: { 
@@ -54,6 +80,29 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
         }
       }
     });
+    
+    // Transform related claims to include entity objects
+    const transformedRelatedClaims = await Promise.all(relatedClaims.map(async (relClaim) => {
+      const subjectEntity = await prisma.uriEntity.findUnique({ where: { uri: relClaim.subject } });
+      const objectEntity = relClaim.object ? 
+        await prisma.uriEntity.findUnique({ where: { uri: relClaim.object } }) : null;
+      
+      return {
+        ...relClaim,
+        subject: {
+          uri: relClaim.subject,
+          name: subjectEntity?.name || relClaim.edges?.[0]?.startNode?.name || relClaim.subject,
+          type: subjectEntity?.entityType || relClaim.edges?.[0]?.startNode?.entType,
+          image: subjectEntity?.image || relClaim.edges?.[0]?.startNode?.image
+        },
+        object: relClaim.object ? {
+          uri: relClaim.object,
+          name: objectEntity?.name || relClaim.edges?.[0]?.endNode?.name || relClaim.object,
+          type: objectEntity?.entityType || relClaim.edges?.[0]?.endNode?.entType,
+          image: objectEntity?.image || relClaim.edges?.[0]?.endNode?.image
+        } : null
+      };
+    }));
     
     // Get claims by same issuer
     const issuerClaims = await prisma.claim.findMany({
@@ -74,6 +123,23 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       where: { uri: claim.object }
     }) : null;
     
+    // Transform the main claim to include entity objects
+    const transformedClaim = {
+      ...claim,
+      subject: {
+        uri: claim.subject,
+        name: subjectEntity?.name || claim.edges?.[0]?.startNode?.name || claim.subject,
+        type: subjectEntity?.entityType || claim.edges?.[0]?.startNode?.entType,
+        image: subjectEntity?.image || claim.edges?.[0]?.startNode?.image
+      },
+      object: claim.object ? {
+        uri: claim.object,
+        name: objectEntity?.name || claim.edges?.[0]?.endNode?.name || claim.object,
+        type: objectEntity?.entityType || claim.edges?.[0]?.endNode?.entType,
+        image: objectEntity?.image || claim.edges?.[0]?.endNode?.image
+      } : null
+    };
+    
     // Calculate validation summary
     const validationSummary = {
       total: validations.length,
@@ -84,14 +150,10 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
     };
     
     res.json({
-      claim: {
-        ...claim,
-        subjectEntity,
-        objectEntity
-      },
-      validations,
+      claim: transformedClaim,
+      validations: transformedValidations,
       validationSummary,
-      relatedClaims,
+      relatedClaims: transformedRelatedClaims,
       issuerReputation: {
         totalClaims: issuerClaims.length + 1,
         recentClaims: issuerClaims
