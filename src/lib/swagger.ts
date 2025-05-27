@@ -379,7 +379,36 @@ const options: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: ['./src/api/**/*.ts', './src/index.ts'], // Path to the API routes
+  apis: [
+    './src/api/swagger-docs.ts',
+    './src/api/authApi.ts',
+    './src/api/claims.ts',
+    './src/api/credentials.ts',
+    './src/api/feed.ts',
+    './src/api/graph.ts',
+    './src/api/legacyClaims.ts',
+    './src/api/report.ts',
+    './src/index.ts'
+  ], // Path to the API routes
 };
 
-export const swaggerSpec = swaggerJsdoc(options);
+let swaggerSpec: any = {};
+
+try {
+  swaggerSpec = swaggerJsdoc(options);
+  console.log('Swagger spec generated successfully');
+} catch (error) {
+  console.error('Error generating Swagger spec:', error);
+  // Return a minimal spec to prevent crashes
+  swaggerSpec = {
+    openapi: '3.0.0',
+    info: {
+      title: 'LinkedTrust API',
+      version: '2.0.0',
+      description: 'API documentation temporarily unavailable'
+    },
+    paths: {}
+  };
+}
+
+export { swaggerSpec };

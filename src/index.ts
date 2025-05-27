@@ -49,16 +49,28 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// Swagger documentation
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'LinkedTrust API Documentation',
-}));
+// Swagger documentation with error handling
+try {
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'LinkedTrust API Documentation',
+  }));
+} catch (error) {
+  console.error('Error setting up Swagger UI:', error);
+  app.get('/api/docs', (_req, res) => {
+    res.status(500).json({ error: 'API documentation temporarily unavailable' });
+  });
+}
 
 // Serve Swagger JSON
 app.get('/api/docs.json', (_req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  } catch (error) {
+    console.error('Error serving Swagger JSON:', error);
+    res.status(500).json({ error: 'API documentation JSON temporarily unavailable' });
+  }
 });
 
 // Health check

@@ -167,7 +167,7 @@ export async function getGraph(req: Request, res: Response) {
 // Get full graph (limited for performance)
 export async function getFullGraph(req: Request, res: Response) {
   try {
-    const { limit = 100 } = req.query;
+    const { limit = 20 } = req.query;  // Reduce default limit
     
     // Get recent nodes with edges
     const nodes = await prisma.node.findMany({
@@ -192,8 +192,8 @@ export async function getFullGraph(req: Request, res: Response) {
         id: edge.id,
         source: edge.startNodeId,
         target: edge.endNodeId,
-        label: edge.label,
-        claim: edge.claim
+        label: edge.label
+        // Removed claim to reduce payload
       }))
     );
     
