@@ -31,7 +31,7 @@ function extractCredentialName(credential: any): string {
 }
 
 // Helper to extract display hints based on credential type
-function extractDisplayHints(credential: any, schemaType: string): any {
+function extractDisplayHints(_credential: any, schemaType: string): any {
   const hints: any = {
     primaryDisplay: 'name',
     secondaryDisplay: 'issuer',
