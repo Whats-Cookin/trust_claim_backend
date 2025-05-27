@@ -405,7 +405,7 @@
  * @swagger
  * /api/v4/credentials:
  *   post:
- *     summary: Submit a credential
+ *     summary: Submit a credential with optional schema and metadata
  *     tags: [Credentials]
  *     security:
  *       - bearerAuth: []
@@ -414,12 +414,61 @@
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Credential'
+ *             oneOf:
+ *               - $ref: '#/components/schemas/Credential'
+ *               - type: object
+ *                 required:
+ *                   - credential
+ *                 properties:
+ *                   credential:
+ *                     $ref: '#/components/schemas/Credential'
+ *                   schema:
+ *                     oneOf:
+ *                       - type: string
+ *                         description: Schema identifier (e.g., 'OpenBadges', 'Blockcerts')
+ *                       - type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           version:
+ *                             type: string
+ *                   metadata:
+ *                     type: object
+ *                     properties:
+ *                       displayHints:
+ *                         type: object
+ *                         description: UI hints for credential display
+ *                       tags:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       visibility:
+ *                         type: string
+ *                         enum: [public, private, restricted]
  *     responses:
  *       201:
  *         description: Credential submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 credential:
+ *                   $ref: '#/components/schemas/Credential'
+ *                 claim:
+ *                   type: object
+ *                 uri:
+ *                   type: string
+ *                 schema:
+ *                   type: string
+ *                 metadata:
+ *                   type: object
  *       401:
  *         description: Unauthorized
+ *       409:
+ *         description: Credential already exists
  */
 
 /**

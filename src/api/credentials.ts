@@ -30,6 +30,33 @@ function extractCredentialName(credential: any): string {
   return meaningfulType;
 }
 
+// Helper to extract display hints based on credential type
+function extractDisplayHints(credential: any, schemaType: string): any {
+  const hints: any = {
+    primaryDisplay: 'name',
+    secondaryDisplay: 'issuer',
+    badgeType: 'credential'
+  };
+  
+  // OpenBadges specific hints
+  if (schemaType === 'OpenBadges') {
+    hints.primaryDisplay = 'achievement.name';
+    hints.imageField = 'achievement.image';
+    hints.badgeType = 'achievement';
+    hints.showSkills = true;
+    hints.showCriteria = true;
+  }
+  
+  // Blockcerts specific hints
+  if (schemaType === 'Blockcerts') {
+    hints.primaryDisplay = 'badge.name';
+    hints.imageField = 'badge.image';
+    hints.showBlockchainVerification = true;
+  }
+  
+  return hints;
+}
+
 // Helper to detect credential schema/type
 function detectCredentialSchema(credential: any): string {
   const context = credential['@context'] || credential.context;
@@ -47,18 +74,22 @@ function detectCredentialSchema(credential: any): string {
   return 'VerifiableCredential';
 }
 
-// Submit a credential
+// Submit a credential with optional schema and metadata
 export async function submitCredential(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
-    const credential = req.body;
+    const { credential, schema, metadata } = req.body;
     const userId = req.user?.id;
+    
+    // Handle both old format (credential only) and new format
+    const actualCredential = credential || req.body;
+    const hasNewFormat = !!credential;
     
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
     // Determine canonical URI
-    const canonicalUri = credential.id || `urn:credential:${generateCredentialHash(credential)}`;
+    const canonicalUri = actualCredential.id || `urn:credential:${generateCredentialHash(actualCredential)}`;
     
     // Check if credential already exists
     const existing = await prisma.credential.findFirst({
@@ -77,20 +108,45 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
       });
     }
     
-    // Store credential
+    // Determine schema - use provided schema or auto-detect
+    let schemaIdentifier = detectCredentialSchema(actualCredential);
+    let schemaMetadata = {};
+    
+    if (hasNewFormat && schema) {
+      // If schema provided, use it
+      if (typeof schema === 'string') {
+        schemaIdentifier = schema;
+      } else if (schema.id) {
+        schemaIdentifier = schema.id;
+        schemaMetadata = schema;
+      }
+    }
+    
+    // Merge any additional metadata
+    const fullMetadata = {
+      ...schemaMetadata,
+      ...(metadata || {}),
+      submittedBy: userId,
+      submittedAt: new Date().toISOString(),
+      displayHints: metadata?.displayHints || extractDisplayHints(actualCredential, schemaIdentifier)
+    };
+    
+    // Store credential with enhanced metadata
     const stored = await prisma.credential.create({
       data: {
         id: canonicalUri,
         canonicalUri: canonicalUri,
-        name: extractCredentialName(credential),
-        credentialSchema: detectCredentialSchema(credential),
-        context: credential['@context'] || credential.context,
-        type: credential.type,
-        issuer: credential.issuer,
-        issuanceDate: credential.issuanceDate ? new Date(credential.issuanceDate) : null,
-        expirationDate: credential.expirationDate ? new Date(credential.expirationDate) : null,
-        credentialSubject: credential.credentialSubject,
-        proof: credential.proof
+        name: extractCredentialName(actualCredential),
+        credentialSchema: schemaIdentifier,
+        context: actualCredential['@context'] || actualCredential.context,
+        type: actualCredential.type,
+        issuer: actualCredential.issuer,
+        issuanceDate: actualCredential.issuanceDate ? new Date(actualCredential.issuanceDate) : null,
+        expirationDate: actualCredential.expirationDate ? new Date(actualCredential.expirationDate) : null,
+        credentialSubject: actualCredential.credentialSubject,
+        proof: actualCredential.proof,
+        // Store additional metadata in existing sameAs field (JSON type)
+        sameAs: fullMetadata
       }
     });
     
@@ -106,7 +162,7 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
     });
     
     // Determine subject URI
-    const subjectUri = credential.credentialSubject?.id || getUserUri(userId);
+    const subjectUri = actualCredential.credentialSubject?.id || getUserUri(userId);
     
     // Create HAS claim
     const claim = await prisma.claim.create({
@@ -117,7 +173,7 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
         statement: `Has credential: ${stored.name}`,
         issuerId: getUserUri(userId),
         issuerIdType: 'URL',
-        sourceURI: credential.issuer?.id || credential.issuer || canonicalUri,
+        sourceURI: actualCredential.issuer?.id || actualCredential.issuer || canonicalUri,
         howKnown: 'VERIFIED_LOGIN',
         confidence: 1.0,
         effectiveDate: new Date()
@@ -128,12 +184,14 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
     PipelineTrigger.processClaim(claim.id).catch(console.error);
     
     // Extract additional claims from credential (if any)
-    extractClaimsFromCredential(credential, userId).catch(console.error);
+    extractClaimsFromCredential(actualCredential, userId).catch(console.error);
     
     res.json({ 
       credential: stored, 
       claim,
-      uri: canonicalUri
+      uri: canonicalUri,
+      schema: schemaIdentifier,
+      metadata: fullMetadata
     });
   } catch (error) {
     console.error('Error submitting credential:', error);

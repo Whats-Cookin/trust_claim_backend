@@ -118,9 +118,9 @@ app.get('/api/v4/node/:nodeId', graphApi.getNodeById);
 app.get('/api/node/search', graphApi.searchNodes);
 app.get('/api/v4/node/search', graphApi.searchNodes);
 
-// Batch expansion endpoint
-app.post('/api/nodes/by-claims', graphApi.getNodesByClaimIds);
-app.post('/api/v4/nodes/by-claims', graphApi.getNodesByClaimIds);
+// Node expansion endpoint
+app.get('/api/node/:nodeId/expand', graphApi.expandNode);
+app.get('/api/v4/node/:nodeId/expand', graphApi.expandNode);
 
 // Deprecated full graph endpoints
 app.get('/api/v4/graph', graphApi.getFullGraph);
