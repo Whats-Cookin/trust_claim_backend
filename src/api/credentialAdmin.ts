@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../lib/auth';
 import { prisma } from '../lib/prisma';
-import { v4 as uuidv4 } from 'uuid';
+// Use crypto.randomUUID() instead of uuid package
 import crypto from 'crypto';
 
 // Admin endpoint to create a credential for assignment
@@ -28,7 +28,7 @@ export async function createCredentialForAssignment(req: AuthRequest, res: Respo
     // For now, any authenticated user can create
 
     // Generate credential ID
-    const credentialId = `urn:uuid:${uuidv4()}`;
+    const credentialId = `urn:uuid:${crypto.randomUUID()}`;
     const issuanceDate = new Date().toISOString();
     const expirationDate = new Date(Date.now() + validityPeriod * 24 * 60 * 60 * 1000).toISOString();
 
@@ -50,7 +50,7 @@ export async function createCredentialForAssignment(req: AuthRequest, res: Respo
         id: recipientEmail ? `mailto:${recipientEmail}` : undefined,
         name: recipientName,
         achievement: {
-          id: `urn:uuid:${uuidv4()}`,
+          id: `urn:uuid:${crypto.randomUUID()}`,
           type: ['Achievement'],
           name: achievementName,
           description: achievementDescription,
@@ -128,7 +128,7 @@ export async function createCredentialForAssignment(req: AuthRequest, res: Respo
 }
 
 // Quick credential templates for common use cases
-export async function getCredentialTemplates(req: Request, res: Response): Promise<Response | void> {
+export async function getCredentialTemplates(_req: Request, res: Response): Promise<Response | void> {
   const templates = [
     {
       id: 'skill-verification',
