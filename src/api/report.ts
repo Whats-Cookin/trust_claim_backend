@@ -99,8 +99,17 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       image: mainClaimImage?.startNode?.image || mainClaimImage?.endNode?.image || null
     };
     
+    // Get the subject node if it exists
+    let subjectNode = null;
+    if (claim.subject) {
+      subjectNode = await prisma.node.findFirst({
+        where: { nodeUri: claim.subject }
+      });
+    }
+    
     res.json({
       claim: claimWithImage,
+      subjectNode,
       validations,
       validationSummary: {
         total: validations.length
