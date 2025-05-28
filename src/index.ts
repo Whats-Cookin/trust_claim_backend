@@ -17,6 +17,7 @@ import { verifyToken } from './lib/auth';
 // Import API routes
 import * as claimsApi from './api/claims';
 import * as credentialsApi from './api/credentials';
+import * as credentialAdminApi from './api/credentialAdmin';
 import * as graphApi from './api/graph';
 import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
@@ -105,6 +106,10 @@ app.post('/api/v4/credentials', verifyToken, credentialsApi.submitCredential);
 app.post('/api/credentials', verifyToken, credentialsApi.submitCredential);
 app.get('/api/v4/credentials/:uri', credentialsApi.getCredential);
 app.get('/api/credentials/:uri', credentialsApi.getCredential);
+
+// Credential admin endpoints
+app.post('/api/credentials/admin/create', verifyToken, credentialAdminApi.createCredentialForAssignment);
+app.get('/api/credentials/templates', credentialAdminApi.getCredentialTemplates);
 
 // Graph endpoints - claim-based exploration
 app.get('/api/claim_graph/:claimId', graphApi.getClaimGraph);  // Main graph endpoint
