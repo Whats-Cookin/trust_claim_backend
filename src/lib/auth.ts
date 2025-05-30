@@ -21,7 +21,7 @@ export function verifyToken(req: AuthRequest, res: Response, next: NextFunction)
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    const decoded = jwt.verify(token, process.env.ACCESS_SECRET || 'access-secret') as any;
     req.user = {
       id: decoded.userId || decoded.id,
       email: decoded.email
