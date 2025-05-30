@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
@@ -52,10 +52,14 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Swagger documentation with error handling
 try {
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  const swaggerMiddleware = (swaggerUi.serve as unknown) as RequestHandler[];
+  const swaggerHandler = (swaggerUi.setup(swaggerSpec, {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'LinkedTrust API Documentation',
-  }));
+  }) as unknown) as RequestHandler;
+  
+  app.use('/api/docs', swaggerMiddleware);
+  app.get('/api/docs', swaggerHandler);
 } catch (error) {
   console.error('Error setting up Swagger UI:', error);
   app.get('/api/docs', (_req, res) => {
@@ -88,7 +92,7 @@ app.post('/auth/refresh_token', authApi.refreshToken);
 
 // Legacy claim endpoints (v3 compatibility)
 app.post('/api/claim', verifyToken, legacyClaimsApi.createClaimV3);          // LEGACY: Create one claim (v3 format)
-app.post('/api/claim/v2', verifyToken, ...legacyClaimsApi.createClaimV3WithImages);
+app.post('/api/claim/v2', verifyToken, (legacyClaimsApi.createClaimV3WithImages[0] as RequestHandler), (legacyClaimsApi.createClaimV3WithImages[1] as RequestHandler));
 app.get('/api/claim/:id', legacyClaimsApi.getClaimV3);
 app.get('/api/claim', legacyClaimsApi.getClaimsV3);
 

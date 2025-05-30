@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, RequestHandler } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../lib/auth';
 import { PipelineTrigger } from '../services/pipelineTrigger';
@@ -20,7 +20,7 @@ const upload = multer({
       cb(new Error('Only image files are allowed'));
     }
   },
-});
+}) as unknown as { array: (fieldName: string, maxCount?: number) => RequestHandler };
 
 // Transform v3 claim input to new format
 function transformV3ToNew(v3Claim: any) {
@@ -184,7 +184,7 @@ export async function getClaimsV3(req: Request, res: Response) {
 }
 
 // Create claim with images - V3 compatible endpoint (multipart/form-data)
-export const createClaimV3WithImages = [
+export const createClaimV3WithImages: RequestHandler[] = [
   upload.array('images', 10), // max 10 images
   async (req: AuthRequest, res: Response): Promise<Response | void> => {
     try {
