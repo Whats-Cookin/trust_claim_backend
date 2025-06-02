@@ -1,6 +1,10 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// ⚠️ IMPORTANT: DO NOT MODIFY THIS SCHEMA WITHOUT APPROVAL ⚠️
+// Model changes must be reviewed before implementation
+// Contact the team lead before making any schema modifications
+
 generator client {
   provider = "prisma-client-js"
 }

@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './lib/swagger';
+import { initializeServerKeys, getServerPublicKey } from './lib/crypto';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,9 @@ import * as legacyClaimsApi from './api/legacyClaims';
 
 // Import Swagger documentation
 import './api/swagger-docs';
+
+// Initialize server keys on startup
+initializeServerKeys();
 
 // Create Express app
 const app = express();
@@ -146,6 +150,11 @@ app.post('/api/v4/reports/claim/:claimId/validate', verifyToken, reportApi.submi
 app.post('/api/reports/claim/:claimId/validate', verifyToken, reportApi.submitValidation);
 app.get('/api/v4/reports/entity/:uri', reportApi.getEntityReport);
 app.get('/api/reports/entity/:uri', reportApi.getEntityReport);
+
+// Server key endpoint
+app.get('/api/keys/server', (_req, res) => {
+  res.json(getServerPublicKey());
+});
 
 // Error handling middleware
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
