@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { AuthRequest, getUserUri } from '../lib/auth';
-import { PipelineTrigger } from '../services/pipelineTrigger';
+import { AuthRequest } from '../lib/auth';
+// import { PipelineTrigger } from '../services/pipelineTrigger'; // Unused - for future claim extraction
 import crypto from 'crypto';
 
 // Helper to generate hash for credential without ID
@@ -187,7 +187,8 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
 // This function is not currently used - we follow a user-driven flow where
 // users create their own claims after being redirected to the claim page.
 // Keeping this for potential future automation.
-async function extractClaimsFromCredential(credential: any, userId: string) {
+/*
+async function _extractClaimsFromCredential(credential: any, userId: string) {
   const claims = [];
   const subjectUri = credential.credentialSubject?.id || getUserUri(userId);
   const credentialUri = credential.id || `urn:credential:${generateCredentialHash(credential)}`;
@@ -242,6 +243,7 @@ async function extractClaimsFromCredential(credential: any, userId: string) {
   
   return claims;
 }
+*/
 
 // Get credential by URI
 export async function getCredential(req: Request, res: Response): Promise<Response | void> {

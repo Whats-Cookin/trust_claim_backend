@@ -1,5 +1,38 @@
 # Frontend Development Guidelines - Multiple Apps, One Backend
 
+## Business Model: The Validation Stamp
+
+### The Problem We Solve
+- **For HR/Philanthropy:** You have something valuable (job, grant money)
+- **You get:** 1000s of applicants, mostly fake/unqualified
+- **Current approach:** Waste time reviewing everyone
+
+### Our Solution: Pre-Validation
+1. **You send applicants to our platform** to get validated
+2. **Only talk to those who complete validation** (filters out fakes)
+3. **Applicants keep their "stamp"** for future applications
+4. **Everyone wins:** Less spam for you, less repetition for real applicants
+
+### Key Insight
+The validation stamp is **portable** - once someone proves they're real and skilled, they can reuse that proof. This creates a network effect where more employers requiring stamps makes stamps more valuable.
+
+## Why the Unified Graph Matters
+
+### Cross-Domain Trust
+The power of using trust_claim_backend is that you get access to the entire trust graph, not just your domain:
+
+- A person validated in one context (e.g., open source contributions) brings that credibility to another context (e.g., job applications)
+- Validators themselves have credibility from multiple domains
+- More connections = harder to fake
+
+### For Your App
+When showing validations, consider:
+- WHO validated (not just how many)
+- The validator's own credibility in the graph
+- Cross-domain signals that this is a real person
+
+Use the `/api/graph/{id}` endpoint to explore these connections.
+
 ## The Situation
 - We have ONE backend (trust_claim_backend) with a unified graph
 - We need MULTIPLE frontend apps for different use cases
@@ -19,15 +52,14 @@ POST /api/credentials    - Submit credentials
 ### 2. **Use Standard Claim Types**
 Don't invent new claim types without backend coordination:
 - HAS_SKILL
-- ENDORSES
+- ENDORSES  
 - HAS (for credentials)
 - VALIDATES
 - etc.
 
 ### 3. **Use Consistent Entity URIs**
-- People: `did:pkh:eip155:1:0x...` or `/users/{id}`
-- Credentials: `urn:credential:...`
-- Organizations: Use consistent URIs
+- Subjects must be valid URIs (per LinkedClaims spec)
+- Use existing patterns from the system
 
 ## Frontend App Architecture Options
 
@@ -66,6 +98,13 @@ For the recruiter app:
 
 ## Example: Recruiter Validation App
 
+### The Business Flow:
+1. **Recruiter posts job** → "Get validated at skillstamp.example.com"
+2. **Candidates visit link** → Create profile, import creds, get peer validations
+3. **System generates stamp** → Proof they're real + skilled
+4. **Recruiter dashboard** → Shows only validated candidates
+5. **Candidates reuse stamp** → Next job application is easier
+
 ### What It Needs:
 1. **Landing page** - Recruiter sends candidate here
 2. **Quick profile setup** - Name, skills to validate
@@ -84,8 +123,8 @@ POST /api/claims
   confidence: 0.8
 }
 
-// Get validations
-GET /api/claims/subject/{user-uri}?claim=VALIDATES
+// Get validations about a claim
+GET /api/claims/subject/{claim-uri}?claim=VALIDATES
 
 // Import credential
 POST /api/credentials
@@ -124,6 +163,9 @@ The backend promises:
 - Add domain-specific features
 - Integrate with external services
 - Store private data not suitable for public graph
+- **Track business metrics** (conversion rates, stamp reuse)
+- **Manage customer accounts** (recruiters, grantmakers)
+- **Handle payments** if charging for premium features
 
 ### Example: Recruiter App Backend
 ```javascript
@@ -133,11 +175,15 @@ The backend promises:
 - Email templates & automation
 - PDF generation for badges
 - Integration with ATS systems
+- Stamp templates per recruiter
+- Analytics on validation rates
+- Bulk invite management
 
 // But still uses trust_claim_backend for:
 - Creating claims
 - Fetching validation graphs
 - Storing credentials
+- The actual trust data
 ```
 
 ### Architecture Pattern:

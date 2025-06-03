@@ -59,10 +59,10 @@ export async function signClaimWithServerKey(
     claim: claim.claim!,
     object: claim.object || undefined,
     statement: claim.statement || undefined,
-    effectiveDate: claim.effectiveDate,
+    effectiveDate: claim.effectiveDate || undefined,
     sourceURI: claim.sourceURI || undefined,
     howKnown: claim.howKnown || undefined,
-    confidence: claim.confidence,
+    confidence: claim.confidence ?? undefined,
     aspect: claim.aspect || undefined,
     stars: claim.stars || undefined,
     score: claim.score || undefined,
@@ -109,7 +109,7 @@ export async function verifyClaimSignature(
 ): Promise<boolean> {
   try {
     const proofObj = typeof proof === 'string' ? JSON.parse(proof) : proof;
-    const { proofValue, ...proofWithoutSig } = proofObj;
+    const { proofValue } = proofObj;
     
     // Recreate the message that was signed using the library
     const { reconstructSignedMessage } = await import('./sign-linked-claim');
