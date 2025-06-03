@@ -10,3 +10,5 @@ model.json
 *.env.test*
 yarn.lock
 package-lock.json
+
+.env
