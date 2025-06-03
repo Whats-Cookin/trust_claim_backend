@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { AuthRequest, getUserUri } from '../lib/auth';
-import { PipelineTrigger } from '../services/pipelineTrigger';
+import { AuthRequest } from '../lib/auth';
+// import { PipelineTrigger } from '../services/pipelineTrigger'; // Unused - for future claim extraction
 import crypto from 'crypto';
 
 // Helper to generate hash for credential without ID
@@ -78,33 +78,32 @@ function detectCredentialSchema(credential: any): string {
 export async function submitCredential(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
     const { credential, schema, metadata } = req.body;
-    const userId = req.user?.id;
     
     // Handle both old format (credential only) and new format
     const actualCredential = credential || req.body;
     const hasNewFormat = !!credential;
     
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    
-    // Determine canonical URI
-    const canonicalUri = actualCredential.id || `urn:credential:${generateCredentialHash(actualCredential)}`;
+    // Determine canonical URI (use credential's own ID if it has one)
+    const credentialUri = actualCredential.id || `urn:credential:${generateCredentialHash(actualCredential)}`;
     
     // Check if credential already exists
     const existing = await prisma.credential.findFirst({
       where: {
         OR: [
-          { id: canonicalUri },
-          { canonicalUri: canonicalUri }
+          { id: credentialUri },
+          { canonicalUri: credentialUri }
         ]
       }
     });
     
     if (existing) {
-      return res.status(409).json({ 
-        error: 'Credential already exists',
-        credential: existing 
+      // Credential exists - just return it with claim URL
+      return res.json({
+        credential: existing,
+        uri: credentialUri,
+        schema: existing.credentialSchema,
+        claimUrl: `${process.env.FRONTEND_URL || 'https://linkedtrust.us'}/claim-credential?uri=${encodeURIComponent(credentialUri)}&schema=${encodeURIComponent(existing.credentialSchema || 'VerifiableCredential')}`,
+        message: 'Credential already exists. Visit the claim URL to claim it.'
       });
     }
     
@@ -126,7 +125,6 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
     const fullMetadata = {
       ...schemaMetadata,
       ...(metadata || {}),
-      submittedBy: userId,
       submittedAt: new Date().toISOString(),
       displayHints: metadata?.displayHints || extractDisplayHints(actualCredential, schemaIdentifier)
     };
@@ -134,8 +132,8 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
     // Store credential with enhanced metadata
     const stored = await prisma.credential.create({
       data: {
-        id: canonicalUri,
-        canonicalUri: canonicalUri,
+        id: credentialUri,
+        canonicalUri: credentialUri,
         name: extractCredentialName(actualCredential),
         credentialSchema: schemaIdentifier,
         context: actualCredential['@context'] || actualCredential.context,
@@ -153,45 +151,31 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
     // Register as entity
     await prisma.uriEntity.create({
       data: {
-        uri: canonicalUri,
+        uri: credentialUri,
         entityType: 'CREDENTIAL',
         entityTable: 'Credential',
-        entityId: canonicalUri,
+        entityId: credentialUri,
         name: stored.name || undefined
       }
     });
     
-    // Determine subject URI
-    const subjectUri = actualCredential.credentialSubject?.id || getUserUri(userId);
-    
-    // Create HAS claim
-    const claim = await prisma.claim.create({
-      data: {
-        subject: subjectUri,
-        claim: 'HAS',
-        object: canonicalUri,
-        statement: `Has credential: ${stored.name}`,
-        issuerId: getUserUri(userId),
-        issuerIdType: 'URL',
-        sourceURI: actualCredential.issuer?.id || actualCredential.issuer || canonicalUri,
-        howKnown: 'VERIFIED_LOGIN',
-        confidence: 1.0,
-        effectiveDate: new Date()
-      }
-    });
-    
-    // Trigger pipeline
-    PipelineTrigger.processClaim(claim.id).catch(console.error);
-    
-    // Extract additional claims from credential (if any)
-    extractClaimsFromCredential(actualCredential, userId).catch(console.error);
-    
+    // Return simple response with credential URI and claim URL
     res.json({ 
       credential: stored, 
-      claim,
-      uri: canonicalUri,
+      uri: credentialUri,
       schema: schemaIdentifier,
-      metadata: fullMetadata
+      metadata: fullMetadata,
+      claimUrl: `${process.env.FRONTEND_URL || 'https://linkedtrust.us'}/claim-credential?uri=${encodeURIComponent(credentialUri)}&schema=${encodeURIComponent(schemaIdentifier)}`,
+      instructions: {
+        message: 'To claim this credential, visit the claim URL and create a HAS claim',
+        claimEndpoint: '/api/claims',
+        exampleClaim: {
+          subject: 'your-user-uri',
+          claim: 'HAS',
+          object: credentialUri,
+          statement: 'Your personalized statement about this achievement'
+        }
+      }
     });
   } catch (error) {
     console.error('Error submitting credential:', error);
@@ -199,8 +183,12 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
   }
 }
 
-// Extract claims from credential content
-async function extractClaimsFromCredential(credential: any, userId: string) {
+// UNUSED: Extract claims from credential content
+// This function is not currently used - we follow a user-driven flow where
+// users create their own claims after being redirected to the claim page.
+// Keeping this for potential future automation.
+/*
+async function _extractClaimsFromCredential(credential: any, userId: string) {
   const claims = [];
   const subjectUri = credential.credentialSubject?.id || getUserUri(userId);
   const credentialUri = credential.id || `urn:credential:${generateCredentialHash(credential)}`;
@@ -255,6 +243,7 @@ async function extractClaimsFromCredential(credential: any, userId: string) {
   
   return claims;
 }
+*/
 
 // Get credential by URI
 export async function getCredential(req: Request, res: Response): Promise<Response | void> {

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../lib/auth';
 import { EntityDetector } from '../services/entityDetector';
 import { PipelineTrigger } from '../services/pipelineTrigger';
+import { signClaimWithServerKey } from '../lib/crypto';
 
 // Simple claim creation
 export async function createClaim(req: AuthRequest, res: Response): Promise<Response | void> {
@@ -28,24 +29,46 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       return res.status(400).json({ error: 'Subject and claim are required' });
     }
     
-    // Create claim
+    // Determine auth method based on how the user authenticated
+    let authMethod: 'google-oauth' | 'password' | 'api-token';
+    if (req.user?.email && req.user?.email.includes('@')) {
+      // If we have an email, likely OAuth (could be Google or other OAuth provider)
+      authMethod = 'google-oauth';
+    } else if (req.user?.id) {
+      // If we have a user ID but no email, likely password auth
+      authMethod = 'password';
+    } else {
+      // Otherwise, it's an API token
+      authMethod = 'api-token';
+    }
+    
+    // Prepare claim data
+    const claimData = {
+      subject,
+      claim,
+      object,
+      sourceURI: sourceURI || userId,
+      howKnown: howKnown || 'FIRST_HAND',
+      confidence: confidence || 1.0,
+      statement,
+      aspect,
+      stars,
+      score,
+      amt,
+      unit,
+      issuerId: userId,
+      issuerIdType: 'URL' as const,
+      effectiveDate: new Date()
+    };
+    
+    // Sign the claim with server key
+    const proof = await signClaimWithServerKey(claimData, authMethod);
+    
+    // Create claim with proof
     const newClaim = await prisma.claim.create({
       data: {
-        subject,
-        claim,
-        object,
-        sourceURI: sourceURI || userId, // Default to issuer if no source
-        howKnown: howKnown || 'FIRST_HAND',
-        confidence: confidence || 1.0,
-        statement,
-        aspect,
-        stars,
-        score,
-        amt,
-        unit,
-        issuerId: userId,
-        issuerIdType: 'URL',
-        effectiveDate: new Date()
+        ...claimData,
+        proof
       }
     });
     
