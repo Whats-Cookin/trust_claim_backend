@@ -24,6 +24,7 @@ import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
 import * as legacyClaimsApi from './api/legacyClaims';
+import * as videoApi from './api/video/upload';
 
 // Import Swagger documentation
 import './api/swagger-docs';
@@ -93,6 +94,9 @@ app.get('/health', (_req, res) => {
 app.post('/auth/login', authApi.login);
 app.post('/auth/signup', authApi.register);  // 'signup' maps to 'register'
 app.post('/auth/refresh_token', authApi.refreshToken);
+app.post('/auth/google', authApi.googleAuth);
+app.post('/auth/github', authApi.githubAuth);
+app.post('/auth/wallet', authApi.walletAuth);
 
 // Legacy claim endpoints (v3 compatibility)
 app.post('/api/claim', verifyToken, legacyClaimsApi.createClaimV3);          // LEGACY: Create one claim (v3 format)
@@ -158,6 +162,26 @@ app.get('/api/reports/entity/:uri', reportApi.getEntityReport);
 // Server key endpoint
 app.get('/api/keys/server', (_req, res) => {
   res.json(getServerPublicKey());
+});
+
+// Video upload endpoints
+app.post('/api/video/upload-url', verifyToken, videoApi.getVideoUploadUrl);
+app.post('/api/video/confirm', verifyToken, videoApi.confirmVideoUpload);
+app.get('/api/video/claim/:claimId', videoApi.getClaimVideos);
+app.delete('/api/video/:videoId', verifyToken, videoApi.deleteVideo);
+
+// Video config check endpoint (for debugging)
+app.get('/api/video/config', (_req, res) => {
+  const config = videoApi.checkVideoConfig();
+  if (config.configured) {
+    res.json({ status: 'configured' });
+  } else {
+    res.status(500).json({ 
+      status: 'not configured', 
+      missing: config.missing,
+      message: 'Video upload requires DigitalOcean Spaces configuration' 
+    });
+  }
 });
 
 // Error handling middleware
