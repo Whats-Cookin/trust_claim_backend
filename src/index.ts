@@ -88,9 +88,25 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Debug route - REMOVE IN PRODUCTION
+app.get('/debug/routes', (_req, res) => {
+  const routes: any[] = [];
+  app._router.stack.forEach((middleware: any) => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    }
+  });
+  res.json({ routes: routes.filter(r => r.path.includes('auth')) });
+});
+
 // API Routes
 
 // Auth endpoints
+console.log('AUTH API:', Object.keys(authApi));
+console.log('Has googleAuth?', typeof authApi.googleAuth);
 app.post('/auth/login', authApi.login);
 app.post('/auth/signup', authApi.register);  // 'signup' maps to 'register'
 app.post('/auth/refresh_token', authApi.refreshToken);
