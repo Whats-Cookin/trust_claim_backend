@@ -23,26 +23,78 @@ function generateTokens(userId: number, did?: string) {
   return { accessToken, refreshToken };
 }
 
-// Google OAuth login
+// Google OAuth login - supports both ID token and authorization code
 export async function googleAuth(req: Request, res: Response): Promise<Response | void> {
   try {
-    const { googleAuthCode } = req.body;
+    const { googleAuthCode, code, idToken } = req.body;
     
-    if (!googleAuthCode) {
-      return res.status(400).json({ error: 'Google auth code required' });
+    let payload;
+    
+    // Support both flows:
+    // 1. ID token from Google Sign-In (googleAuthCode or idToken)
+    // 2. Authorization code from OAuth flow (code)
+    
+    if (googleAuthCode || idToken) {
+      // Google Sign-In flow - we have an ID token
+      const tokenToVerify = googleAuthCode || idToken;
+      
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: tokenToVerify,
+          audience: process.env.GOOGLE_CLIENT_ID
+        });
+        
+        payload = ticket.getPayload();
+        if (!payload) {
+          return res.status(401).json({ error: 'Invalid Google token' });
+        }
+      } catch (error) {
+        console.error('Token verification error:', error);
+        return res.status(401).json({ error: 'Invalid Google token' });
+      }
+      
+    } else if (code) {
+      // OAuth 2.0 authorization code flow
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/auth/google/callback',
+          grant_type: 'authorization_code'
+        })
+      });
+      
+      const tokenData = await tokenResponse.json();
+      
+      if (tokenData.error || !tokenData.id_token) {
+        console.error('Google token exchange error:', tokenData);
+        return res.status(401).json({ error: 'Failed to exchange Google authorization code' });
+      }
+      
+      // Verify the ID token we got from the exchange
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: tokenData.id_token,
+          audience: process.env.GOOGLE_CLIENT_ID
+        });
+        
+        payload = ticket.getPayload();
+        if (!payload) {
+          return res.status(401).json({ error: 'Invalid Google token' });
+        }
+      } catch (error) {
+        console.error('Token verification error:', error);
+        return res.status(401).json({ error: 'Invalid Google token' });
+      }
+      
+    } else {
+      return res.status(400).json({ error: 'Google auth code or ID token required' });
     }
     
-    // Verify the Google token
-    const ticket = await googleClient.verifyIdToken({
-      idToken: googleAuthCode,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-    
-    const payload = ticket.getPayload();
-    if (!payload) {
-      return res.status(401).json({ error: 'Invalid Google token' });
-    }
-    
+    // Extract user info from payload
     const { email, name, picture, sub: googleId } = payload;
     
     // Find or create user
@@ -79,6 +131,13 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
         email: user.email,
         name: user.name,
         profileImage: picture || null
+      },
+      // Include the Google ID for DID purposes
+      googleData: {
+        googleId,
+        email,
+        name,
+        picture
       }
     });
   } catch (error) {
@@ -201,10 +260,114 @@ export async function refreshToken(req: Request, res: Response): Promise<Respons
   }
 }
 
-// GitHub OAuth (placeholder for now)
-export async function githubAuth(_req: Request, res: Response): Promise<Response | void> {
-  // TODO: Implement GitHub OAuth
-  return res.status(501).json({ error: 'GitHub auth not implemented yet' });
+// GitHub OAuth
+export async function githubAuth(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'GitHub auth code required' });
+    }
+    
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code
+      })
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (tokenData.error || !tokenData.access_token) {
+      console.error('GitHub token error:', tokenData);
+      return res.status(401).json({ error: 'Failed to get GitHub access token' });
+    }
+    
+    // Get user info with the access token
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: { 
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (!userResponse.ok) {
+      return res.status(401).json({ error: 'Failed to get GitHub user info' });
+    }
+    
+    const githubUser = await userResponse.json();
+    
+    // Find or create user
+    let user = await prisma.user.findFirst({
+      where: { 
+        authProviderId: githubUser.id.toString(),
+        authType: 'GITHUB'
+      }
+    });
+    
+    if (!user) {
+      // Check if email already exists with different auth
+      if (githubUser.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: githubUser.email }
+        });
+        
+        if (existingUser) {
+          return res.status(409).json({ 
+            error: 'Email already registered with different auth method' 
+          });
+        }
+      }
+      
+      user = await prisma.user.create({
+        data: {
+          email: githubUser.email,
+          name: githubUser.name || githubUser.login,
+          authType: 'GITHUB',
+          authProviderId: githubUser.id.toString()
+        }
+      });
+    }
+    
+    const { accessToken, refreshToken } = generateTokens(user.id);
+    
+    return res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        githubUsername: githubUser.login,
+        profileImage: githubUser.avatar_url
+      },
+      // Return GitHub data for the frontend to use
+      githubData: {
+        username: githubUser.login,
+        profileUrl: githubUser.html_url,
+        publicRepos: githubUser.public_repos,
+        followers: githubUser.followers,
+        following: githubUser.following,
+        createdAt: githubUser.created_at,
+        bio: githubUser.bio,
+        company: githubUser.company,
+        location: githubUser.location,
+        hireable: githubUser.hireable,
+        // Include the access token so frontend can make additional API calls
+        accessToken: tokenData.access_token
+      }
+    });
+  } catch (error) {
+    console.error('GitHub auth error:', error);
+    return res.status(500).json({ error: 'GitHub authentication failed' });
+  }
 }
 
 // Wallet auth (placeholder)
