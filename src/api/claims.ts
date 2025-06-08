@@ -61,8 +61,14 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       effectiveDate: new Date()
     };
     
-    // Sign the claim with server key
-    const proof = await signClaimWithServerKey(claimData, authMethod);
+    // Try to sign the claim with server key, but don't fail if it doesn't work
+    let proof = null;
+    try {
+      proof = await signClaimWithServerKey(claimData, authMethod);
+    } catch (error) {
+      console.error('Warning: Failed to sign claim with server key:', error);
+      // Continue without proof - claim creation should not fail
+    }
     
     // Create claim with proof
     const newClaim = await prisma.claim.create({
