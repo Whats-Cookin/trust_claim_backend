@@ -1,0 +1,1 @@
+DATABASE_URL="postgresql://doadmin:PASSWORD@trustclaim-do-user-15332657-0.c.db.ondigitalocean.com:25060/claim?sslmode=require"
