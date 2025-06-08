@@ -4,9 +4,10 @@ import { prisma } from '../lib/prisma';
 // Get feed entries
 export async function getFeed(req: Request, res: Response) {
   try {
-    const { page = 1, limit = 50, filter } = req.query;
+    const { page = 1, limit = 50, filter, query, search } = req.query;
     const pageNum = Number(page);
     const limitNum = Number(limit);
+    const searchTerm = (query || search) as string;
     
     // Build filter conditions
     const where: any = {
@@ -14,15 +15,50 @@ export async function getFeed(req: Request, res: Response) {
       statement: { not: null }
     };
     
+    // Add search conditions if provided
+    if (searchTerm) {
+      where.OR = [
+        { statement: { contains: searchTerm, mode: 'insensitive' } },
+        { subject: { contains: searchTerm, mode: 'insensitive' } },
+        { object: { contains: searchTerm, mode: 'insensitive' } },
+        { aspect: { contains: searchTerm, mode: 'insensitive' } },
+        { sourceURI: { contains: searchTerm, mode: 'insensitive' } }
+      ];
+    }
+    
     // Add optional filters
     if (filter === 'ratings') {
-      where.OR = [
+      const ratingFilter = [
         { stars: { not: null } },
         { score: { not: null } }
       ];
+      
+      if (searchTerm) {
+        // Combine search and rating filter
+        where.AND = [
+          { OR: where.OR },
+          { OR: ratingFilter }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = ratingFilter;
+      }
     } else if (filter === 'credentials') {
-      where.claim = 'HAS';
-      where.object = { contains: 'credential' };
+      const credFilter = {
+        claim: 'HAS',
+        object: { contains: 'credential' }
+      };
+      
+      if (searchTerm) {
+        // Combine search and credential filter
+        where.AND = [
+          { OR: where.OR },
+          credFilter
+        ];
+        delete where.OR;
+      } else {
+        Object.assign(where, credFilter);
+      }
     }
     
     // Get claims with their edges
