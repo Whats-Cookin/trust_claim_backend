@@ -148,7 +148,7 @@ export async function getClaimVideos(req: Request, res: Response): Promise<Respo
       where: {
         claimId: parseInt(claimId),
         metadata: {
-          path: '$.type',
+          path: ['$.type'],
           equals: 'video'
         }
       },

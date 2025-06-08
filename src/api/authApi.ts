@@ -67,7 +67,7 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
         })
       });
       
-      const tokenData = await tokenResponse.json();
+      const tokenData = await tokenResponse.json() as any;
       
       if (tokenData.error || !tokenData.id_token) {
         console.error('Google token exchange error:', tokenData);
@@ -283,7 +283,7 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
       })
     });
     
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as any;
     
     if (tokenData.error || !tokenData.access_token) {
       console.error('GitHub token error:', tokenData);
@@ -302,7 +302,7 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
       return res.status(401).json({ error: 'Failed to get GitHub user info' });
     }
     
-    const githubUser = await userResponse.json();
+    const githubUser = await userResponse.json() as any;
     
     // Find or create user
     let user = await prisma.user.findFirst({

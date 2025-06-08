@@ -1,45 +1,109 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 
 // Get feed entries
 export async function getFeed(req: Request, res: Response) {
   try {
-    const { page = 1, limit = 50, filter } = req.query;
+    const { page = 1, limit = 50, filter, query, search } = req.query;
     const pageNum = Number(page);
     const limitNum = Number(limit);
+    const searchTerm = ((query || search) as string)?.trim();
     
-    // Build filter conditions
-    const where: any = {
-      effectiveDate: { not: null },
-      statement: { not: null }
-    };
+    let claims: any[];
+    let where: any;
     
-    // Add optional filters
-    if (filter === 'ratings') {
-      where.OR = [
-        { stars: { not: null } },
-        { score: { not: null } }
-      ];
-    } else if (filter === 'credentials') {
-      where.claim = 'HAS';
-      where.object = { contains: 'credential' };
-    }
-    
-    // Get claims with their edges
-    const claims = await prisma.claim.findMany({
-      where,
-      orderBy: { effectiveDate: 'desc' },
-      skip: (pageNum - 1) * limitNum,
-      take: limitNum,
-      include: {
-        edges: {
-          include: {
-            startNode: true,
-            endNode: true
+    // If search term provided, use raw SQL for better performance
+    if (searchTerm) {
+      const searchQuery = `%${searchTerm}%`;
+      
+      // Build filter conditions for SQL
+      let filterCondition = '';
+      if (filter === 'ratings') {
+        filterCondition = 'AND (c.stars IS NOT NULL OR c.score IS NOT NULL)';
+      } else if (filter === 'credentials') {
+        filterCondition = `AND c.claim = 'HAS' AND c.object ILIKE '%credential%'`;
+      }
+      
+      claims = await prisma.$queryRaw<any[]>`
+        SELECT DISTINCT ON (c.id)
+          c.*,
+          json_agg(DISTINCT e.*) as edges
+        FROM "Claim" c
+        LEFT JOIN "Edge" e ON c.id = e."claimId"
+        WHERE c."effectiveDate" IS NOT NULL
+          AND c.statement IS NOT NULL
+          AND (
+            c.subject ILIKE ${searchQuery} OR
+            c.statement ILIKE ${searchQuery} OR
+            c.object ILIKE ${searchQuery} OR
+            c."sourceURI" ILIKE ${searchQuery} OR
+            c.aspect ILIKE ${searchQuery}
+          )
+          ${Prisma.raw(filterCondition)}
+        GROUP BY c.id
+        ORDER BY c.id DESC, c."effectiveDate" DESC
+        LIMIT ${limitNum}
+        OFFSET ${(pageNum - 1) * limitNum}
+      `;
+      
+      // Get edges with nodes for the claims
+      const claimIds = claims.map(c => c.id);
+      const edges = await prisma.edge.findMany({
+        where: { claimId: { in: claimIds } },
+        include: {
+          startNode: true,
+          endNode: true
+        }
+      });
+      
+      // Map edges to claims
+      const edgesByClaimId = edges.reduce((acc, edge) => {
+        if (!acc[edge.claimId]) acc[edge.claimId] = [];
+        acc[edge.claimId].push(edge);
+        return acc;
+      }, {} as Record<number, typeof edges>);
+      
+      // Add edges to claims
+      claims.forEach(claim => {
+        claim.edges = edgesByClaimId[claim.id] || [];
+      });
+      
+      // Continue with the same transformation logic below...
+    } else {
+      // Original logic for non-search queries
+      where = {
+        effectiveDate: { not: null },
+        statement: { not: null }
+      };
+      
+      // Add optional filters
+      if (filter === 'ratings') {
+        where.OR = [
+          { stars: { not: null } },
+          { score: { not: null } }
+        ];
+      } else if (filter === 'credentials') {
+        where.claim = 'HAS';
+        where.object = { contains: 'credential' };
+      }
+      
+      // Get claims with their edges
+      claims = await prisma.claim.findMany({
+        where,
+        orderBy: { effectiveDate: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+        include: {
+          edges: {
+            include: {
+              startNode: true,
+              endNode: true
+            }
           }
         }
-      }
-    });
+      });
+    }
     
     // Transform to feed entries
     const entries = await Promise.all(claims.map(async claim => {
@@ -82,7 +146,34 @@ export async function getFeed(req: Request, res: Response) {
     }));
     
     // Get total count for pagination
-    const total = await prisma.claim.count({ where });
+    let total: number;
+    if (searchTerm) {
+      const searchQuery = `%${searchTerm}%`;
+      let filterCondition = '';
+      if (filter === 'ratings') {
+        filterCondition = 'AND (c.stars IS NOT NULL OR c.score IS NOT NULL)';
+      } else if (filter === 'credentials') {
+        filterCondition = `AND c.claim = 'HAS' AND c.object ILIKE '%credential%'`;
+      }
+      
+      const countResult = await prisma.$queryRaw<[{count: bigint}]>`
+        SELECT COUNT(DISTINCT c.id) as count
+        FROM "Claim" c
+        WHERE c."effectiveDate" IS NOT NULL
+          AND c.statement IS NOT NULL
+          AND (
+            c.subject ILIKE ${searchQuery} OR
+            c.statement ILIKE ${searchQuery} OR
+            c.object ILIKE ${searchQuery} OR
+            c."sourceURI" ILIKE ${searchQuery} OR
+            c.aspect ILIKE ${searchQuery}
+          )
+          ${Prisma.raw(filterCondition)}
+      `;
+      total = Number(countResult[0].count);
+    } else {
+      total = await prisma.claim.count({ where });
+    }
     
     res.json({ 
       entries,
