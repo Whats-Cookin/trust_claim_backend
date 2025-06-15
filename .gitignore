@@ -1,6 +1,6 @@
 /node_modules
 /dist
-/prisma
+/prisma/badmigrations
 build
 *.env*
 dev.db
