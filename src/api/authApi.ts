@@ -473,7 +473,7 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: 'http://localhost:3001/auth/linkedin/callback'
+        redirect_uri: 'https://talent.linkedtrust.us/auth/linkedin/callback'
       })
     });
     
