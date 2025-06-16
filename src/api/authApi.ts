@@ -123,6 +123,13 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
     
     const { accessToken, refreshToken } = generateTokens(user.id);
     
+    console.log('[GitHub Auth] Success! User logged in:', { 
+      userId: user.id, 
+      email: user.email,
+      authType: user.authType,
+      githubUsername: githubUser.login 
+    });
+    
     return res.json({
       accessToken,
       refreshToken,
@@ -359,20 +366,31 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
         });
         
         if (existingUser) {
-          return res.status(409).json({ 
-            error: 'Email already registered with different auth method' 
-          });
+          console.log('[GitHub Auth] Email already exists, linking accounts:', githubUser.email);
+          // User exists with same email - this is OK! Just log them in
+          user = existingUser;
+          
+          // Optionally update GitHub-specific info if not already set
+          // Note: We don't have a githubUsername field in the schema currently
+          // Could store in authProviderId if authType is not GITHUB
+          if (existingUser.authType !== 'GITHUB') {
+            console.log('[GitHub Auth] User authenticated with different method, keeping existing auth info');
+          }
         }
       }
       
-      user = await prisma.user.create({
-        data: {
-          email: githubUser.email,
-          name: githubUser.name || githubUser.login,
-          authType: 'GITHUB',
-          authProviderId: githubUser.id.toString()
-        }
-      });
+      // If still no user, create new one
+      if (!user) {
+        console.log('[GitHub Auth] Creating new user');
+        user = await prisma.user.create({
+          data: {
+            email: githubUser.email,
+            name: githubUser.name || githubUser.login,
+            authType: 'GITHUB',
+            authProviderId: githubUser.id.toString()
+          }
+        });
+      }
     }
     
     const { accessToken, refreshToken } = generateTokens(user.id);
