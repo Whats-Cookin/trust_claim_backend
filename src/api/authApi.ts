@@ -263,12 +263,45 @@ export async function refreshToken(req: Request, res: Response): Promise<Respons
 // GitHub OAuth
 export async function githubAuth(req: Request, res: Response): Promise<Response | void> {
   try {
-    const { code } = req.body;
+    const { code, client_id } = req.body;
+    console.log('[GitHub Auth] Request body:', { code: code?.substring(0, 10) + '...', client_id });
     
     if (!code) {
       return res.status(400).json({ error: 'GitHub auth code required' });
     }
     
+    let clientId: string | undefined;
+    let clientSecret: string | undefined;
+    
+    // Check if client_id provided (new way)
+    if (client_id) {
+      console.log('[GitHub Auth] Looking up client_id in auth_apps table:', client_id);
+      // Look up secret from auth_apps table
+      const authApp = await prisma.authApp.findUnique({
+        where: { clientId: client_id }
+      });
+      
+      if (!authApp) {
+        console.error('[GitHub Auth] Client ID not found in auth_apps table:', client_id);
+        return res.status(400).json({ error: 'Invalid client_id' });
+      }
+      
+      console.log('[GitHub Auth] Found auth app:', authApp.appName, authApp.provider);
+      clientId = authApp.clientId;
+      clientSecret = authApp.clientSecret;
+    } else {
+      // Fall back to env vars (existing way for backwards compatibility)
+      console.log('[GitHub Auth] No client_id provided, using env vars');
+      clientId = process.env.GITHUB_CLIENT_ID;
+      clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    }
+    
+    if (!clientId || !clientSecret) {
+      console.error('[GitHub Auth] Missing credentials:', { clientId: !!clientId, clientSecret: !!clientSecret });
+      return res.status(500).json({ error: 'GitHub OAuth not configured' });
+    }
+    
+    console.log('[GitHub Auth] Exchanging code with GitHub, client_id:', clientId);
     // Exchange code for access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -277,13 +310,19 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code
       })
     });
     
     const tokenData = await tokenResponse.json() as any;
+    console.log('[GitHub Auth] GitHub response:', { 
+      status: tokenResponse.status,
+      error: tokenData.error,
+      error_description: tokenData.error_description,
+      has_access_token: !!tokenData.access_token 
+    });
     
     if (tokenData.error || !tokenData.access_token) {
       console.error('GitHub token error:', tokenData);
