@@ -420,6 +420,179 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
   }
 }
 
+// LinkedIn OAuth
+export async function linkedinAuth(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const { code, client_id } = req.body;
+    console.log('[LinkedIn Auth] Request body:', { code: code?.substring(0, 10) + '...', client_id });
+    
+    if (!code) {
+      return res.status(400).json({ error: 'LinkedIn auth code required' });
+    }
+    
+    let clientId: string | undefined;
+    let clientSecret: string | undefined;
+    
+    // Check if client_id provided (new way)
+    if (client_id) {
+      console.log('[LinkedIn Auth] Looking up client_id in auth_apps table:', client_id);
+      // Look up secret from auth_apps table
+      const authApp = await prisma.authApp.findUnique({
+        where: { clientId: client_id }
+      });
+      
+      if (!authApp) {
+        console.error('[LinkedIn Auth] Client ID not found in auth_apps table:', client_id);
+        return res.status(400).json({ error: 'Invalid client_id' });
+      }
+      
+      console.log('[LinkedIn Auth] Found auth app:', authApp.appName, authApp.provider);
+      clientId = authApp.clientId;
+      clientSecret = authApp.clientSecret;
+    } else {
+      // Fall back to env vars (existing way for backwards compatibility)
+      console.log('[LinkedIn Auth] No client_id provided, using env vars');
+      clientId = process.env.LINKEDIN_CLIENT_ID;
+      clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    }
+    
+    if (!clientId || !clientSecret) {
+      console.error('[LinkedIn Auth] Missing credentials:', { clientId: !!clientId, clientSecret: !!clientSecret });
+      return res.status(500).json({ error: 'LinkedIn OAuth not configured' });
+    }
+    
+    console.log('[LinkedIn Auth] Exchanging code with LinkedIn, client_id:', clientId);
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: 'http://localhost:3001/auth/linkedin/callback'
+      })
+    });
+    
+    const tokenData = await tokenResponse.json() as any;
+    console.log('[LinkedIn Auth] LinkedIn response:', { 
+      status: tokenResponse.status,
+      error: tokenData.error,
+      error_description: tokenData.error_description,
+      has_access_token: !!tokenData.access_token 
+    });
+    
+    if (tokenData.error || !tokenData.access_token) {
+      console.error('LinkedIn token error:', tokenData);
+      return res.status(401).json({ error: 'Failed to get LinkedIn access token' });
+    }
+    
+    // Get user info with the access token
+    const userResponse = await fetch('https://api.linkedin.com/v2/me', {
+      headers: { 
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'X-Restli-Protocol-Version': '2.0.0'
+      }
+    });
+    
+    if (!userResponse.ok) {
+      return res.status(401).json({ error: 'Failed to get LinkedIn user info' });
+    }
+    
+    const linkedinUser = await userResponse.json() as any;
+    
+    // Get email separately (LinkedIn requires separate call)
+    const emailResponse = await fetch('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+      headers: { 
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'X-Restli-Protocol-Version': '2.0.0'
+      }
+    });
+    
+    let email = null;
+    if (emailResponse.ok) {
+      const emailData = await emailResponse.json() as any;
+      email = emailData.elements?.[0]?.['handle~']?.emailAddress;
+    }
+    
+    // LinkedIn ID is in the format: id: "ABC123DEF"
+    const linkedinId = linkedinUser.id;
+    const firstName = linkedinUser.localizedFirstName || '';
+    const lastName = linkedinUser.localizedLastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    // Find or create user
+    let user = await prisma.user.findFirst({
+      where: { 
+        authProviderId: linkedinId,
+        authType: 'OAUTH'
+      }
+    });
+    
+    if (!user) {
+      // Check if email already exists with different auth
+      if (email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email }
+        });
+        
+        if (existingUser) {
+          console.log('[LinkedIn Auth] Email already exists, linking accounts:', email);
+          // User exists with same email - this is OK! Just log them in
+          user = existingUser;
+          
+          // Optionally update LinkedIn-specific info if not already set
+          if (existingUser.authType !== 'OAUTH') {
+            console.log('[LinkedIn Auth] User authenticated with different method, keeping existing auth info');
+          }
+        }
+      }
+      
+      // If still no user, create new one
+      if (!user) {
+        console.log('[LinkedIn Auth] Creating new user');
+        user = await prisma.user.create({
+          data: {
+            email: email || `linkedin_${linkedinId}@linkedin.local`,
+            name: fullName || 'LinkedIn User',
+            authType: 'OAUTH',
+            authProviderId: linkedinId
+          }
+        });
+      }
+    }
+    
+    const { accessToken, refreshToken } = generateTokens(user.id);
+    
+    return res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        linkedinId: linkedinId,
+        profileImage: null
+      },
+      // Return LinkedIn data for the frontend to use
+      linkedinData: {
+        linkedinId,
+        firstName,
+        lastName,
+        profileUrl: `https://www.linkedin.com/in/${linkedinId}`,
+        // Include the access token so frontend can make additional API calls
+        accessToken: tokenData.access_token
+      }
+    });
+  } catch (error) {
+    console.error('LinkedIn auth error:', error);
+    return res.status(500).json({ error: 'LinkedIn authentication failed' });
+  }
+}
+
 // Wallet auth (placeholder)
 export async function walletAuth(req: Request, res: Response): Promise<Response | void> {
   try {
