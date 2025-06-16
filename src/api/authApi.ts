@@ -123,13 +123,6 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
     
     const { accessToken, refreshToken } = generateTokens(user.id);
     
-    console.log('[GitHub Auth] Success! User logged in:', { 
-      userId: user.id, 
-      email: user.email,
-      authType: user.authType,
-      githubUsername: githubUser.login 
-    });
-    
     return res.json({
       accessToken,
       refreshToken,
