@@ -112,6 +112,7 @@ app.post('/auth/signup', authApi.register);  // 'signup' maps to 'register'
 app.post('/auth/refresh_token', authApi.refreshToken);
 app.post('/auth/google', authApi.googleAuth);
 app.post('/auth/github', authApi.githubAuth);
+app.post('/auth/linkedin', authApi.linkedinAuth);
 app.post('/auth/wallet', authApi.walletAuth);
 
 // Legacy claim endpoints (v3 compatibility)
