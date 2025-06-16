@@ -383,3 +383,7 @@ and run
 `npm run migrate:dev`
 
 to set up the initial database
+
+## Multiple OAuth Apps Support
+
+The backend supports multiple OAuth applications via the auth_apps table - see `prisma/protected/app_snippets.sql` for credential management.

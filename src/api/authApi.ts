@@ -263,12 +263,45 @@ export async function refreshToken(req: Request, res: Response): Promise<Respons
 // GitHub OAuth
 export async function githubAuth(req: Request, res: Response): Promise<Response | void> {
   try {
-    const { code } = req.body;
+    const { code, client_id } = req.body;
+    console.log('[GitHub Auth] Request body:', { code: code?.substring(0, 10) + '...', client_id });
     
     if (!code) {
       return res.status(400).json({ error: 'GitHub auth code required' });
     }
     
+    let clientId: string | undefined;
+    let clientSecret: string | undefined;
+    
+    // Check if client_id provided (new way)
+    if (client_id) {
+      console.log('[GitHub Auth] Looking up client_id in auth_apps table:', client_id);
+      // Look up secret from auth_apps table
+      const authApp = await prisma.authApp.findUnique({
+        where: { clientId: client_id }
+      });
+      
+      if (!authApp) {
+        console.error('[GitHub Auth] Client ID not found in auth_apps table:', client_id);
+        return res.status(400).json({ error: 'Invalid client_id' });
+      }
+      
+      console.log('[GitHub Auth] Found auth app:', authApp.appName, authApp.provider);
+      clientId = authApp.clientId;
+      clientSecret = authApp.clientSecret;
+    } else {
+      // Fall back to env vars (existing way for backwards compatibility)
+      console.log('[GitHub Auth] No client_id provided, using env vars');
+      clientId = process.env.GITHUB_CLIENT_ID;
+      clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    }
+    
+    if (!clientId || !clientSecret) {
+      console.error('[GitHub Auth] Missing credentials:', { clientId: !!clientId, clientSecret: !!clientSecret });
+      return res.status(500).json({ error: 'GitHub OAuth not configured' });
+    }
+    
+    console.log('[GitHub Auth] Exchanging code with GitHub, client_id:', clientId);
     // Exchange code for access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -277,13 +310,19 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code
       })
     });
     
     const tokenData = await tokenResponse.json() as any;
+    console.log('[GitHub Auth] GitHub response:', { 
+      status: tokenResponse.status,
+      error: tokenData.error,
+      error_description: tokenData.error_description,
+      has_access_token: !!tokenData.access_token 
+    });
     
     if (tokenData.error || !tokenData.access_token) {
       console.error('GitHub token error:', tokenData);
@@ -320,20 +359,31 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
         });
         
         if (existingUser) {
-          return res.status(409).json({ 
-            error: 'Email already registered with different auth method' 
-          });
+          console.log('[GitHub Auth] Email already exists, linking accounts:', githubUser.email);
+          // User exists with same email - this is OK! Just log them in
+          user = existingUser;
+          
+          // Optionally update GitHub-specific info if not already set
+          // Note: We don't have a githubUsername field in the schema currently
+          // Could store in authProviderId if authType is not GITHUB
+          if (existingUser.authType !== 'GITHUB') {
+            console.log('[GitHub Auth] User authenticated with different method, keeping existing auth info');
+          }
         }
       }
       
-      user = await prisma.user.create({
-        data: {
-          email: githubUser.email,
-          name: githubUser.name || githubUser.login,
-          authType: 'GITHUB',
-          authProviderId: githubUser.id.toString()
-        }
-      });
+      // If still no user, create new one
+      if (!user) {
+        console.log('[GitHub Auth] Creating new user');
+        user = await prisma.user.create({
+          data: {
+            email: githubUser.email,
+            name: githubUser.name || githubUser.login,
+            authType: 'GITHUB',
+            authProviderId: githubUser.id.toString()
+          }
+        });
+      }
     }
     
     const { accessToken, refreshToken } = generateTokens(user.id);
@@ -367,6 +417,179 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
   } catch (error) {
     console.error('GitHub auth error:', error);
     return res.status(500).json({ error: 'GitHub authentication failed' });
+  }
+}
+
+// LinkedIn OAuth
+export async function linkedinAuth(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const { code, client_id } = req.body;
+    console.log('[LinkedIn Auth] Request body:', { code: code?.substring(0, 10) + '...', client_id });
+    
+    if (!code) {
+      return res.status(400).json({ error: 'LinkedIn auth code required' });
+    }
+    
+    let clientId: string | undefined;
+    let clientSecret: string | undefined;
+    
+    // Check if client_id provided (new way)
+    if (client_id) {
+      console.log('[LinkedIn Auth] Looking up client_id in auth_apps table:', client_id);
+      // Look up secret from auth_apps table
+      const authApp = await prisma.authApp.findUnique({
+        where: { clientId: client_id }
+      });
+      
+      if (!authApp) {
+        console.error('[LinkedIn Auth] Client ID not found in auth_apps table:', client_id);
+        return res.status(400).json({ error: 'Invalid client_id' });
+      }
+      
+      console.log('[LinkedIn Auth] Found auth app:', authApp.appName, authApp.provider);
+      clientId = authApp.clientId;
+      clientSecret = authApp.clientSecret;
+    } else {
+      // Fall back to env vars (existing way for backwards compatibility)
+      console.log('[LinkedIn Auth] No client_id provided, using env vars');
+      clientId = process.env.LINKEDIN_CLIENT_ID;
+      clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    }
+    
+    if (!clientId || !clientSecret) {
+      console.error('[LinkedIn Auth] Missing credentials:', { clientId: !!clientId, clientSecret: !!clientSecret });
+      return res.status(500).json({ error: 'LinkedIn OAuth not configured' });
+    }
+    
+    console.log('[LinkedIn Auth] Exchanging code with LinkedIn, client_id:', clientId);
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: 'https://talent.linkedtrust.us/auth/linkedin/callback'
+      })
+    });
+    
+    const tokenData = await tokenResponse.json() as any;
+    console.log('[LinkedIn Auth] LinkedIn response:', { 
+      status: tokenResponse.status,
+      error: tokenData.error,
+      error_description: tokenData.error_description,
+      has_access_token: !!tokenData.access_token 
+    });
+    
+    if (tokenData.error || !tokenData.access_token) {
+      console.error('LinkedIn token error:', tokenData);
+      return res.status(401).json({ error: 'Failed to get LinkedIn access token' });
+    }
+    
+    // Get user info with the access token
+    const userResponse = await fetch('https://api.linkedin.com/v2/me', {
+      headers: { 
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'X-Restli-Protocol-Version': '2.0.0'
+      }
+    });
+    
+    if (!userResponse.ok) {
+      return res.status(401).json({ error: 'Failed to get LinkedIn user info' });
+    }
+    
+    const linkedinUser = await userResponse.json() as any;
+    
+    // Get email separately (LinkedIn requires separate call)
+    const emailResponse = await fetch('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+      headers: { 
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'X-Restli-Protocol-Version': '2.0.0'
+      }
+    });
+    
+    let email = null;
+    if (emailResponse.ok) {
+      const emailData = await emailResponse.json() as any;
+      email = emailData.elements?.[0]?.['handle~']?.emailAddress;
+    }
+    
+    // LinkedIn ID is in the format: id: "ABC123DEF"
+    const linkedinId = linkedinUser.id;
+    const firstName = linkedinUser.localizedFirstName || '';
+    const lastName = linkedinUser.localizedLastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    // Find or create user
+    let user = await prisma.user.findFirst({
+      where: { 
+        authProviderId: linkedinId,
+        authType: 'OAUTH'
+      }
+    });
+    
+    if (!user) {
+      // Check if email already exists with different auth
+      if (email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email }
+        });
+        
+        if (existingUser) {
+          console.log('[LinkedIn Auth] Email already exists, linking accounts:', email);
+          // User exists with same email - this is OK! Just log them in
+          user = existingUser;
+          
+          // Optionally update LinkedIn-specific info if not already set
+          if (existingUser.authType !== 'OAUTH') {
+            console.log('[LinkedIn Auth] User authenticated with different method, keeping existing auth info');
+          }
+        }
+      }
+      
+      // If still no user, create new one
+      if (!user) {
+        console.log('[LinkedIn Auth] Creating new user');
+        user = await prisma.user.create({
+          data: {
+            email: email || `linkedin_${linkedinId}@linkedin.local`,
+            name: fullName || 'LinkedIn User',
+            authType: 'OAUTH',
+            authProviderId: linkedinId
+          }
+        });
+      }
+    }
+    
+    const { accessToken, refreshToken } = generateTokens(user.id);
+    
+    return res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        linkedinId: linkedinId,
+        profileImage: null
+      },
+      // Return LinkedIn data for the frontend to use
+      linkedinData: {
+        linkedinId,
+        firstName,
+        lastName,
+        profileUrl: `https://www.linkedin.com/in/${linkedinId}`,
+        // Include the access token so frontend can make additional API calls
+        accessToken: tokenData.access_token
+      }
+    });
+  } catch (error) {
+    console.error('LinkedIn auth error:', error);
+    return res.status(500).json({ error: 'LinkedIn authentication failed' });
   }
 }
 
