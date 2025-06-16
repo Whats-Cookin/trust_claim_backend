@@ -152,8 +152,8 @@ export async function getClaimsBySubject(req: Request, res: Response) {
     const claims = await prisma.claim.findMany({
       where: { subject: decodedUri },
       orderBy: { effectiveDate: 'desc' },
-      skip: ((page as number) - 1) * (limit as number),
-      take: limit as number,
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
       include: {
         edges: {
           include: {
