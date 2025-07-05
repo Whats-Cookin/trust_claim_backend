@@ -112,6 +112,7 @@ app.post('/auth/signup', authApi.register);  // 'signup' maps to 'register'
 app.post('/auth/refresh_token', authApi.refreshToken);
 app.post('/auth/google', authApi.googleAuth);
 app.post('/auth/github', authApi.githubAuth);
+app.post('/auth/linkedin', authApi.linkedinAuth);
 app.post('/auth/wallet', authApi.walletAuth);
 
 // Legacy claim endpoints (v3 compatibility)
@@ -126,14 +127,14 @@ app.post('/api/v4/claims', verifyToken, claimsApi.createClaim);
 app.post('/api/claims', verifyToken, claimsApi.createClaim);     // MODERN: Create one claim (v4 format)
 app.get('/api/v4/claims/:id', claimsApi.getClaim);
 app.get('/api/claims/:id', claimsApi.getClaim);
-app.get('/api/v4/claims/subject/:uri', claimsApi.getClaimsBySubject);
-app.get('/api/claims/subject/:uri', claimsApi.getClaimsBySubject);
+app.get('/api/v4/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
+app.get('/api/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
 
 // Credentials endpoints
 app.post('/api/v4/credentials', verifyToken, credentialsApi.submitCredential);
 app.post('/api/credentials', verifyToken, credentialsApi.submitCredential);
-app.get('/api/v4/credentials/:uri', credentialsApi.getCredential);
-app.get('/api/credentials/:uri', credentialsApi.getCredential);
+app.get('/api/v4/credentials/:uri(*)', credentialsApi.getCredential);
+app.get('/api/credentials/:uri(*)', credentialsApi.getCredential);
 
 // Credential admin endpoints
 app.post('/api/credentials/admin/create', verifyToken, credentialAdminApi.createCredentialForAssignment);
@@ -142,8 +143,8 @@ app.get('/api/credentials/templates', credentialAdminApi.getCredentialTemplates)
 // Graph endpoints - claim-based exploration
 app.get('/api/claim_graph/:claimId', graphApi.getClaimGraph);  // Main graph endpoint
 app.get('/api/v4/claim_graph/:claimId', graphApi.getClaimGraph);
-app.get('/api/graph/:uri', graphApi.getGraph);  // Backwards compatibility
-app.get('/api/v4/graph/:uri', graphApi.getGraph);
+app.get('/api/graph/:uri(*)', graphApi.getGraph);  // Backwards compatibility
+app.get('/api/v4/graph/:uri(*)', graphApi.getGraph);
 
 // Node endpoints
 app.get('/api/node/:nodeId', graphApi.getNodeById);
@@ -172,8 +173,8 @@ app.get('/api/v4/reports/claim/:claimId', reportApi.getClaimReport);
 app.get('/api/reports/claim/:claimId', reportApi.getClaimReport);
 app.post('/api/v4/reports/claim/:claimId/validate', verifyToken, reportApi.submitValidation);
 app.post('/api/reports/claim/:claimId/validate', verifyToken, reportApi.submitValidation);
-app.get('/api/v4/reports/entity/:uri', reportApi.getEntityReport);
-app.get('/api/reports/entity/:uri', reportApi.getEntityReport);
+app.get('/api/v4/reports/entity/:uri(*)', reportApi.getEntityReport);
+app.get('/api/reports/entity/:uri(*)', reportApi.getEntityReport);
 
 // Server key endpoint
 app.get('/api/keys/server', (_req, res) => {

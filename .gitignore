@@ -1,6 +1,7 @@
 /node_modules
 /dist
-/prisma
+/prisma/badmigrations
+/prisma/protected
 build
 *.env*
 dev.db

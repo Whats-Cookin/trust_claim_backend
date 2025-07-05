@@ -255,3 +255,15 @@ enum HowKnown {
   OPINION
   OTHER
 }
+
+model AuthApp {
+  id           Int      @id @default(autoincrement())
+  clientId     String   @unique @map("client_id")
+  clientSecret String   @map("client_secret")
+  provider     String   // 'github', 'linkedin', 'google'
+  appName      String?  @map("app_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  @@index([clientId, provider])
+  @@map("auth_apps")
+}

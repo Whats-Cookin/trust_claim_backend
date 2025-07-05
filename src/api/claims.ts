@@ -125,11 +125,35 @@ export async function getClaimsBySubject(req: Request, res: Response) {
     const { uri } = req.params;
     const { page = 1, limit = 50 } = req.query;
     
+    // Try to decode as base64 first (new format)
+    let decodedUri = uri;
+    
+    // Check if it looks like base64 (alphanumeric plus +/= and no URI characters)
+    if (/^[A-Za-z0-9+/=]+$/.test(uri) && uri.length > 10) {
+      try {
+        // Attempt base64 decode
+        const decoded = Buffer.from(uri, 'base64').toString('utf-8');
+        // Verify it's a valid URI by checking for URI scheme pattern
+        // Any scheme followed by : is valid (http:, https:, urn:, did:, mailto:, etc.)
+        if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(decoded)) {
+          decodedUri = decoded;
+          console.log('Decoded base64 URI:', decodedUri);
+        }
+      } catch (e) {
+        // Not valid base64, use as-is
+      }
+    } else {
+      // Old format - decode URI component
+      decodedUri = decodeURIComponent(uri);
+    }
+    
+    console.log('Getting claims for subject:', decodedUri);
+    
     const claims = await prisma.claim.findMany({
-      where: { subject: uri },
+      where: { subject: decodedUri },
       orderBy: { effectiveDate: 'desc' },
-      skip: ((page as number) - 1) * (limit as number),
-      take: limit as number,
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
       include: {
         edges: {
           include: {
