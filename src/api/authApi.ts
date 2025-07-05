@@ -486,7 +486,7 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
     }
 
     // Initialize user data
-    let linkedinId: string;
+    let linkedinId: string | undefined;
     let email: string | null = null;
     let firstName = '';
     let lastName = '';
