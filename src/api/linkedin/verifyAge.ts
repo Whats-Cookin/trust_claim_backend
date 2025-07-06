@@ -64,7 +64,7 @@ export function verifyVerificationToken(token: string): {
 export async function verifyLinkedInAge(req: Request, res: Response): Promise<Response | void> {
   try {
     const token = req.headers['x-verification-token'] as string;
-    const { memberSince, year, month, profileUrl, profileId } = req.body;
+    const { memberSince, year, profileUrl, profileId } = req.body;
     
     if (!token) {
       return res.status(401).json({ error: 'Verification token required' });
@@ -117,11 +117,11 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
         claim: 'ACCOUNT_CREATED',
         object: year.toString(),
         statement: memberSince, // Full text like "Member since March 2018"
-        howKnown: 'BOOKMARKLET_SCRAPING',
+        howKnown: 'WEB_DOCUMENT' as const,
         confidence: 0.6, // Lower confidence, can be increased after human verification
         sourceURI: profileUrl,
         issuerId: `user:${tokenData.userId}`,
-        issuerIdType: 'INTERNAL_USER',
+        issuerIdType: 'URL' as const,
         effectiveDate: new Date().toISOString(),
         
         // Store metadata for potential human review
