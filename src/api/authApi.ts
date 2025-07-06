@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { generateVerificationToken } from './linkedin/verifyAge';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -120,6 +121,9 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
     }
 
     const { accessToken, refreshToken } = generateTokens(user.id);
+    
+    // Generate verification token for bookmarklet
+    const verificationToken = generateVerificationToken(user.id, linkedinId);
 
     return res.json({
       accessToken,
@@ -485,42 +489,105 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
       return res.status(401).json({ error: 'Failed to get LinkedIn access token' });
     }
 
-    // Get user info with the access token
-    const userResponse = await fetch('https://api.linkedin.com/v2/me', {
-      headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
+    // Initialize user data
+    let linkedinId: string | undefined;
+    let email: string | null = null;
+    let firstName = '';
+    let lastName = '';
+    let fullName = '';
+    let profilePicture: string | null = null;
 
-    if (!userResponse.ok) {
-      return res.status(401).json({ error: 'Failed to get LinkedIn user info' });
+    // With OpenID Connect, decode the ID token if available
+    if (tokenData.id_token) {
+      try {
+        // Decode the ID token (it's a JWT)
+        const idTokenPayload = JSON.parse(
+          Buffer.from(tokenData.id_token.split('.')[1], 'base64').toString()
+        );
+        
+        console.log('[LinkedIn Auth] Decoded ID token:', {
+          sub: idTokenPayload.sub,
+          email: idTokenPayload.email,
+          name: idTokenPayload.name,
+        });
+        
+        // Extract user info from ID token
+        linkedinId = idTokenPayload.sub; // This is the unique LinkedIn ID
+        email = idTokenPayload.email || null;
+        fullName = idTokenPayload.name || '';
+        profilePicture = idTokenPayload.picture || null;
+        
+        // Try to split name into first/last
+        const nameParts = fullName.split(' ');
+        if (nameParts.length >= 2) {
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(' ');
+        } else {
+          firstName = fullName;
+        }
+      } catch (error) {
+        console.error('[LinkedIn Auth] Failed to decode ID token:', error);
+        // Fall back to userinfo endpoint
+      }
+    }
+    
+    // If no ID token or decode failed, try userinfo endpoint
+    if (!linkedinId) {
+      try {
+        const userInfoResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+          },
+        });
+
+        if (!userInfoResponse.ok) {
+          console.error('[LinkedIn Auth] Userinfo response not ok:', userInfoResponse.status);
+          // Try legacy v2/me endpoint as last resort
+          const legacyResponse = await fetch('https://api.linkedin.com/v2/me', {
+            headers: {
+              Authorization: `Bearer ${tokenData.access_token}`,
+              'X-Restli-Protocol-Version': '2.0.0',
+            },
+          });
+          
+          if (!legacyResponse.ok) {
+            return res.status(401).json({ error: 'Failed to get LinkedIn user info' });
+          }
+          
+          const legacyUser = (await legacyResponse.json()) as any;
+          linkedinId = legacyUser.id;
+          firstName = legacyUser.localizedFirstName || '';
+          lastName = legacyUser.localizedLastName || '';
+          fullName = `${firstName} ${lastName}`.trim();
+        } else {
+          const userInfo = (await userInfoResponse.json()) as any;
+          console.log('[LinkedIn Auth] UserInfo response:', userInfo);
+          
+          linkedinId = userInfo.sub;
+          email = userInfo.email || null;
+          fullName = userInfo.name || '';
+          profilePicture = userInfo.picture || null;
+          
+          // Try to split name
+          const nameParts = fullName.split(' ');
+          if (nameParts.length >= 2) {
+            firstName = nameParts[0];
+            lastName = nameParts.slice(1).join(' ');
+          } else {
+            firstName = fullName;
+          }
+        }
+      } catch (error) {
+        console.error('[LinkedIn Auth] Failed to get user info:', error);
+        return res.status(401).json({ error: 'Failed to get LinkedIn user info' });
+      }
     }
 
-    const linkedinUser = (await userResponse.json()) as any;
-
-    // Get email separately (LinkedIn requires separate call)
-    const emailResponse = await fetch(
-      'https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))',
-      {
-        headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
-      },
-    );
-
-    let email = null;
-    if (emailResponse.ok) {
-      const emailData = (await emailResponse.json()) as any;
-      email = emailData.elements?.[0]?.['handle~']?.emailAddress;
+    // Ensure we have at least a LinkedIn ID
+    if (!linkedinId) {
+      console.error('[LinkedIn Auth] No LinkedIn ID found');
+      return res.status(401).json({ error: 'Failed to extract LinkedIn user ID' });
     }
-
-    // LinkedIn ID is in the format: id: "ABC123DEF"
-    const linkedinId = linkedinUser.id;
-    const firstName = linkedinUser.localizedFirstName || '';
-    const lastName = linkedinUser.localizedLastName || '';
-    const fullName = `${firstName} ${lastName}`.trim();
 
     // Find or create user
     let user = await prisma.user.findFirst({
@@ -573,7 +640,7 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
         email: user.email,
         name: user.name,
         linkedinId: linkedinId,
-        profileImage: null,
+        profileImage: profilePicture,
       },
       // Return LinkedIn data for the frontend to use
       linkedinData: {
@@ -581,8 +648,11 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
         firstName,
         lastName,
         profileUrl: `https://www.linkedin.com/in/${linkedinId}`,
+        profilePicture,
         // Include the access token so frontend can make additional API calls
         accessToken: tokenData.access_token,
+        // Include verification token for bookmarklet
+        verificationToken
       },
     });
   } catch (error) {
