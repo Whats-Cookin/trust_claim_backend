@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { generateVerificationToken } from './linkedin/verifyAge';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -120,6 +121,9 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
     }
 
     const { accessToken, refreshToken } = generateTokens(user.id);
+    
+    // Generate verification token for bookmarklet
+    const verificationToken = generateVerificationToken(user.id, linkedinId);
 
     return res.json({
       accessToken,
@@ -647,6 +651,8 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
         profilePicture,
         // Include the access token so frontend can make additional API calls
         accessToken: tokenData.access_token,
+        // Include verification token for bookmarklet
+        verificationToken
       },
     });
   } catch (error) {
