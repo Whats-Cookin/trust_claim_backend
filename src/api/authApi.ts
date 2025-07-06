@@ -121,9 +121,6 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
     }
 
     const { accessToken, refreshToken } = generateTokens(user.id);
-    
-    // Generate verification token for bookmarklet
-    const verificationToken = generateVerificationToken(user.id, linkedinId);
 
     return res.json({
       accessToken,
@@ -631,6 +628,9 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
     }
 
     const { accessToken, refreshToken } = generateTokens(user.id);
+    
+    // Generate verification token for bookmarklet if we have linkedinId
+    const verificationToken = linkedinId ? generateVerificationToken(user.id, linkedinId) : undefined;
 
     return res.json({
       accessToken,
