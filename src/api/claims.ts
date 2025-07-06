@@ -119,11 +119,62 @@ export async function getClaim(req: Request, res: Response): Promise<Response | 
   }
 }
 
-// Get claims for a subject
+// Helper function to find all linked subjects via SAME_AS claims
+async function findLinkedSubjects(uri: string): Promise<Set<string>> {
+  const linkedSubjects = new Set<string>();
+  linkedSubjects.add(uri); // Start with the original URI
+  
+  const visited = new Set<string>();
+  const toVisit = [uri];
+  
+  while (toVisit.length > 0) {
+    const currentUri = toVisit.pop()!;
+    if (visited.has(currentUri)) continue;
+    visited.add(currentUri);
+    
+    // Find SAME_AS claims where this URI is the subject
+    const subjectClaims = await prisma.claim.findMany({
+      where: {
+        subject: currentUri,
+        claim: 'SAME_AS',
+        object: { not: null }
+      },
+      select: { object: true }
+    });
+    
+    // Find SAME_AS claims where this URI is the object
+    const objectClaims = await prisma.claim.findMany({
+      where: {
+        object: currentUri,
+        claim: 'SAME_AS'
+      },
+      select: { subject: true }
+    });
+    
+    // Add all found URIs to our set and to visit list
+    for (const claim of subjectClaims) {
+      if (claim.object && !visited.has(claim.object)) {
+        linkedSubjects.add(claim.object);
+        toVisit.push(claim.object);
+      }
+    }
+    
+    for (const claim of objectClaims) {
+      if (!visited.has(claim.subject)) {
+        linkedSubjects.add(claim.subject);
+        toVisit.push(claim.subject);
+      }
+    }
+  }
+  
+  return linkedSubjects;
+}
+
+// Get claims for a subject and all linked subjects
 export async function getClaimsBySubject(req: Request, res: Response) {
   try {
     const { uri } = req.params;
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit = 50, includeLinked = 'true' } = req.query;
     
     // Try to decode as base64 first (new format)
     let decodedUri = uri;
@@ -149,8 +200,19 @@ export async function getClaimsBySubject(req: Request, res: Response) {
     
     console.log('Getting claims for subject:', decodedUri);
     
+    // Find all linked subjects if requested
+    let subjectsToQuery = [decodedUri];
+    if (includeLinked === 'true') {
+      const linkedSubjects = await findLinkedSubjects(decodedUri);
+      subjectsToQuery = Array.from(linkedSubjects);
+      console.log('Found linked subjects:', subjectsToQuery);
+    }
+    
+    // Get claims for all linked subjects
     const claims = await prisma.claim.findMany({
-      where: { subject: decodedUri },
+      where: { 
+        subject: { in: subjectsToQuery }
+      },
       orderBy: { effectiveDate: 'desc' },
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
@@ -164,12 +226,18 @@ export async function getClaimsBySubject(req: Request, res: Response) {
       }
     });
     
+    // Get total count for all subjects
+    const total = await prisma.claim.count({ 
+      where: { subject: { in: subjectsToQuery } } 
+    });
+    
     res.json({ 
       claims, 
+      linkedSubjects: subjectsToQuery,
       pagination: {
         page: Number(page),
         limit: Number(limit),
-        total: await prisma.claim.count({ where: { subject: uri } })
+        total
       }
     });
   } catch (error) {
