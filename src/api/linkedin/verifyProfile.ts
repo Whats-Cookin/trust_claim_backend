@@ -86,9 +86,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
     const token = req.headers['x-verification-token'] as string;
     const { 
       profileUrl, 
-      profileId,
-      step,
-      timestamp
+      profileId
     } = req.body;
     
     console.log('[LinkedIn Verify] Request:', { 

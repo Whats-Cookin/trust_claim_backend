@@ -37,7 +37,7 @@ function verifyVerificationToken(token: string): {
 export async function verifyLinkedInAge(req: Request, res: Response): Promise<Response | void> {
   try {
     const token = req.headers['x-verification-token'] as string;
-    const { memberSince, year, joinedDate } = req.body;
+    const { memberSince, year } = req.body;
     
     if (!token) {
       return res.status(401).json({ error: 'Verification token required' });
