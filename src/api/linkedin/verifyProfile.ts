@@ -78,27 +78,23 @@ function generateProfileUrl(slug: string): string {
 }
 
 /**
- * Unified endpoint to verify LinkedIn profile ownership and optionally account age
- * Creates all necessary claims: HAS_PROFILE_AT, HAS_ACCOUNT, ACCOUNT_CREATED
+ * Unified endpoint to verify LinkedIn profile ownership
+ * Creates necessary claims: HAS_PROFILE_AT, HAS_ACCOUNT
  */
 export async function verifyLinkedInProfile(req: Request, res: Response): Promise<Response | void> {
   try {
     const token = req.headers['x-verification-token'] as string;
     const { 
       profileUrl, 
-      profileId, 
-      memberSince, 
-      year, 
-      month,
-      observedLoggedInUser,
-      timestamp 
+      profileId,
+      step,
+      timestamp
     } = req.body;
     
     console.log('[LinkedIn Verify] Request:', { 
       profileUrl, 
       profileId, 
-      hasToken: !!token,
-      hasMemberSince: !!memberSince 
+      hasToken: !!token
     });
     
     if (!token) {
@@ -149,7 +145,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
         }
       });
 
-      if (existingProfileClaim) {
+      if (existingProfileClaim && existingProfileClaim.object) {
         profileUrl = existingProfileClaim.object;
       } else {
         // Generate new profile
@@ -201,43 +197,9 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
         console.log('[LinkedIn Verify] Created HAS_ACCOUNT claim for', vanityName);
       }
       
-      // Create ACCOUNT_CREATED claim if memberSince data provided
-      let ageClaimCreated = false;
-      if (memberSince && year) {
-        const existingAgeClaim = await tx.claim.findFirst({
-          where: {
-            subject: platformUri,
-            claim: 'ACCOUNT_CREATED'
-          }
-        });
-        
-        if (!existingAgeClaim) {
-          await tx.claim.create({
-            data: {
-              subject: platformUri,
-              claim: 'ACCOUNT_CREATED',
-              object: year.toString(),
-              statement: memberSince, // Full text like "Member since March 2018"
-              howKnown: 'WEB_DOCUMENT' as const,
-              confidence: 0.8, // High confidence since ownership verified
-              sourceURI: profileUrl,
-              issuerId: `user:${user.id}`,
-              issuerIdType: 'URL' as const,
-              effectiveDate: new Date().toISOString(),
-              amt: parseFloat(year),
-              unit: 'year'
-            }
-          });
-          
-          ageClaimCreated = true;
-          console.log('[LinkedIn Verify] Created ACCOUNT_CREATED claim:', memberSince);
-        }
-      }
-      
       return {
         platformUri,
-        profileUrl,
-        ageClaimCreated
+        profileUrl
       };
     });
     
@@ -247,8 +209,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
       success: true,
       message: 'LinkedIn profile verified successfully',
       platformUri: result.platformUri,
-      profileUrl: result.profileUrl,
-      accountAgeVerified: result.ageClaimCreated
+      profileUrl: result.profileUrl
     });
     
   } catch (error) {
