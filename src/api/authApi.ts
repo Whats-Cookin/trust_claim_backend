@@ -649,7 +649,7 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
         lastName,
         // IMPORTANT: This is the internal LinkedIn ID, not the vanity URL
         // Frontend needs to prompt user for their actual LinkedIn profile URL
-        needsVanityUrl: true,
+        needsVanityName: true,
         profilePicture,
         // Include the access token so frontend can make additional API calls
         accessToken: tokenData.access_token,
