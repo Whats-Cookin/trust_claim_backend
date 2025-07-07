@@ -142,10 +142,14 @@ export async function getClaimsV3(req: Request, res: Response) {
       object, 
       claim: claimType,
       issuer_id,
-      page = 1, 
-      limit = 20,
+      page = '1', 
+      limit = '20',
       sort = 'desc'
     } = req.query;
+    
+    // Parse numeric values
+    const parsedPage = parseInt(page as string) || 1;
+    const parsedLimit = parseInt(limit as string) || 20;
     
     // Build where clause
     const where: any = {};
@@ -158,8 +162,8 @@ export async function getClaimsV3(req: Request, res: Response) {
     const claims = await prisma.claim.findMany({
       where,
       orderBy: { id: sort === 'asc' ? 'asc' : 'desc' },
-      skip: ((page as number) - 1) * (limit as number),
-      take: limit as number
+      skip: (parsedPage - 1) * parsedLimit,
+      take: parsedLimit
     });
     
     // Get total count
@@ -171,10 +175,10 @@ export async function getClaimsV3(req: Request, res: Response) {
     res.json({
       claims: v3Claims,
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
+        page: parsedPage,
+        limit: parsedLimit,
         total,
-        pages: Math.ceil(total / Number(limit))
+        pages: Math.ceil(total / parsedLimit)
       }
     });
   } catch (error) {
