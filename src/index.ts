@@ -25,7 +25,7 @@ import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
 import * as legacyClaimsApi from './api/legacyClaims';
 import * as videoApi from './api/video/upload';
-import { verifyLinkedInAge } from './api/linkedin/verifyAge';
+import { verifyLinkedInProfile } from './api/linkedin/verifyProfile';
 
 // Import Swagger documentation
 import './api/swagger-docs';
@@ -116,8 +116,8 @@ app.post('/auth/github', authApi.githubAuth);
 app.post('/auth/linkedin', authApi.linkedinAuth);
 app.post('/auth/wallet', authApi.walletAuth);
 
-// LinkedIn verification endpoints
-app.post('/api/linkedin/verify-age', verifyLinkedInAge);
+// LinkedIn verification endpoint
+app.post('/api/linkedin/verify-profile', verifyLinkedInProfile);
 
 // Legacy claim endpoints (v3 compatibility)
 app.post('/api/claim', verifyToken, legacyClaimsApi.createClaimV3);          // LEGACY: Create one claim (v3 format)

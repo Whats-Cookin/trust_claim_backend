@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
-import { generateVerificationToken } from './linkedin/verifyAge';
+import { generateVerificationToken } from './linkedin/verifyProfile';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -647,9 +647,6 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
         linkedinId,
         firstName,
         lastName,
-        // IMPORTANT: This is the internal LinkedIn ID, not the vanity URL
-        // Frontend needs to prompt user for their actual LinkedIn profile URL
-        needsVanityName: true,
         profilePicture,
         // Include the access token so frontend can make additional API calls
         accessToken: tokenData.access_token,
