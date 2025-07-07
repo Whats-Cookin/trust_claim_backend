@@ -54,9 +54,32 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
       return res.status(400).json({ error: 'Missing member since data' });
     }
     
-    // Get the LinkedIn ID from session
-    const linkedinId = tokenData.linkedinId;
-    const platformUri = `https://linkedin.com/in/${linkedinId}`;
+    // Look up the user's LinkedIn vanity name from their claims
+    // The linkedinId in the token is the internal ID, not the vanity name
+    const userClaims = await prisma.claim.findMany({
+      where: {
+        issuerId: `user:${tokenData.userId}`,
+        claim: 'HAS_ACCOUNT',
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    // Find the LinkedIn account claim
+    const linkedinClaim = userClaims.find(c => c.object?.includes('linkedin:'));
+    if (!linkedinClaim) {
+      return res.status(400).json({ error: 'LinkedIn profile not verified yet. Please complete Step 1 first.' });
+    }
+    
+    // Extract vanity name from the claim object (e.g., "linkedin:john-doe" -> "john-doe")
+    const vanityMatch = linkedinClaim.object!.match(/linkedin:(.+)/);
+    if (!vanityMatch) {
+      return res.status(400).json({ error: 'Invalid LinkedIn account claim format' });
+    }
+    
+    const vanityName = vanityMatch[1];
+    const platformUri = `https://linkedin.com/in/${vanityName}`;
     
     // Check if claim already exists
     const existingClaim = await prisma.claim.findFirst({
@@ -92,7 +115,7 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
       }
     });
     
-    console.log(`[LinkedIn Age] Created ACCOUNT_CREATED claim for ${linkedinId}: ${memberSince}`);
+    console.log(`[LinkedIn Age] Created ACCOUNT_CREATED claim for ${vanityName}: ${memberSince}`);
     
     return res.json({
       success: true,
