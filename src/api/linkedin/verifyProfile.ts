@@ -73,7 +73,7 @@ function generateProfileSlug(name: string): string {
  * Generate profile URL from slug
  */
 function generateProfileUrl(slug: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talent.linkedtrust.us';
+  const baseUrl = process.env.TALENT_APP_URL || process.env.APP_URL || 'https://talent.linkedtrust.us';
   return `${baseUrl}/profile/${slug}`;
 }
 
@@ -132,23 +132,82 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
     
     // Start transaction for atomic operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create or get profile
-      let profileUrl = '';
-      const existingProfileClaim = await tx.claim.findFirst({
+      // Find ALL profiles this user has created
+      const existingProfiles = await tx.claim.findMany({
         where: {
-          OR: [
-            { subject: platformUri, claim: 'HAS_PROFILE_AT' },
-            { subject: `mailto:${user.email}`, claim: 'HAS_PROFILE_AT' }
-          ]
-        }
+          issuerId: `user:${user.id}`,
+          claim: 'HAS_PROFILE_AT'
+        },
+        orderBy: { createdAt: 'asc' } // Get the oldest/first profile
       });
 
-      if (existingProfileClaim && existingProfileClaim.object) {
-        profileUrl = existingProfileClaim.object;
+      let profileUrl: string;
+      let primarySubject: string | null = null;
+
+      if (existingProfiles.length > 0) {
+        // User already has a profile!
+        const primaryProfile = existingProfiles[0];
+        profileUrl = primaryProfile.object || '';
+        primarySubject = primaryProfile.subject;
+        
+        console.log('[LinkedIn Verify] Found existing profile:', profileUrl, 'under subject:', primarySubject);
+        
+        // Create SAME_AS claims to link LinkedIn to existing profile
+        // Check if SAME_AS already exists
+        const existingSameAs = await tx.claim.findFirst({
+          where: {
+            subject: platformUri,
+            claim: 'SAME_AS',
+            object: primarySubject
+          }
+        });
+        
+        if (!existingSameAs) {
+          await tx.claim.create({
+            data: {
+              subject: platformUri,
+              claim: 'SAME_AS',
+              object: primarySubject,
+              statement: 'LinkedIn account linked to primary profile',
+              howKnown: 'VERIFIED_LOGIN' as const,
+              confidence: 1.0,
+              issuerId: `user:${user.id}`,
+              issuerIdType: 'URL' as const,
+              effectiveDate: new Date().toISOString()
+            }
+          });
+        }
+        
+        // Create reverse SAME_AS
+        const existingReverseSameAs = await tx.claim.findFirst({
+          where: {
+            subject: primarySubject,
+            claim: 'SAME_AS',
+            object: platformUri
+          }
+        });
+        
+        if (!existingReverseSameAs) {
+          await tx.claim.create({
+            data: {
+              subject: primarySubject,
+              claim: 'SAME_AS',
+              object: platformUri,
+              statement: 'Primary profile linked to LinkedIn account',
+              howKnown: 'VERIFIED_LOGIN' as const,
+              confidence: 1.0,
+              issuerId: `user:${user.id}`,
+              issuerIdType: 'URL' as const,
+              effectiveDate: new Date().toISOString()
+            }
+          });
+        }
       } else {
-        // Generate new profile
+        // First time creating profile
         const profileSlug = generateProfileSlug(user.name || vanityName);
         profileUrl = generateProfileUrl(profileSlug);
+        
+        console.log('[LinkedIn Verify] Creating new profile:', profileUrl);
 
         // Create profile claim
         await tx.claim.create({
