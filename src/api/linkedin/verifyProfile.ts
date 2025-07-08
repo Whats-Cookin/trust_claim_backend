@@ -137,10 +137,11 @@ async function generateProfileSlug(
 }
 
 /**
- * Generate profile URL from slug
+ * Generate profile URL from slug and base URL
  */
-function generateProfileUrl(slug: string): string {
-  const baseUrl = process.env.TALENT_APP_URL || process.env.APP_URL || 'https://talent.linkedtrust.us';
+function generateProfileUrl(slug: string, profileBaseUrl: string): string {
+  // Remove trailing slash if present
+  const baseUrl = profileBaseUrl.replace(/\/$/, '');
   return `${baseUrl}/profile/${slug}`;
 }
 
@@ -153,7 +154,8 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
     const token = req.headers['x-verification-token'] as string;
     const { 
       profileUrl, 
-      profileId
+      profileId,
+      profileBaseUrl
     } = req.body;
     
     console.log('[LinkedIn Verify] Request:', { 
@@ -173,8 +175,8 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
     }
     
     // Verify we have required data
-    if (!profileUrl || !profileId) {
-      return res.status(400).json({ error: 'Profile URL and ID required' });
+    if (!profileUrl || !profileId || !profileBaseUrl) {
+      return res.status(400).json({ error: 'Profile URL, ID, and base URL required' });
     }
     
     // Extract vanity name from profile URL
@@ -272,7 +274,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
       } else {
         // First time creating profile
         const profileSlug = await generateProfileSlug(user.name || vanityName, user.id, tx);
-        profileUrl = generateProfileUrl(profileSlug);
+        profileUrl = generateProfileUrl(profileSlug, profileBaseUrl);
         
         console.log('[LinkedIn Verify] Creating new profile:', profileUrl);
 
@@ -282,7 +284,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
             subject: platformUri,
             claim: 'HAS_PROFILE_AT',
             object: profileUrl,
-            statement: 'TalentStamp profile URL',
+            statement: 'Profile URL',
             howKnown: 'INTEGRATION' as const,
             confidence: 1.0,
             issuerId: `user:${user.id}`,
