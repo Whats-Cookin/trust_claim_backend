@@ -10,6 +10,7 @@ import { prisma } from '../../lib/prisma';
 function verifyVerificationToken(token: string): {
   userId: number;
   linkedinId: string;
+  vanityName: string;
   purpose: string;
   timestamp: number;
 } | null {
@@ -22,6 +23,7 @@ function verifyVerificationToken(token: string): {
     return {
       userId: decoded.userId,
       linkedinId: decoded.linkedinId,
+      vanityName: decoded.vanityName,
       purpose: decoded.purpose,
       timestamp: decoded.timestamp
     };
@@ -54,31 +56,35 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
       return res.status(400).json({ error: 'Missing member since data' });
     }
     
-    // Look up the user's LinkedIn vanity name from their claims
-    // The linkedinId in the token is the internal ID, not the vanity name
-    const userClaims = await prisma.claim.findMany({
-      where: {
-        issuerId: `user:${tokenData.userId}`,
-        claim: 'HAS_ACCOUNT',
-      },
-      orderBy: {
-        createdAt: 'desc'
+    // Use vanity name from the token
+    const vanityName = tokenData.vanityName;
+    
+    // Handle legacy tokens that don't have vanityName
+    if (!vanityName || vanityName === 'pending') {
+      // Fall back to looking it up from claims
+      const userClaims = await prisma.claim.findMany({
+        where: {
+          issuerId: `user:${tokenData.userId}`,
+          claim: 'HAS_ACCOUNT',
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+      
+      const linkedinClaim = userClaims.find(c => c.object?.includes('linkedin:'));
+      if (!linkedinClaim) {
+        return res.status(400).json({ error: 'LinkedIn profile not verified yet. Please complete Step 1 first.' });
       }
-    });
-    
-    // Find the LinkedIn account claim
-    const linkedinClaim = userClaims.find(c => c.object?.includes('linkedin:'));
-    if (!linkedinClaim) {
-      return res.status(400).json({ error: 'LinkedIn profile not verified yet. Please complete Step 1 first.' });
+      
+      const vanityMatch = linkedinClaim.object!.match(/linkedin:(.+)/);
+      if (!vanityMatch) {
+        return res.status(400).json({ error: 'Invalid LinkedIn account claim format' });
+      }
+      
+      tokenData.vanityName = vanityMatch[1];
     }
     
-    // Extract vanity name from the claim object (e.g., "linkedin:john-doe" -> "john-doe")
-    const vanityMatch = linkedinClaim.object!.match(/linkedin:(.+)/);
-    if (!vanityMatch) {
-      return res.status(400).json({ error: 'Invalid LinkedIn account claim format' });
-    }
-    
-    const vanityName = vanityMatch[1];
     const platformUri = `https://linkedin.com/in/${vanityName}`;
     
     // Check if claim already exists

@@ -6,17 +6,20 @@ import { prisma } from '../../lib/prisma';
  * Generates a short-lived verification token for bookmarklet authentication
  * @param userId - The user's database ID
  * @param linkedinId - The LinkedIn profile ID 
+ * @param vanityName - The LinkedIn vanity name (username)
  * @param purpose - What this token is for (e.g., 'linkedin-age-verification')
  * @returns Signed JWT token valid for 1 hour
  */
 export function generateVerificationToken(
   userId: number,
   linkedinId: string,
+  vanityName: string,
   purpose: string = 'linkedin-age-verification'
 ): string {
   const payload = {
     userId,
     linkedinId,
+    vanityName,
     purpose,
     timestamp: Date.now()
   };
@@ -37,6 +40,7 @@ export function generateVerificationToken(
 function verifyVerificationToken(token: string): {
   userId: number;
   linkedinId: string;
+  vanityName: string;
   purpose: string;
   timestamp: number;
 } | null {
@@ -49,6 +53,7 @@ function verifyVerificationToken(token: string): {
     return {
       userId: decoded.userId,
       linkedinId: decoded.linkedinId,
+      vanityName: decoded.vanityName,
       purpose: decoded.purpose,
       timestamp: decoded.timestamp
     };
@@ -58,15 +63,77 @@ function verifyVerificationToken(token: string): {
 }
 
 /**
- * Generate a profile slug from a name
+ * Generate a random suffix for profile collisions
  */
-function generateProfileSlug(name: string): string {
-  const timestamp = Date.now().toString(36).slice(-4);
-  const slug = name
+function generateRandomSuffix(length: number = 4): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+/**
+ * Generate a profile slug from a name
+ * @param name - The full name to slugify
+ * @param existingChecker - Function to check if a slug already exists for a different user
+ */
+async function generateProfileSlug(
+  name: string,
+  userId: number,
+  prismaClient: any
+): Promise<string> {
+  // Base slug from name
+  const baseSlug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return `${slug}-${timestamp}`;
+  
+  // Check if this slug is already used
+  const existingClaim = await prismaClient.claim.findFirst({
+    where: {
+      claim: 'HAS_PROFILE_AT',
+      object: {
+        endsWith: `/${baseSlug}`
+      }
+    }
+  });
+  
+  // If no existing claim, use the base slug
+  if (!existingClaim) {
+    return baseSlug;
+  }
+  
+  // If it exists and belongs to this user, reuse it
+  if (existingClaim.issuerId === `user:${userId}`) {
+    // Extract just the slug from the full URL
+    const urlParts = existingClaim.object?.split('/') || [];
+    return urlParts[urlParts.length - 1] || baseSlug;
+  }
+  
+  // Otherwise, add random suffix until we find an unused one
+  let attempts = 0;
+  while (attempts < 10) {
+    const candidateSlug = `${baseSlug}-${generateRandomSuffix()}`;
+    const existingWithSuffix = await prismaClient.claim.findFirst({
+      where: {
+        claim: 'HAS_PROFILE_AT',
+        object: {
+          endsWith: `/${candidateSlug}`
+        }
+      }
+    });
+    
+    if (!existingWithSuffix) {
+      return candidateSlug;
+    }
+    
+    attempts++;
+  }
+  
+  // Fallback to timestamp if we can't find a unique one
+  return `${baseSlug}-${Date.now().toString(36).slice(-4)}`;
 }
 
 /**
@@ -204,7 +271,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
         }
       } else {
         // First time creating profile
-        const profileSlug = generateProfileSlug(user.name || vanityName);
+        const profileSlug = await generateProfileSlug(user.name || vanityName, user.id, tx);
         profileUrl = generateProfileUrl(profileSlug);
         
         console.log('[LinkedIn Verify] Creating new profile:', profileUrl);
@@ -262,11 +329,15 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
     
     console.log('[LinkedIn Verify] Transaction completed successfully');
     
+    // Generate a new verification token with the vanity name for Step 2
+    const newVerificationToken = generateVerificationToken(user.id, profileId, vanityName);
+    
     return res.json({
       success: true,
       message: 'LinkedIn profile verified successfully',
       platformUri: result.platformUri,
-      profileUrl: result.profileUrl
+      profileUrl: result.profileUrl,
+      verificationToken: newVerificationToken
     });
     
   } catch (error) {

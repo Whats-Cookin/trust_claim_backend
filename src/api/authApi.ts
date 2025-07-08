@@ -630,7 +630,8 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
     const { accessToken, refreshToken } = generateTokens(user.id);
     
     // Generate verification token for bookmarklet if we have linkedinId
-    const verificationToken = linkedinId ? generateVerificationToken(user.id, linkedinId) : undefined;
+    // Note: We don't have the vanity name at OAuth time, so we'll need to update it when we get it
+    const verificationToken = linkedinId ? generateVerificationToken(user.id, linkedinId, 'pending') : undefined;
 
     return res.json({
       accessToken,
