@@ -4,6 +4,8 @@ import { prisma } from '../../lib/prisma';
 
 /**
  * Generates a short-lived verification token for bookmarklet authentication
+ * VERIFIED: This token is used for both Step 1 and Step 2 of LinkedIn verification
+ * WARNING: Uses a default secret if VERIFICATION_SECRET not set - security risk in production!
  * @param userId - The user's database ID
  * @param linkedinId - The LinkedIn profile ID 
  * @param vanityName - The LinkedIn vanity name (username)
@@ -84,13 +86,22 @@ async function generateProfileSlug(
   userId: number,
   prismaClient: any
 ): Promise<string> {
-  // Base slug from name
+  // VERIFIED: Convert full name to URL-safe slug
+  // INSIGHT: Removes all non-alphanumeric chars and replaces with hyphens
+  // WARNING: Empty names could result in empty baseSlug - should validate input
   const baseSlug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
   
-  // Check if this slug is already used
+  // VERIFIED FIX: Handle empty or invalid names
+  if (!baseSlug) {
+    return `user-${userId}-${generateRandomSuffix()}`;
+  }
+  
+  // VERIFIED: Check if this slug is already used by ANY user
+  // INSIGHT: Uses endsWith to be domain-agnostic - works with any profileBaseUrl
+  // WARNING: This could match unintended URLs that happen to end with the same slug
   const existingClaim = await prismaClient.claim.findFirst({
     where: {
       claim: 'HAS_PROFILE_AT',
@@ -179,7 +190,9 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
       return res.status(400).json({ error: 'Profile URL, ID, and base URL required' });
     }
     
-    // Extract vanity name from profile URL
+    // VERIFIED: Extract vanity name from LinkedIn URL format
+    // INSIGHT: Handles both http/https and ignores query parameters
+    // WARNING: Doesn't validate if the profile actually exists on LinkedIn
     const vanityMatch = profileUrl.match(/linkedin\.com\/in\/([^\/\?]+)/i);
     if (!vanityMatch) {
       return res.status(400).json({ error: 'Invalid LinkedIn profile URL' });
@@ -214,62 +227,67 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
       let primarySubject: string | null = null;
 
       if (existingProfiles.length > 0) {
-        // User already has a profile!
+        // VERIFIED: Reuse the user's first/oldest profile for all platforms
+        // INSIGHT: This ensures one profile per user across all linked accounts
+        // WARNING: Assumes the oldest profile is the "primary" - might not always be desired
         const primaryProfile = existingProfiles[0];
         profileUrl = primaryProfile.object || '';
         primarySubject = primaryProfile.subject;
         
         console.log('[LinkedIn Verify] Found existing profile:', profileUrl, 'under subject:', primarySubject);
         
-        // Create SAME_AS claims to link LinkedIn to existing profile
-        // Check if SAME_AS already exists
-        const existingSameAs = await tx.claim.findFirst({
-          where: {
-            subject: platformUri,
-            claim: 'SAME_AS',
-            object: primarySubject
-          }
-        });
-        
-        if (!existingSameAs) {
-          await tx.claim.create({
-            data: {
+        // VERIFIED: Create bidirectional SAME_AS claims for account linking
+        // INSIGHT: This allows traversing connections in both directions
+        // WARNING: If primarySubject === platformUri (same account), we shouldn't create SAME_AS
+        if (primarySubject !== platformUri) {
+          const existingSameAs = await tx.claim.findFirst({
+            where: {
               subject: platformUri,
               claim: 'SAME_AS',
-              object: primarySubject,
-              statement: 'LinkedIn account linked to primary profile',
-              howKnown: 'VERIFIED_LOGIN' as const,
-              confidence: 1.0,
-              issuerId: `user:${user.id}`,
-              issuerIdType: 'URL' as const,
-              effectiveDate: new Date().toISOString()
+              object: primarySubject
             }
           });
-        }
-        
-        // Create reverse SAME_AS
-        const existingReverseSameAs = await tx.claim.findFirst({
-          where: {
-            subject: primarySubject,
-            claim: 'SAME_AS',
-            object: platformUri
+          
+          if (!existingSameAs) {
+            await tx.claim.create({
+              data: {
+                subject: platformUri,
+                claim: 'SAME_AS',
+                object: primarySubject,
+                statement: 'LinkedIn account linked to primary profile',
+                howKnown: 'VERIFIED_LOGIN' as const,
+                confidence: 1.0,
+                issuerId: `user:${user.id}`,
+                issuerIdType: 'URL' as const,
+                effectiveDate: new Date().toISOString()
+              }
+            });
           }
-        });
-        
-        if (!existingReverseSameAs) {
-          await tx.claim.create({
-            data: {
+          
+          // Create reverse SAME_AS
+          const existingReverseSameAs = await tx.claim.findFirst({
+            where: {
               subject: primarySubject,
               claim: 'SAME_AS',
-              object: platformUri,
-              statement: 'Primary profile linked to LinkedIn account',
-              howKnown: 'VERIFIED_LOGIN' as const,
-              confidence: 1.0,
-              issuerId: `user:${user.id}`,
-              issuerIdType: 'URL' as const,
-              effectiveDate: new Date().toISOString()
+              object: platformUri
             }
           });
+          
+          if (!existingReverseSameAs) {
+            await tx.claim.create({
+              data: {
+                subject: primarySubject,
+                claim: 'SAME_AS',
+                object: platformUri,
+                statement: 'Primary profile linked to LinkedIn account',
+                howKnown: 'VERIFIED_LOGIN' as const,
+                confidence: 1.0,
+                issuerId: `user:${user.id}`,
+                issuerIdType: 'URL' as const,
+                effectiveDate: new Date().toISOString()
+              }
+            });
+          }
         }
       } else {
         // First time creating profile
@@ -331,7 +349,9 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
     
     console.log('[LinkedIn Verify] Transaction completed successfully');
     
-    // Generate a new verification token with the vanity name for Step 2
+    // VERIFIED: Generate new token with vanityName for Step 2 to use
+    // INSIGHT: This solves the Step 2 "forgetting" Step 1 issue
+    // WARNING: Original token from OAuth becomes invalid after Step 1
     const newVerificationToken = generateVerificationToken(user.id, profileId, vanityName);
     
     return res.json({

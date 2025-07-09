@@ -24,11 +24,17 @@ async function generateProfileSlug(
   userId: number,
   prismaClient: any
 ): Promise<string> {
-  // Base slug from name
+  // VERIFIED: Convert full name to URL-safe slug
+  // WARNING: Empty names could result in empty baseSlug
   const baseSlug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+  
+  // FIX: Handle empty or invalid names
+  if (!baseSlug) {
+    return `user-${userId}-${generateRandomSuffix()}`;
+  }
   
   // Check if this slug is already used
   const existingClaim = await prismaClient.claim.findFirst({

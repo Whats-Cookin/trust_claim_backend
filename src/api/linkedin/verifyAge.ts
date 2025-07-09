@@ -51,17 +51,22 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
     
-    // Verify we have the required data
+    // VERIFIED: year is required for age verification
+    // INSIGHT: year is extracted from joinedDate by the bookmarklet
+    // WARNING: If regex fails in bookmarklet, year could be null or invalid
     if (!memberSince || !year) {
       return res.status(400).json({ error: 'Missing member since data' });
     }
     
-    // Use vanity name from the token
-    const vanityName = tokenData.vanityName;
+    // VERIFIED: Prefer vanityName from token (set in Step 1)
+    // INSIGHT: This fixes the "Step 2 forgets Step 1" issue
+    let vanityName = tokenData.vanityName;
     
     // Handle legacy tokens that don't have vanityName
     if (!vanityName || vanityName === 'pending') {
-      // Fall back to looking it up from claims
+      // FALLBACK: For tokens created before vanityName was added
+      // WARNING: This could fail if Step 1 hasn't completed writing to DB
+      // INSIGHT: This is why we now include vanityName in the token
       const userClaims = await prisma.claim.findMany({
         where: {
           issuerId: `user:${tokenData.userId}`,
