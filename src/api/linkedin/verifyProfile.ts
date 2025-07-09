@@ -332,7 +332,7 @@ export async function verifyLinkedInProfile(req: Request, res: Response): Promis
             subject: platformUri,
             claim: 'HAS_ACCOUNT',
             object: `linkedin:${vanityName}`,
-            statement: 'Verified LinkedIn account ownership',
+            statement: user.name ? `${user.name}'s LinkedIn account` : 'Verified LinkedIn account ownership',
             howKnown: 'VERIFIED_LOGIN' as const,
             confidence: 1.0,
             sourceURI: platformUri,
