@@ -7,24 +7,28 @@ import { prisma } from '../../lib/prisma';
  * VERIFIED: This token is used for both Step 1 and Step 2 of LinkedIn verification
  * WARNING: Uses a default secret if VERIFICATION_SECRET not set - security risk in production!
  * @param userId - The user's database ID
- * @param linkedinId - The LinkedIn profile ID 
- * @param vanityName - The LinkedIn vanity name (username)
- * @param purpose - What this token is for (e.g., 'linkedin-age-verification')
+ * @param linkedinId - The LinkedIn internal ID
+ * @param vanityName - The LinkedIn vanity name (optional - not known during OAuth)
+ * @param purpose - What this token is for (e.g., 'linkedin-verification')
  * @returns Signed JWT token valid for 1 hour
  */
 export function generateVerificationToken(
   userId: number,
   linkedinId: string,
-  vanityName: string,
-  purpose: string = 'linkedin-age-verification'
+  vanityName?: string,
+  purpose: string = 'linkedin-verification'
 ): string {
-  const payload = {
+  const payload: any = {
     userId,
     linkedinId,
-    vanityName,
     purpose,
     timestamp: Date.now()
   };
+  
+  // Only include vanityName if it's provided and not a placeholder
+  if (vanityName && vanityName !== 'pending' && vanityName !== 'unknown') {
+    payload.vanityName = vanityName;
+  }
   
   // Token expires in 1 hour
   return jwt.sign(
@@ -42,7 +46,7 @@ export function generateVerificationToken(
 function verifyVerificationToken(token: string): {
   userId: number;
   linkedinId: string;
-  vanityName: string;
+  vanityName?: string;
   purpose: string;
   timestamp: number;
 } | null {
@@ -55,7 +59,7 @@ function verifyVerificationToken(token: string): {
     return {
       userId: decoded.userId,
       linkedinId: decoded.linkedinId,
-      vanityName: decoded.vanityName,
+      vanityName: decoded.vanityName, // May be undefined
       purpose: decoded.purpose,
       timestamp: decoded.timestamp
     };

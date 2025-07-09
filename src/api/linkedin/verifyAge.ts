@@ -10,7 +10,7 @@ import { prisma } from '../../lib/prisma';
 function verifyVerificationToken(token: string): {
   userId: number;
   linkedinId: string;
-  vanityName: string;
+  vanityName?: string;
   purpose: string;
   timestamp: number;
 } | null {
@@ -23,7 +23,7 @@ function verifyVerificationToken(token: string): {
     return {
       userId: decoded.userId,
       linkedinId: decoded.linkedinId,
-      vanityName: decoded.vanityName,
+      vanityName: decoded.vanityName, // May be undefined
       purpose: decoded.purpose,
       timestamp: decoded.timestamp
     };
@@ -58,15 +58,14 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
       return res.status(400).json({ error: 'Missing member since data' });
     }
     
-    // VERIFIED: Prefer vanityName from token (set in Step 1)
-    // INSIGHT: This fixes the "Step 2 forgets Step 1" issue
+    // VERIFIED: Check if token has a valid vanityName
+    // INSIGHT: Newer tokens include vanityName from Step 1
+    // FALLBACK: For older tokens or tokens without vanityName, look it up
     let vanityName = tokenData.vanityName;
     
-    // Handle legacy tokens that don't have vanityName
-    if (!vanityName || vanityName === 'pending') {
-      // FALLBACK: For tokens created before vanityName was added
-      // WARNING: This could fail if Step 1 hasn't completed writing to DB
-      // INSIGHT: This is why we now include vanityName in the token
+    // Don't use 'pending' or other placeholder values
+    if (!vanityName || vanityName === 'pending' || vanityName === 'unknown') {
+      // Look up the actual vanity name from existing claims
       const userClaims = await prisma.claim.findMany({
         where: {
           issuerId: `user:${tokenData.userId}`,
@@ -87,7 +86,7 @@ export async function verifyLinkedInAge(req: Request, res: Response): Promise<Re
         return res.status(400).json({ error: 'Invalid LinkedIn account claim format' });
       }
       
-      tokenData.vanityName = vanityMatch[1];
+      vanityName = vanityMatch[1];
     }
     
     const platformUri = `https://linkedin.com/in/${vanityName}`;
