@@ -20,7 +20,10 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       stars,
       score,
       amt,
-      unit
+      unit,
+      proof: clientProof,
+      issuerId: clientIssuerId,
+      issuerIdType: clientIssuerIdType
     } = req.body;
     
     const userId = req.user?.id || req.body.issuerId;
@@ -56,18 +59,29 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       score,
       amt,
       unit,
-      issuerId: userId,
-      issuerIdType: 'URL' as const,
+      issuerId: clientIssuerId || userId,
+      issuerIdType: (clientIssuerIdType || 'URL') as const,
       effectiveDate: new Date()
     };
     
-    // Try to sign the claim with server key, but don't fail if it doesn't work
-    let proof = null;
-    try {
-      proof = await signClaimWithServerKey(claimData, authMethod);
-    } catch (error) {
-      console.error('Warning: Failed to sign claim with server key:', error);
-      // Continue without proof - claim creation should not fail
+    // Use client-provided proof if available, otherwise try server signing
+    let proof = clientProof || null;
+    
+    if (!proof) {
+      // Only try server signing if no client proof was provided
+      try {
+        proof = await signClaimWithServerKey(claimData, authMethod);
+        console.log('Claim signed by server for user:', userId);
+      } catch (error) {
+        console.error('Warning: Failed to sign claim with server key:', error);
+        // Continue without proof - claim creation should not fail
+      }
+    } else {
+      console.log('Using client-provided proof from:', clientIssuerId);
+      // Store the proof as a JSON string if it's an object
+      if (typeof proof === 'object') {
+        proof = JSON.stringify(proof);
+      }
     }
     
     // Create claim with proof
