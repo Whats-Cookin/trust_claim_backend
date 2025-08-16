@@ -60,7 +60,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       amt,
       unit,
       issuerId: clientIssuerId || userId,
-      issuerIdType: (clientIssuerIdType || 'URL') as const,
+      issuerIdType: clientIssuerIdType || 'URL',
       effectiveDate: new Date()
     };
     
