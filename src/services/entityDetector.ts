@@ -164,7 +164,7 @@ export class EntityDetector {
   }
 
   // Batch process multiple URIs
-  static async detectEntities(uris: string[]) {
+  static async detectEntities(uris: string[], name?: any) {
     const results = [];
 
     // Check which URIs already exist
@@ -177,7 +177,7 @@ export class EntityDetector {
 
     // Process new URIs
     for (const uri of newUris) {
-      const result = await this.detectEntity(uri, undefined);
+      const result = await this.detectEntity(uri, name);
       if (result) results.push(result);
     }
 
