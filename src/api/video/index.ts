@@ -225,14 +225,16 @@ export async function createVideoValidation(req: AuthRequest, res: Response): Pr
         await prisma.image.create({
           data: {
             claimId: responseData.claim.id,
-            url: videoUrl,
+            data: Buffer.from(videoUrl), // Store URL as binary data for videos
+            contentType: 'video/webm',
+            filename: `video_${responseData.claim.id}.webm`,
             digestMultibase: crypto.createHash('sha256').update(videoUrl).digest('hex'),
             metadata: {
               type: 'video',
               duration: duration || 0,
               thumbnail: thumbnailUrl,
               transcript: transcript,
-              mimeType: 'video/webm'
+              originalUrl: videoUrl
             },
             effectiveDate: new Date(),
             owner: userId || 'anonymous',

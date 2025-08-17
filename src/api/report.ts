@@ -91,7 +91,12 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       };
     });
     
-    // Get the main claim's image from its edges
+    // Get images associated with this claim from the Image table
+    const images = await prisma.image.findMany({
+      where: { claimId: claimIdNum }
+    });
+    
+    // Get the main claim's image from its edges (fallback)
     const mainClaimImage = edges.find(e => e.startNode?.image || e.endNode?.image);
     const claimWithImage = {
       ...claim,
@@ -114,7 +119,18 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       validationSummary: {
         total: validations.length
       },
-      relatedClaims
+      relatedClaims,
+      images: images.map(img => ({
+        id: img.id,
+        claimId: img.claimId,
+        url: `/api/images/${img.id}`, // Always use the API endpoint for serving images
+        digestMultibase: img.digestMultibase,
+        metadata: img.metadata,
+        effectiveDate: img.effectiveDate,
+        createdDate: img.createdDate,
+        owner: img.owner,
+        signature: img.signature
+      }))
     });
   } catch (error) {
     console.error('Error generating claim report:', error);
