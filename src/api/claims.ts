@@ -337,6 +337,7 @@ function validateRequestBody(body: any): { isValid: boolean; errors: string[]; v
   return { isValid: errors.length === 0, errors, validationDetails };
 }
 
+
 // Simple claim creation
 export async function createClaim(req: AuthRequest, res: Response): Promise<Response | void> {
   console.log('=== POST /api/claims - Request received ===');
@@ -463,6 +464,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     }
 
     const { 
+      name,
       subject, 
       claim, 
       object, 
@@ -479,7 +481,6 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       issuerId: clientIssuerId,
       issuerIdType: clientIssuerIdType,
       images, // Add images field
-      name, // Extract name field but don't use it (not part of Claim model)
       ...otherFields // Capture any other fields for debugging
     } = req.body;
     
@@ -488,28 +489,26 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       console.log('⚠️ Unexpected fields received (will be ignored):', Object.keys(otherFields));
     }
     
-    // Log if name field is being sent (for debugging)
-    if (name) {
-      console.log('⚠️ Name field received but not used (not part of Claim model):', name);
-    }
-    
     const userId = req.user?.id || req.body.issuerId;
     console.log('Processing claim for userId:', userId);
-    
+
+    if (!subject || !claim) {
+      return res.status(400).json({ error: "Subject and claim are required" });
+    }
+
     // Determine auth method based on how the user authenticated
-    let authMethod: 'google-oauth' | 'password' | 'api-token';
-    if (req.user?.email && req.user?.email.includes('@')) {
+    let authMethod: "google-oauth" | "password" | "api-token";
+    if (req.user?.email && req.user?.email.includes("@")) {
       // If we have an email, likely OAuth (could be Google or other OAuth provider)
-      authMethod = 'google-oauth';
+      authMethod = "google-oauth";
     } else if (req.user?.id) {
       // If we have a user ID but no email, likely password auth
-      authMethod = 'password';
+      authMethod = "password";
     } else {
       // Otherwise, it's an API token
-      authMethod = 'api-token';
+      authMethod = "api-token";
     }
-    console.log('Authentication method determined:', authMethod);
-    
+
     // Prepare claim data
     const claimData = {
       subject,
@@ -533,32 +532,33 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     
     // Use client-provided proof if available, otherwise try server signing
     let proof = clientProof || null;
-    
+
     if (!proof) {
       // Only try server signing if no client proof was provided
       try {
         proof = await signClaimWithServerKey(claimData, authMethod);
-        console.log('Claim signed by server for user:', userId);
+        console.log("Claim signed by server for user:", userId);
       } catch (error) {
-        console.error('Warning: Failed to sign claim with server key:', error);
+        console.error("Warning: Failed to sign claim with server key:", error);
         // Continue without proof - claim creation should not fail
       }
     } else {
-      console.log('Using client-provided proof from:', clientIssuerId);
+      console.log("Using client-provided proof from:", clientIssuerId);
       // Store the proof as a JSON string if it's an object
-      if (typeof proof === 'object') {
+      if (typeof proof === "object") {
         proof = JSON.stringify(proof);
       }
     }
-    
+
     // Create claim with proof
     console.log('Creating claim in database...');
     const newClaim = await prisma.claim.create({
       data: {
         ...claimData,
-        proof
-      }
+        proof,
+      },
     });
+
     console.log('Claim created successfully with ID:', newClaim.id);
     
     // Process base64 images if provided
@@ -666,9 +666,10 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     }
     
     console.log('Starting background processes...');
+
     // Detect entities in the background
-    EntityDetector.processClaimEntities(newClaim).catch(console.error);
-    
+    EntityDetector.processClaimEntities(newClaim, name).catch(console.error);
+
     // Trigger pipeline in the background
     PipelineTrigger.processClaim(newClaim.id).catch(console.error);
     
@@ -754,12 +755,12 @@ export async function getClaim(req: Request, res: Response): Promise<Response | 
         edges: {
           include: {
             startNode: true,
-            endNode: true
-          }
-        }
-      }
+            endNode: true,
+          },
+        },
+      },
     });
-    
+
     if (!claim) {
       console.log('Claim not found with ID:', claimId);
       return res.status(404).json({ 
@@ -825,34 +826,34 @@ export async function getClaim(req: Request, res: Response): Promise<Response | 
 async function findLinkedSubjects(uri: string): Promise<Set<string>> {
   const linkedSubjects = new Set<string>();
   linkedSubjects.add(uri); // Start with the original URI
-  
+
   const visited = new Set<string>();
   const toVisit = [uri];
-  
+
   while (toVisit.length > 0) {
     const currentUri = toVisit.pop()!;
     if (visited.has(currentUri)) continue;
     visited.add(currentUri);
-    
+
     // Find SAME_AS claims where this URI is the subject
     const subjectClaims = await prisma.claim.findMany({
       where: {
         subject: currentUri,
-        claim: 'SAME_AS',
-        object: { not: null }
+        claim: "SAME_AS",
+        object: { not: null },
       },
-      select: { object: true }
+      select: { object: true },
     });
-    
+
     // Find SAME_AS claims where this URI is the object
     const objectClaims = await prisma.claim.findMany({
       where: {
         object: currentUri,
-        claim: 'SAME_AS'
+        claim: "SAME_AS",
       },
-      select: { subject: true }
+      select: { subject: true },
     });
-    
+
     // Add all found URIs to our set and to visit list
     for (const claim of subjectClaims) {
       if (claim.object && !visited.has(claim.object)) {
@@ -860,7 +861,7 @@ async function findLinkedSubjects(uri: string): Promise<Set<string>> {
         toVisit.push(claim.object);
       }
     }
-    
+
     for (const claim of objectClaims) {
       if (!visited.has(claim.subject)) {
         linkedSubjects.add(claim.subject);
@@ -868,7 +869,7 @@ async function findLinkedSubjects(uri: string): Promise<Set<string>> {
       }
     }
   }
-  
+
   return linkedSubjects;
 }
 
@@ -918,17 +919,17 @@ export async function getClaimsBySubject(req: Request, res: Response) {
     
     // Try to decode as base64 first (new format)
     let decodedUri = uri;
-    
+
     // Check if it looks like base64 (alphanumeric plus +/= and no URI characters)
     if (/^[A-Za-z0-9+/=]+$/.test(uri) && uri.length > 10) {
       try {
         // Attempt base64 decode
-        const decoded = Buffer.from(uri, 'base64').toString('utf-8');
+        const decoded = Buffer.from(uri, "base64").toString("utf-8");
         // Verify it's a valid URI by checking for URI scheme pattern
         // Any scheme followed by : is valid (http:, https:, urn:, did:, mailto:, etc.)
         if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(decoded)) {
           decodedUri = decoded;
-          console.log('Decoded base64 URI:', decodedUri);
+          console.log("Decoded base64 URI:", decodedUri);
         }
       } catch (e) {
         // Not valid base64, use as-is
@@ -943,35 +944,37 @@ export async function getClaimsBySubject(req: Request, res: Response) {
         console.log('Failed to decode URI component, using as-is');
       }
     }
-    
-    console.log('Getting claims for subject:', decodedUri);
-    
+
+    console.log("Getting claims for subject:", decodedUri);
+
     // Find all linked subjects if requested
     let subjectsToQuery = [decodedUri];
-    if (includeLinked === 'true') {
-      console.log('Finding linked subjects...');
+
+    if (includeLinked === "true") {
       const linkedSubjects = await findLinkedSubjects(decodedUri);
       subjectsToQuery = Array.from(linkedSubjects);
-      console.log('Found linked subjects:', subjectsToQuery);
+      console.log("Found linked subjects:", subjectsToQuery);
     }
-    
+
     // Get claims for all linked subjects
     console.log(`Querying claims for ${subjectsToQuery.length} subjects with pagination (page: ${pageNum}, limit: ${limitNum})...`);
     const claims = await prisma.claim.findMany({
-      where: { 
-        subject: { in: subjectsToQuery }
+      where: {
+        subject: { in: subjectsToQuery },
       },
+
       orderBy: { effectiveDate: 'desc' },
       skip: (pageNum - 1) * limitNum,
       take: limitNum,
+
       include: {
         edges: {
           include: {
             startNode: true,
-            endNode: true
-          }
-        }
-      }
+            endNode: true,
+          },
+        },
+      },
     });
     
     console.log(`Found ${claims.length} claims`);
@@ -1039,6 +1042,7 @@ export async function getClaimsBySubject(req: Request, res: Response) {
       totalClaims: response.pagination.total,
       currentPage: response.pagination.page,
       totalPages: response.pagination.totalPages
+
     });
     console.log('===========================');
     
