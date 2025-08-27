@@ -668,11 +668,10 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     console.log('Starting background processes...');
 
     // Detect entities in the background
-    EntityDetector.processClaimEntities(newClaim, name).catch(console.error);
+    await EntityDetector.processClaimEntities(newClaim, name);
 
-    // Trigger pipeline in the background
-    PipelineTrigger.processClaim(newClaim.id).catch(console.error);
-    
+// Still fine to run the heavy pipeline in background
+     PipelineTrigger.processClaim(newClaim.id).catch(console.error);
     // Include image records in response
     const response = {
       success: true,
