@@ -167,16 +167,20 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
     });
     
     // Build normalized subject object with unified name resolution
-    const reportSubject = buildReportSubject(
-      { 
-        subject: { 
-          name: subjectEntity?.name || edges[0]?.startNode?.name || claim.subject,
-          type: subjectEntity?.entityType || edges[0]?.startNode?.entType,
-          uri: claim.subject 
-        }
-      }, 
-      subjectNode
-    );
+   // Build normalized subject object with unified name resolution
+const reportSubject = buildReportSubject(
+  {
+    subject: {
+      // Prefer the authoritative sources you already loaded
+      name: (subjectEntity?.name?.trim()) || (subjectNode?.name?.trim()) || String(claim.subject),
+      // Prefer Node type, then entity type, then infer from URL
+      type: subjectNode?.entType || subjectEntity?.entityType || inferTypeFromUri(String(claim.subject)),
+      uri: String(claim.subject)
+    }
+  },
+  subjectNode
+);
+
     
     res.json({
       id: claim.id,
