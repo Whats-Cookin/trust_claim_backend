@@ -16,17 +16,38 @@ export class EntityDetector {
   }
 
   static async detectEntity(uri: string, name: any) {
-    // Skip if already registered
-    const existing = await prisma.uriEntity.findUnique({
-      where: { uri },
-    });
-
-    if (existing) return existing;
-
-    // Detect entity type and details
+    const existing = await prisma.uriEntity.findUnique({ where: { uri } });
+    const newName = typeof name === 'string' ? name.trim() : '';
+  
+    if (existing) {
+      // ✅ Update entity name if client supplied one
+      if (newName && existing.name !== newName) {
+        await prisma.uriEntity.update({
+          where: { uri },
+          data: { name: newName },
+        });
+      }
+  
+      // ✅ Also align Node (used by reports) if it exists
+      const node = await prisma.node.findFirst({ where: { nodeUri: uri } });
+      if (node) {
+        const updates: any = {};
+        if (newName && node.name !== newName) updates.name = newName;
+        // Fix LinkedIn profile mislabel (should be PERSON)
+        if (/linkedin\.com\/in\//i.test(uri) && node.entType !== 'PERSON') updates.entType = 'PERSON';
+        if (Object.keys(updates).length) {
+          await prisma.node.update({ where: { id: node.id }, data: updates });
+        }
+      }
+  
+      // Return fresh copy
+      return await prisma.uriEntity.findUnique({ where: { uri } });
+    }
+  
+    // Create new if not existing (prefer client name)
     const detection = await this.detectEntityType(uri);
-
-    // Register entity
+    const finalName = newName || detection.name;
+  
     try {
       const entity = await prisma.uriEntity.create({
         data: {
@@ -34,17 +55,28 @@ export class EntityDetector {
           entityType: detection.entityType,
           entityTable: detection.entityTable,
           entityId: detection.entityId || uri,
-          name: name || detection.name,
+          name: finalName,
         },
       });
-
+  
+      // Align Node if it already exists
+      const node = await prisma.node.findFirst({ where: { nodeUri: uri } });
+      if (node) {
+        const updates: any = {};
+        if (finalName && node.name !== finalName) updates.name = finalName;
+        if (/linkedin\.com\/in\//i.test(uri) && node.entType !== 'PERSON') updates.entType = 'PERSON';
+        if (Object.keys(updates).length) {
+          await prisma.node.update({ where: { id: node.id }, data: updates });
+        }
+      }
+  
       return entity;
     } catch (error) {
-      // Handle race condition - entity might have been created by another process
       console.log(`Entity already exists for URI: ${uri}`);
       return await prisma.uriEntity.findUnique({ where: { uri } });
     }
   }
+  
 
   private static async detectEntityType(uri: string): Promise<{
     entityType: any;
