@@ -1,55 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-// Interface for normalized subject data in reports
-interface ReportSubject {
-  name: string;     // resolved via priority: claim.subject.name > claim.claimName > subjectNode.name > "(Unnamed)"
-  uri?: string;     // original subject URI (if any)
-  type?: string;    // PERSON/ORGANIZATION/etc.
-  id?: number | string;
-  image?: string | null;
-  thumbnail?: string | null;
-}
-
-// Helper function to resolve subject name with priority
-function resolveSubjectName(claim: any, subjectNode?: any): string {
-  const name =
-    (claim?.subject?.name && String(claim.subject.name).trim()) ||
-    (claim?.claimName && String(claim.claimName).trim()) ||
-    (subjectNode?.name && String(subjectNode.name).trim()) ||
-    "";
-  return name || "(Unnamed)";
-}
-
-// Helper function to infer entity type from URI
-function inferTypeFromUri(uri?: string): string | undefined {
-  if (!uri) return undefined;
-  try {
-    const u = new URL(uri.trim());
-    if (u.hostname.includes("linkedin.com")) {
-      if (u.pathname.startsWith("/in/")) return "PERSON";
-      if (u.pathname.startsWith("/company/")) return "ORGANIZATION";
-    }
-  } catch {}
-  return undefined;
-}
-
-// Helper function to build normalized subject object
-function buildReportSubject(claim: any, subjectNode?: any): ReportSubject {
-  const uri = claim?.subject?.uri ?? subjectNode?.nodeUri ?? subjectNode?.uri ?? claim?.subject ?? null;
-  const name = resolveSubjectName(claim, subjectNode);
-  const type = claim?.subject?.type || subjectNode?.entType || inferTypeFromUri(uri) || undefined;
-
-  return {
-    id: subjectNode?.id ?? claim?.subject?.id ?? undefined,
-    name,
-    uri: uri || undefined,
-    type,
-    image: subjectNode?.image ?? claim?.subject?.image ?? null,
-    thumbnail: subjectNode?.thumbnail ?? null
-  };
-}
-
 // Get claim report with validations
 export async function getClaimReport(req: Request, res: Response): Promise<Response | void> {
   try {
@@ -140,12 +91,7 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       };
     });
     
-    // Get images associated with this claim from the Image table
-    const images = await prisma.image.findMany({
-      where: { claimId: claimIdNum }
-    });
-    
-    // Get the main claim's image from its edges (fallback)
+    // Get the main claim's image from its edges
     const mainClaimImage = edges.find(e => e.startNode?.image || e.endNode?.image);
     const claimWithImage = {
       ...claim,
@@ -161,50 +107,14 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       });
     }
     
-    // Get entity info for subject (same logic as Feed API)
-    const subjectEntity = await prisma.uriEntity.findUnique({
-      where: { uri: claim.subject }
-    });
-    
-    // Build normalized subject object with unified name resolution
-   // Build normalized subject object with unified name resolution
-const reportSubject = buildReportSubject(
-  {
-    subject: {
-      // Prefer the authoritative sources you already loaded
-      name: (subjectEntity?.name?.trim()) || (subjectNode?.name?.trim()) || String(claim.subject),
-      // Prefer Node type, then entity type, then infer from URL
-      type: subjectNode?.entType || subjectEntity?.entityType || inferTypeFromUri(String(claim.subject)),
-      uri: String(claim.subject)
-    }
-  },
-  subjectNode
-);
-
-    
     res.json({
-      id: claim.id,
-      subject: reportSubject, // Now returns normalized subject object with .name
-      statement: claim.statement,
-      effectiveDate: claim.effectiveDate,
       claim: claimWithImage,
       subjectNode,
       validations,
       validationSummary: {
         total: validations.length
       },
-      relatedClaims,
-      images: images.map(img => ({
-        id: img.id,
-        claimId: img.claimId,
-        url: `/api/images/${img.id}`, // Always use the API endpoint for serving images
-        digestMultibase: img.digestMultibase,
-        metadata: img.metadata,
-        effectiveDate: img.effectiveDate,
-        createdDate: img.createdDate,
-        owner: img.owner,
-        signature: img.signature
-      }))
+      relatedClaims
     });
   } catch (error) {
     console.error('Error generating claim report:', error);

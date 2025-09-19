@@ -109,16 +109,14 @@ export async function confirmVideoUpload(req: AuthRequest, res: Response): Promi
     const videoRecord = await prisma.image.create({
       data: {
         claimId: parseInt(claimId),
-        url: videoUrl, // Store URL directly
+        url: videoUrl,
         digestMultibase: videoId, // Using videoId as a simple identifier
         metadata: {
           type: 'video',
-          contentType: 'video/webm',
-          filename: `video_${claimId}.webm`,
           duration: Math.min(duration || 30, 30), // Enforce 30 second max
           thumbnail: thumbnailUrl,
           transcript: transcript || null,
-          originalUrl: videoUrl,
+          mimeType: 'video/webm',
           recordedAt: new Date().toISOString(),
           purpose: 'validation'
         },
