@@ -23,6 +23,7 @@ import * as graphApi from './api/graph';
 import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
+import * as imagesApi from './api/images';
 import * as legacyClaimsApi from './api/legacyClaims';
 import * as videoApi from './api/video/upload';
 import { verifyLinkedInProfile } from './api/linkedin/verifyProfile';
@@ -48,11 +49,17 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:"],
     },
   },
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resources
 }));
-app.use(cors());
-app.use(compression());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
+app.use(compression() as unknown as RequestHandler);
 app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded images
@@ -185,6 +192,10 @@ app.post('/api/v4/reports/claim/:claimId/validate', verifyToken, reportApi.submi
 app.post('/api/reports/claim/:claimId/validate', verifyToken, reportApi.submitValidation);
 app.get('/api/v4/reports/entity/:uri(*)', reportApi.getEntityReport);
 app.get('/api/reports/entity/:uri(*)', reportApi.getEntityReport);
+
+// Image endpoints
+app.get('/api/images/:id', imagesApi.getImage);
+app.get('/api/images/:id/metadata', imagesApi.getImageMetadata);
 
 // Server key endpoint
 app.get('/api/keys/server', (_req, res) => {
