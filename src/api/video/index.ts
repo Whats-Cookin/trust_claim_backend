@@ -2,7 +2,6 @@ import { Response } from 'express';
 import { AuthRequest } from '../../lib/auth';
 import { S3 } from 'aws-sdk';
 import crypto from 'crypto';
-
 // Configure S3 client for DigitalOcean Spaces
 const spacesEndpoint = new S3({
   endpoint: process.env.DO_SPACES_ENDPOINT || 'https://nyc3.digitaloceanspaces.com',
@@ -11,10 +10,8 @@ const spacesEndpoint = new S3({
   s3ForcePathStyle: false,
   signatureVersion: 'v4',
 });
-
 const BUCKET_NAME = process.env.DO_SPACES_BUCKET || 'linkedtrust-videos';
 const CDN_URL = process.env.DO_SPACES_CDN_URL || `https://${BUCKET_NAME}.nyc3.cdn.digitaloceanspaces.com`;
-
 /**
  * @swagger
  * /api/video/upload-url:
@@ -51,10 +48,8 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
     const userId = req.user?.id || 'anonymous';
     const videoId = crypto.randomBytes(16).toString('hex');
     const timestamp = Date.now();
-    
     // Create a path that includes user ID for organization
     const key = `videos/${userId}/${timestamp}_${videoId}.webm`;
-    
     // Generate presigned URL with constraints
     const uploadUrl = await spacesEndpoint.getSignedUrlPromise('putObject', {
       Bucket: BUCKET_NAME,
@@ -69,9 +64,7 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
       // Add CORS headers
       ResponseContentDisposition: 'inline',
     });
-    
     const videoUrl = `${CDN_URL}/${key}`;
-    
     res.json({
       uploadUrl,
       videoUrl,
@@ -83,7 +76,6 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
     res.status(500).json({ error: 'Failed to generate upload URL' });
   }
 }
-
 /**
  * @swagger
  * /api/video/thumbnail-url:
@@ -112,14 +104,11 @@ export async function getThumbnailUploadUrl(req: AuthRequest, res: Response): Pr
   try {
     const { videoId } = req.body;
     const userId = req.user?.id || 'anonymous';
-    
     if (!videoId) {
       return res.status(400).json({ error: 'videoId is required' });
     }
-    
     const timestamp = Date.now();
     const key = `thumbnails/${userId}/${timestamp}_${videoId}.jpg`;
-    
     const uploadUrl = await spacesEndpoint.getSignedUrlPromise('putObject', {
       Bucket: BUCKET_NAME,
       Key: key,
@@ -129,9 +118,7 @@ export async function getThumbnailUploadUrl(req: AuthRequest, res: Response): Pr
         ['content-length-range', 0, 2 * 1024 * 1024] // Max 2MB for thumbnail
       ]
     });
-    
     const thumbnailUrl = `${CDN_URL}/${key}`;
-    
     res.json({
       uploadUrl,
       thumbnailUrl,
@@ -142,7 +129,6 @@ export async function getThumbnailUploadUrl(req: AuthRequest, res: Response): Pr
     res.status(500).json({ error: 'Failed to generate thumbnail URL' });
   }
 }
-
 /**
  * @swagger
  * /api/video/create-validation:
@@ -186,18 +172,14 @@ export async function createVideoValidation(req: AuthRequest, res: Response): Pr
   try {
     const { subject, videoUrl, thumbnailUrl, duration, transcript, statement } = req.body;
     const userId = req.user?.id || req.body.issuerId;
-    
     if (!subject || !videoUrl) {
       return res.status(400).json({ error: 'subject and videoUrl are required' });
     }
-    
     if (duration && duration > 30) {
       return res.status(400).json({ error: 'Video duration cannot exceed 30 seconds' });
     }
-    
     // Import the claims API to create the claim
     const { createClaim } = await import('../claims');
-    
     // Create the claim with video evidence
     const claimReq = {
       ...req,
@@ -212,10 +194,8 @@ export async function createVideoValidation(req: AuthRequest, res: Response): Pr
         issuerId: userId,
       }
     };
-    
     // Create the claim
     await createClaim(claimReq as AuthRequest, res);
-    
     // If the response was sent by createClaim, get the claim from the response
     if (res.headersSent) {
       const responseData = (res as any).locals.responseData;
