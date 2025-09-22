@@ -4,10 +4,9 @@ import { AuthRequest } from '../lib/auth';
 import { EntityDetector } from '../services/entityDetector';
 import { PipelineTrigger } from '../services/pipelineTrigger';
 import { signClaimWithServerKey } from '../lib/crypto';
+import { isValidUri, userIdToUri } from '../lib/validators';
 // File system imports removed - images now stored in database
 import crypto from 'crypto';
-
-// Validation helper functions
 function validateImageData(imageData: any, index: number): { isValid: boolean; error?: string; details?: any } {
   console.log(`Validating image ${index}:`, {
     isObject: typeof imageData === 'object',
@@ -195,6 +194,14 @@ function validateRequestBody(body: any): { isValid: boolean; errors: string[]; v
       received: { type: typeof body.subject, value: body.subject },
       expected: 'string'
     });
+  } else if (!isValidUri(body.subject)) {
+    errors.push('Subject must be a valid URI (e.g., https://example.com/resource, urn:uuid:123)');
+    validationDetails.push({
+      field: 'subject',
+      issue: 'invalid_uri_format',
+      received: body.subject,
+      expected: 'valid URI with scheme (http://, https://, urn:, did:, etc.)'
+    });
   }
   
   if (!body.claim || typeof body.claim !== 'string') {
@@ -208,7 +215,7 @@ function validateRequestBody(body: any): { isValid: boolean; errors: string[]; v
   }
   
   // Optional string fields validation
-  const optionalStringFields = ['object', 'sourceURI', 'statement', 'aspect', 'unit', 'issuerId'];
+  const optionalStringFields = ['statement', 'aspect', 'unit'];
   optionalStringFields.forEach(field => {
     if (body[field] !== undefined && body[field] !== null && typeof body[field] !== 'string') {
       errors.push(`${field} must be a string if provided`);
@@ -220,6 +227,69 @@ function validateRequestBody(body: any): { isValid: boolean; errors: string[]; v
       });
     }
   });
+  
+  // Validate issuerId field as URI if provided (DIDs are valid URIs)
+  if (body.issuerId !== undefined && body.issuerId !== null) {
+    if (typeof body.issuerId !== 'string') {
+      errors.push('issuerId must be a string if provided');
+      validationDetails.push({
+        field: 'issuerId',
+        issue: 'invalid_type',
+        received: { type: typeof body.issuerId, value: body.issuerId },
+        expected: 'string'
+      });
+    } else if (!isValidUri(body.issuerId)) {
+      errors.push('issuerId must be a valid URI if provided (e.g., https://example.com/user/123, did:example:123)');
+      validationDetails.push({
+        field: 'issuerId',
+        issue: 'invalid_uri_format',
+        received: body.issuerId,
+        expected: 'valid URI with scheme (http://, https://, did:, etc.)'
+      });
+    }
+  }
+  
+  // Validate object field as URI if provided
+  if (body.object !== undefined && body.object !== null) {
+    if (typeof body.object !== 'string') {
+      errors.push('object must be a string if provided');
+      validationDetails.push({
+        field: 'object',
+        issue: 'invalid_type',
+        received: { type: typeof body.object, value: body.object },
+        expected: 'string'
+      });
+    } else if (!isValidUri(body.object)) {
+      errors.push('object must be a valid URI if provided (e.g., https://example.com/resource, urn:uuid:123)');
+      validationDetails.push({
+        field: 'object',
+        issue: 'invalid_uri_format',
+        received: body.object,
+        expected: 'valid URI with scheme (http://, https://, urn:, did:, etc.)'
+      });
+    }
+  }
+  
+  // Validate sourceURI field as URI if provided
+  if (body.sourceURI !== undefined && body.sourceURI !== null) {
+    if (typeof body.sourceURI !== 'string') {
+      errors.push('sourceURI must be a string if provided');
+      validationDetails.push({
+        field: 'sourceURI',
+        issue: 'invalid_type',
+        received: { type: typeof body.sourceURI, value: body.sourceURI },
+        expected: 'string'
+      });
+    } else if (!isValidUri(body.sourceURI)) {
+      errors.push('sourceURI must be a valid URI if provided (e.g., https://example.com/resource, urn:uuid:123)');
+      validationDetails.push({
+        field: 'sourceURI',
+        issue: 'invalid_uri_format',
+        received: body.sourceURI,
+        expected: 'valid URI with scheme (http://, https://, urn:, did:, etc.)'
+      });
+    }
+  }
   
   // Enum validation
   if (body.howKnown && !['FIRST_HAND', 'SECOND_HAND', 'WEB_DOCUMENT', 'VERIFIED_LOGIN', 'BLOCKCHAIN', 'SIGNED_DOCUMENT', 'PHYSICAL_DOCUMENT', 'INTEGRATION', 'RESEARCH', 'OPINION', 'OTHER'].includes(body.howKnown)) {
@@ -491,6 +561,12 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     
     const userId = req.user?.id || req.body.issuerId;
     console.log('Processing claim for userId:', userId);
+    
+    // Convert user ID to proper URI format
+    const userIdUri = userIdToUri(userId);
+    if (userId && !userIdUri) {
+      console.warn('userId is not a valid URI and cannot be converted:', userId);
+    }
 
     if (!subject || !claim) {
       return res.status(400).json({ error: "Subject and claim are required" });
@@ -514,7 +590,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       subject,
       claim,
       object: object || null,
-      sourceURI: sourceURI || userId,
+      sourceURI: sourceURI || userIdUri || null,
       howKnown: howKnown || 'FIRST_HAND',
       confidence: confidence !== undefined ? Number(confidence) : 1.0,
       statement: statement || null,
@@ -523,7 +599,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       score: score !== undefined ? Number(score) : null,
       amt: amt !== undefined ? Number(amt) : null,
       unit: unit || null,
-      issuerId: clientIssuerId || userId,
+      issuerId: clientIssuerId || userIdUri || null,
       issuerIdType: clientIssuerIdType || 'URL',
       effectiveDate: new Date()
     };
@@ -626,7 +702,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
                   filename: imageData.filename || `image_${i + 1}`
                 },
                 effectiveDate: imageData.effectiveDate ? new Date(imageData.effectiveDate) : new Date(),
-                owner: userId?.toString() || 'anonymous',
+                owner: userIdUri || null,
                 signature
               }
             });
