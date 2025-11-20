@@ -387,3 +387,32 @@ to set up the initial database
 ## Multiple OAuth Apps Support
 
 The backend supports multiple OAuth applications via the auth_apps table - see `prisma/protected/app_snippets.sql` for credential management.
+
+### OAuth Configuration for Multiple Frontends
+
+The backend can accept OAuth tokens from multiple client applications (e.g., Certify, Talent, etc.) using two approaches:
+
+#### Option 1: Shared OAuth Credentials (Simple)
+All frontends use the **same Google/LinkedIn OAuth Client ID**:
+
+```bash
+# Backend .env
+GOOGLE_CLIENT_ID=shared-client-id
+GOOGLE_CLIENT_SECRET=shared-secret
+```
+
+All frontends must use these same credentials.
+
+#### Option 2: Multiple Client IDs (Advanced)
+Backend can accept tokens from multiple OAuth apps:
+
+```bash
+# Backend .env
+GOOGLE_CLIENT_ID=primary-client-id
+GOOGLE_CLIENT_SECRET=primary-secret
+ALLOWED_CLIENT_ID_2=secondary-client-id  # For additional frontend apps
+```
+
+The backend's `authApi.ts` validates tokens against both client IDs (see line 45).
+
+**TODO for Future**: Build an admin interface to manage OAuth client IDs dynamically via the `auth_apps` table, allowing registration of new frontend applications without environment variable changes.
