@@ -12,25 +12,27 @@ export async function getGraph(req: Request, res: Response): Promise<Response | 
     if (isNumericId) {
       const claimId = parseInt(uri, 10);
       
-      // Get nodes connected to this claim
+      // First get edges for this claim to find connected nodes
+      const claimEdges = await prisma.edge.findMany({
+        where: { claimId },
+        select: { startNodeId: true, endNodeId: true }
+      });
+
+      // Extract unique node IDs
+      const nodeIds = new Set<number>();
+      claimEdges.forEach(e => {
+        nodeIds.add(e.startNodeId);
+        nodeIds.add(e.endNodeId);
+      });
+
+      if (nodeIds.size === 0) {
+        return res.json({ nodes: [], count: 0 });
+      }
+
+      // Get all nodes and their edges
       const nodes = await prisma.node.findMany({
         where: {
-          OR: [
-            {
-              edgesFrom: {
-                some: {
-                  claimId: claimId,
-                },
-              },
-            },
-            {
-              edgesTo: {
-                some: {
-                  claimId: claimId,
-                },
-              },
-            },
-          ],
+          id: { in: Array.from(nodeIds) }
         },
         include: {
           edgesFrom: {
