@@ -53,7 +53,7 @@ enum EntityType {
 // these fields are useful for display
 model Node {
   id        Int        @id @default(autoincrement())
-  nodeUri   String
+  nodeUri   String     @unique // CRITICAL: nodeUri is the semantic identity in LinkedClaims
   name      String
   entType   EntityType
   descrip   String
@@ -78,6 +78,8 @@ model Edge {
   thumbnail   String?
   claim       Claim   @relation("edgeClaim", fields: [claimId], references: [id])
   claimId     Int
+
+  @@unique([startNodeId, endNodeId, claimId])
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims
