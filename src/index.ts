@@ -24,6 +24,7 @@ import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
 import * as imagesApi from './api/images';
+import * as identityApi from './api/identity';
 import * as legacyClaimsApi from './api/legacyClaims';
 import * as videoApi from './api/video/upload';
 import { verifyLinkedInProfile } from './api/linkedin/verifyProfile';
@@ -146,6 +147,11 @@ app.get('/api/v4/claims/:id', claimsApi.getClaim);
 app.get('/api/claims/:id', claimsApi.getClaim);
 app.get('/api/v4/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
 app.get('/api/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
+
+// Identity endpoints - for checking SAME_AS transitive closure
+app.get('/api/identity/subjects', identityApi.getLinkedSubjects);        // Get all subjects linked to a URI
+app.get('/api/identity/linked', identityApi.checkLinkedIdentities);      // Check if two URIs are linked
+app.get('/api/identity/is-me', verifyToken, identityApi.checkIsMe);      // Check if subjectUri is linked to logged-in user
 
 // Credentials endpoints
 app.post('/api/v4/credentials', verifyToken, credentialsApi.submitCredential);
