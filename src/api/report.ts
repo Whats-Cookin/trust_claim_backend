@@ -65,7 +65,16 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       return res.status(404).json({ error: 'Claim not found' });
     }
     
-    // Get all edges for this claim
+    // NEW MODEL: Claim node is always at /claims/{id} with entType = 'CLAIM'
+    const claimNodeUri = `https://live.linkedtrust.us/claims/${claimIdNum}`;
+    const claimNode = await prisma.node.findFirst({
+      where: {
+        nodeUri: claimNodeUri,
+        entType: 'CLAIM'
+      }
+    });
+
+    // Get all edges for this claim (for display purposes)
     const edges = await prisma.edge.findMany({
       where: { claimId: claimIdNum },
       include: {
@@ -73,39 +82,27 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
         endNode: true
       }
     });
-    
-    // Find the claim node (entType = 'CLAIM')
-    let claimNodeId: number | undefined;
-    for (const edge of edges) {
-      if (edge.startNode?.entType === 'CLAIM') {
-        claimNodeId = edge.startNode.id;
-        break;
-      }
-      if (edge.endNode?.entType === 'CLAIM') {
-        claimNodeId = edge.endNode.id;
-        break;
-      }
-    }
-    
-    // Get validations - other claims where this claim node is the subject
+
+    // Get validations: claims whose OBJECT edge points to this claim node
+    // NEW: Validation structure is [Validator] <--subject-- [ValidationClaim] --object--> [ThisClaim]
     let validations: any[] = [];
-    if (claimNodeId) {
+    if (claimNode) {
       const validationEdges = await prisma.edge.findMany({
         where: {
-          startNodeId: claimNodeId,
-          claimId: { not: claimIdNum }
+          endNodeId: claimNode.id,
+          label: 'object',  // Validations point to this claim via object edge
+          claimId: { not: claimIdNum }  // Don't include self
         },
         include: {
           claim: true,
-          startNode: true,
-          endNode: true
+          startNode: true  // This is the validation claim node
         }
       });
-      
-      // Transform to include image from node
+
+      // Transform to include image from validator
       validations = validationEdges.map(edge => ({
         ...edge.claim,
-        image: edge.startNode?.image || edge.endNode?.image
+        image: edge.startNode?.image || null
       }));
     }
     
@@ -223,32 +220,20 @@ export async function submitValidation(req: Request, res: Response): Promise<Res
       return res.status(401).json({ error: 'Authentication required' });
     }
     
-    // Get the claim node URI
+    // NEW MODEL: Claim node URI is always /claims/{id}
     const claimIdNum = parseInt(claimId);
-    const edge = await prisma.edge.findFirst({
-      where: { 
-        claimId: claimIdNum,
-        OR: [
-          { startNode: { entType: 'CLAIM' } },
-          { endNode: { entType: 'CLAIM' } }
-        ]
-      },
-      include: {
-        startNode: true,
-        endNode: true
+    const claimNodeUri = `https://live.linkedtrust.us/claims/${claimIdNum}`;
+
+    // Verify claim node exists
+    const claimNode = await prisma.node.findFirst({
+      where: {
+        nodeUri: claimNodeUri,
+        entType: 'CLAIM'
       }
     });
-    
-    if (!edge) {
-      return res.status(404).json({ error: 'Claim not found' });
-    }
-    
-    const claimNodeUri = edge.startNode?.entType === 'CLAIM' 
-      ? edge.startNode.nodeUri 
-      : edge.endNode?.nodeUri;
-    
-    if (!claimNodeUri) {
-      return res.status(500).json({ error: 'Claim node not found' });
+
+    if (!claimNode) {
+      return res.status(404).json({ error: 'Claim node not found. Has the pipeline processed this claim?' });
     }
     
     // Create validation claim

@@ -1,6 +1,36 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
+/**
+ * Helper function to check if a CLAIM node is attested (referenced as object of another claim).
+ * For the new claims-as-nodes model, this determines visualization mode.
+ */
+async function checkIsAttested(nodeIds: number[]): Promise<Set<number>> {
+  const attestedClaims = await prisma.edge.findMany({
+    where: {
+      endNodeId: { in: nodeIds },
+      label: 'object',  // Claims referenced as objects are attested
+      endNode: { entType: 'CLAIM' }  // Only check CLAIM nodes
+    },
+    select: { endNodeId: true },
+    distinct: ['endNodeId']
+  });
+
+  return new Set(attestedClaims.map(e => e.endNodeId));
+}
+
+/**
+ * Add isAttested flag to nodes.
+ * Unattested claims can be rendered as edges in visualization.
+ * Attested claims must be shown as nodes.
+ */
+function addIsAttestedFlag(nodes: any[], attestedSet: Set<number>): any[] {
+  return nodes.map(node => ({
+    ...node,
+    isAttested: node.entType === 'CLAIM' && attestedSet.has(node.id)
+  }));
+}
+
 // Get node by ID with limited edges
 export async function getNodeById(req: Request, res: Response): Promise<Response | void> {
   try {
@@ -37,7 +67,36 @@ export async function getNodeById(req: Request, res: Response): Promise<Response
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    return res.json(node);
+    // Collect all node IDs to check for attestations
+    const nodeIds = [
+      node.id,
+      ...node.edgesFrom.map(e => e.endNode?.id).filter(id => id !== undefined),
+      ...node.edgesTo.map(e => e.startNode?.id).filter(id => id !== undefined)
+    ];
+
+    const attestedSet = await checkIsAttested(nodeIds);
+
+    // Add isAttested flag to main node
+    const nodeWithFlag = {
+      ...node,
+      isAttested: node.entType === 'CLAIM' && attestedSet.has(node.id),
+      edgesFrom: node.edgesFrom.map(e => ({
+        ...e,
+        endNode: e.endNode ? {
+          ...e.endNode,
+          isAttested: e.endNode.entType === 'CLAIM' && attestedSet.has(e.endNode.id)
+        } : null
+      })),
+      edgesTo: node.edgesTo.map(e => ({
+        ...e,
+        startNode: {
+          ...e.startNode,
+          isAttested: e.startNode.entType === 'CLAIM' && attestedSet.has(e.startNode.id)
+        }
+      }))
+    };
+
+    return res.json(nodeWithFlag);
   } catch (error) {
     console.error('Error fetching node:', error);
     return res.status(500).json({ error: 'Failed to fetch node' });
@@ -81,7 +140,36 @@ export async function expandNode(req: Request, res: Response): Promise<Response 
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    return res.json(node);
+    // Collect all node IDs to check for attestations
+    const nodeIds = [
+      node.id,
+      ...node.edgesFrom.map(e => e.endNode?.id).filter(id => id !== undefined),
+      ...node.edgesTo.map(e => e.startNode?.id).filter(id => id !== undefined)
+    ];
+
+    const attestedSet = await checkIsAttested(nodeIds);
+
+    // Add isAttested flag to main node and all connected nodes
+    const nodeWithFlag = {
+      ...node,
+      isAttested: node.entType === 'CLAIM' && attestedSet.has(node.id),
+      edgesFrom: node.edgesFrom.map(e => ({
+        ...e,
+        endNode: e.endNode ? {
+          ...e.endNode,
+          isAttested: e.endNode.entType === 'CLAIM' && attestedSet.has(e.endNode.id)
+        } : null
+      })),
+      edgesTo: node.edgesTo.map(e => ({
+        ...e,
+        startNode: {
+          ...e.startNode,
+          isAttested: e.startNode.entType === 'CLAIM' && attestedSet.has(e.startNode.id)
+        }
+      }))
+    };
+
+    return res.json(nodeWithFlag);
   } catch (error) {
     console.error('Error expanding node:', error);
     return res.status(500).json({ error: 'Failed to expand node' });
