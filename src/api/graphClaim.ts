@@ -21,7 +21,9 @@ export async function getClaimGraph(req: Request, res: Response): Promise<Respon
     const nodeIds = new Set<number>();
     claimEdges.forEach(e => {
       nodeIds.add(e.startNodeId);
-      nodeIds.add(e.endNodeId);
+      if (e.endNodeId !== null) {
+        nodeIds.add(e.endNodeId);
+      }
     });
 
     if (nodeIds.size === 0) {

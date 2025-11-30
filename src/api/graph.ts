@@ -16,7 +16,7 @@ async function checkIsAttested(nodeIds: number[]): Promise<Set<number>> {
     distinct: ['endNodeId']
   });
 
-  return new Set(attestedClaims.map(e => e.endNodeId));
+  return new Set(attestedClaims.map(e => e.endNodeId).filter((id): id is number => id !== null));
 }
 
 // Simple backwards-compatible graph endpoint
@@ -40,7 +40,9 @@ export async function getGraph(req: Request, res: Response): Promise<Response | 
       const nodeIds = new Set<number>();
       claimEdges.forEach(e => {
         nodeIds.add(e.startNodeId);
-        nodeIds.add(e.endNodeId);
+        if (e.endNodeId !== null) {
+          nodeIds.add(e.endNodeId);
+        }
       });
 
       if (nodeIds.size === 0) {

@@ -702,7 +702,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
                   filename: imageData.filename || `image_${i + 1}`
                 },
                 effectiveDate: imageData.effectiveDate ? new Date(imageData.effectiveDate) : new Date(),
-                owner: userIdUri || null,
+                owner: userIdUri || '',
                 signature
               }
             });

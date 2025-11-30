@@ -16,19 +16,7 @@ async function checkIsAttested(nodeIds: number[]): Promise<Set<number>> {
     distinct: ['endNodeId']
   });
 
-  return new Set(attestedClaims.map(e => e.endNodeId));
-}
-
-/**
- * Add isAttested flag to nodes.
- * Unattested claims can be rendered as edges in visualization.
- * Attested claims must be shown as nodes.
- */
-function addIsAttestedFlag(nodes: any[], attestedSet: Set<number>): any[] {
-  return nodes.map(node => ({
-    ...node,
-    isAttested: node.entType === 'CLAIM' && attestedSet.has(node.id)
-  }));
+  return new Set(attestedClaims.map(e => e.endNodeId).filter((id): id is number => id !== null));
 }
 
 // Get node by ID with limited edges
