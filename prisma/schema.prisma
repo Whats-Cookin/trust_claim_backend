@@ -63,23 +63,34 @@ model Node {
   edgesFrom Edge[]     @relation("edgeFrom")
 }
 
-// Relationship between two nodes
-//   subject -> object, edge label is claim  (if claim is a relationship)
-//   subject -> claim, edge label is claim   (if claim is a rating or credential)
-//   claim -> source, edge is "source" (still associated with claim)
-
+// NEW MODEL: All claims are nodes. Three edge types only: subject, object, source
+// Edge direction: Claim node is the hub, edges point FROM claim TO its relationships
+//
+// Example: Person [A] has skill Python [B], validated by [C]
+//   [Claim1: HAS_SKILL] --subject--> [A]
+//   [Claim1: HAS_SKILL] --object--> [B]
+//   [Claim1: HAS_SKILL] --source--> [GitHub]
+//   [Claim2: validated] --subject--> [C]
+//   [Claim2: validated] --object--> [Claim1]
+//
 model Edge {
-  id          Int     @id @default(autoincrement())
-  startNode   Node    @relation("edgeFrom", fields: [startNodeId], references: [id])
+  id          Int       @id @default(autoincrement())
+  startNode   Node      @relation("edgeFrom", fields: [startNodeId], references: [id])
   startNodeId Int
-  endNode     Node?   @relation("edgeTo", fields: [endNodeId], references: [id])
-  endNodeId   Int?
-  label       String
+  endNode     Node      @relation("edgeTo", fields: [endNodeId], references: [id])
+  endNodeId   Int       // Non-nullable - every edge must point somewhere
+  label       EdgeLabel // Restricted to subject, object, or source
   thumbnail   String?
-  claim       Claim   @relation("edgeClaim", fields: [claimId], references: [id])
+  claim       Claim     @relation("edgeClaim", fields: [claimId], references: [id])
   claimId     Int
 
-  @@unique([startNodeId, endNodeId, claimId])
+  @@unique([startNodeId, label, claimId]) // Each claim has max 1 subject, 1 object, 1 source
+}
+
+enum EdgeLabel {
+  subject  // claim --subject--> entity/claim that is the subject
+  object   // claim --object--> entity/claim that is the object
+  source   // claim --source--> entity that is the source
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims

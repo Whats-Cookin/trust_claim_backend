@@ -1,6 +1,24 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
+/**
+ * Helper function to check if CLAIM nodes are attested.
+ * A claim is attested if it's referenced as the object of another claim.
+ */
+async function checkIsAttested(nodeIds: number[]): Promise<Set<number>> {
+  const attestedClaims = await prisma.edge.findMany({
+    where: {
+      endNodeId: { in: nodeIds },
+      label: 'object',
+      endNode: { entType: 'CLAIM' }
+    },
+    select: { endNodeId: true },
+    distinct: ['endNodeId']
+  });
+
+  return new Set(attestedClaims.map(e => e.endNodeId));
+}
+
 // Simple backwards-compatible graph endpoint
 export async function getGraph(req: Request, res: Response): Promise<Response | void> {
   try {
@@ -53,11 +71,20 @@ export async function getGraph(req: Request, res: Response): Promise<Response | 
           },
         },
       });
-      
+
+      // Check which CLAIM nodes are attested
+      const attestedSet = await checkIsAttested(Array.from(nodeIds));
+
+      // Add isAttested flag to all nodes
+      const nodesWithFlags = nodes.map(node => ({
+        ...node,
+        isAttested: node.entType === 'CLAIM' && attestedSet.has(node.id)
+      }));
+
       // Return simple format expected by frontend
       return res.json({
-        nodes: nodes,
-        count: nodes.length
+        nodes: nodesWithFlags,
+        count: nodesWithFlags.length
       });
     }
     
@@ -118,10 +145,20 @@ export async function getGraph(req: Request, res: Response): Promise<Response | 
         },
       },
     });
-    
+
+    // Check which CLAIM nodes are attested
+    const nodeIds = nodes.map(n => n.id);
+    const attestedSet = await checkIsAttested(nodeIds);
+
+    // Add isAttested flag to all nodes
+    const nodesWithFlags = nodes.map(node => ({
+      ...node,
+      isAttested: node.entType === 'CLAIM' && attestedSet.has(node.id)
+    }));
+
     return res.json({
-      nodes: nodes,
-      count: nodes.length
+      nodes: nodesWithFlags,
+      count: nodesWithFlags.length
     });
   } catch (error) {
     console.error('Error fetching graph:', error);
