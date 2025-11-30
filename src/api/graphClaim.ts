@@ -1,6 +1,33 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
+/**
+ * Deduplicate edges within a node's edgesFrom/edgesTo arrays.
+ * Keeps only one edge per unique (startNodeId, endNodeId, label) tuple,
+ * preferring the edge with the highest claimId (most recent claim).
+ */
+function dedupeNodeEdges(node: any): any {
+  const dedupeEdges = (edges: any[]): any[] => {
+    if (!edges || edges.length === 0) return edges;
+
+    const edgeMap = new Map<string, any>();
+    for (const edge of edges) {
+      const key = `${edge.startNodeId}-${edge.endNodeId}-${edge.label}`;
+      const existing = edgeMap.get(key);
+      if (!existing || edge.claimId > existing.claimId) {
+        edgeMap.set(key, edge);
+      }
+    }
+    return Array.from(edgeMap.values());
+  };
+
+  return {
+    ...node,
+    edgesFrom: dedupeEdges(node.edgesFrom || []),
+    edgesTo: dedupeEdges(node.edgesTo || []),
+  };
+}
+
 // Get claim graph - returns nodes directly connected to a claim
 export async function getClaimGraph(req: Request, res: Response): Promise<Response | void> {
   try {
@@ -51,9 +78,12 @@ export async function getClaimGraph(req: Request, res: Response): Promise<Respon
       },
     });
 
+    // Deduplicate edges for cleaner graph visualization
+    const dedupedNodes = nodes.map(dedupeNodeEdges);
+
     return res.json({
-      nodes: nodes,
-      count: nodes.length,
+      nodes: dedupedNodes,
+      count: dedupedNodes.length,
     });
   } catch (error) {
     console.error('Error fetching claim graph:', error);

@@ -1,6 +1,33 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
+/**
+ * Deduplicate edges within a node's edgesFrom/edgesTo arrays.
+ * Keeps only one edge per unique (startNodeId, endNodeId, label) tuple,
+ * preferring the edge with the highest claimId (most recent claim).
+ */
+function dedupeNodeEdges(node: any): any {
+  const dedupeEdges = (edges: any[]): any[] => {
+    if (!edges || edges.length === 0) return edges;
+
+    const edgeMap = new Map<string, any>();
+    for (const edge of edges) {
+      const key = `${edge.startNodeId}-${edge.endNodeId}-${edge.label}`;
+      const existing = edgeMap.get(key);
+      if (!existing || edge.claimId > existing.claimId) {
+        edgeMap.set(key, edge);
+      }
+    }
+    return Array.from(edgeMap.values());
+  };
+
+  return {
+    ...node,
+    edgesFrom: dedupeEdges(node.edgesFrom || []),
+    edgesTo: dedupeEdges(node.edgesTo || []),
+  };
+}
+
 // Get node by ID with limited edges
 export async function getNodeById(req: Request, res: Response): Promise<Response | void> {
   try {
@@ -37,7 +64,8 @@ export async function getNodeById(req: Request, res: Response): Promise<Response
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    return res.json(node);
+    // Deduplicate edges for cleaner graph visualization
+    return res.json(dedupeNodeEdges(node));
   } catch (error) {
     console.error('Error fetching node:', error);
     return res.status(500).json({ error: 'Failed to fetch node' });
@@ -81,7 +109,8 @@ export async function expandNode(req: Request, res: Response): Promise<Response 
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    return res.json(node);
+    // Deduplicate edges for cleaner graph visualization
+    return res.json(dedupeNodeEdges(node));
   } catch (error) {
     console.error('Error expanding node:', error);
     return res.status(500).json({ error: 'Failed to expand node' });

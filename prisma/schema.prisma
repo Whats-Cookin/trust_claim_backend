@@ -61,6 +61,9 @@ model Node {
   thumbnail String? // thumbnail?
   edgesTo   Edge[]     @relation("edgeTo")
   edgesFrom Edge[]     @relation("edgeFrom")
+  // Admin edit tracking - if editedAt is set, pipeline won't overwrite name/image/thumbnail
+  editedAt  DateTime?
+  editedBy  String?
 }
 
 // Relationship between two nodes
