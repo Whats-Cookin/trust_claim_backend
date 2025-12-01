@@ -1,4 +1,5 @@
 /node_modules
+ecosystem.config.js
 /dist
 /prisma/badmigrations
 /prisma/protected
