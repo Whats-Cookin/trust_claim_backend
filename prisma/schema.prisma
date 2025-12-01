@@ -76,23 +76,17 @@ model Node {
 //   [Claim2: validated] --object--> [Claim1]
 //
 model Edge {
-  id          Int       @id @default(autoincrement())
-  startNode   Node      @relation("edgeFrom", fields: [startNodeId], references: [id])
+  id          Int     @id @default(autoincrement())
+  startNode   Node    @relation("edgeFrom", fields: [startNodeId], references: [id])
   startNodeId Int
-  endNode     Node      @relation("edgeTo", fields: [endNodeId], references: [id])
-  endNodeId   Int       // Non-nullable - every edge must point somewhere
-  label       EdgeLabel // Restricted to subject, object, or source
+  endNode     Node    @relation("edgeTo", fields: [endNodeId], references: [id])
+  endNodeId   Int     // Non-nullable - every edge must point somewhere
+  label       String  // Expected values: subject, object, source
   thumbnail   String?
-  claim       Claim     @relation("edgeClaim", fields: [claimId], references: [id])
+  claim       Claim   @relation("edgeClaim", fields: [claimId], references: [id])
   claimId     Int
 
   @@unique([startNodeId, label, claimId]) // Each claim has max 1 subject, 1 object, 1 source
-}
-
-enum EdgeLabel {
-  subject  // claim --subject--> entity/claim that is the subject
-  object   // claim --object--> entity/claim that is the object
-  source   // claim --source--> entity that is the source
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims

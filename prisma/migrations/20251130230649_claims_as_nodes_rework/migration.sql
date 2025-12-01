@@ -10,9 +10,6 @@
   - Changed the type of `label` on the `Edge` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
 
 */
--- CreateEnum
-CREATE TYPE "EdgeLabel" AS ENUM ('subject', 'object', 'source');
-
 -- DropForeignKey
 ALTER TABLE "Edge" DROP CONSTRAINT "Edge_endNodeId_fkey";
 
@@ -76,22 +73,14 @@ DELETE FROM "Edge" WHERE "startNodeId" IS NULL OR "endNodeId" IS NULL;
 ALTER TABLE "Edge" ALTER COLUMN "startNodeId" SET NOT NULL,
 ALTER COLUMN "endNodeId" SET NOT NULL;
 
--- Convert label from TEXT to EdgeLabel enum
--- We need to handle the conversion carefully
-ALTER TABLE "Edge" ADD COLUMN "label_new" "EdgeLabel";
-
--- Since Edge table should be empty after truncation, but just in case:
--- Map any existing labels to the new enum values
-UPDATE "Edge" SET "label_new" =
-    CASE
-        WHEN "label" = 'subject' THEN 'subject'::"EdgeLabel"
-        WHEN "label" = 'object' THEN 'object'::"EdgeLabel"
-        WHEN "label" = 'source' THEN 'source'::"EdgeLabel"
-        ELSE 'subject'::"EdgeLabel"  -- Default fallback
-    END;
-
-ALTER TABLE "Edge" DROP COLUMN "label";
-ALTER TABLE "Edge" RENAME COLUMN "label_new" TO "label";
+-- Ensure label column is TEXT (String) and NOT NULL
+-- If label doesn't exist, add it; if it does, ensure it's the right type
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Edge' AND column_name = 'label') THEN
+        ALTER TABLE "Edge" ADD COLUMN "label" TEXT NOT NULL DEFAULT 'subject';
+    END IF;
+END $$;
 ALTER TABLE "Edge" ALTER COLUMN "label" SET NOT NULL;
 
 -- AlterTable Node
