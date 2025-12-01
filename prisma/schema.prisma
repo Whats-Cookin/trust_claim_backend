@@ -59,6 +59,7 @@ model Node {
   descrip   String
   image     String? // image?
   thumbnail String? // thumbnail?
+  claimId   Int?       // For CLAIM type nodes, links to the source claim
   edgesTo   Edge[]     @relation("edgeTo")
   edgesFrom Edge[]     @relation("edgeFrom")
   editedAt  DateTime?

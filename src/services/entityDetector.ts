@@ -135,13 +135,47 @@ export class EntityDetector {
 
     // URL patterns
     if (uri.startsWith("http://") || uri.startsWith("https://")) {
-      // Social media profiles
-      if (uri.includes("linkedin.com/in/") || uri.includes("twitter.com/") || uri.includes("github.com/")) {
+      // Social media profiles - LinkedIn personal
+      if (uri.includes("linkedin.com/in/")) {
         return {
           entityType: "PERSON",
           entityTable: "person_entities",
           name: uri.split("/").pop(),
         };
+      }
+
+      // Twitter/X profiles (exclude non-profile paths)
+      if (uri.includes("twitter.com/") || uri.includes("x.com/")) {
+        const nonProfilePaths = ['/status/', '/search', '/explore', '/home', '/i/'];
+        if (!nonProfilePaths.some(path => uri.includes(path))) {
+          return {
+            entityType: "PERSON",
+            entityTable: "person_entities",
+            name: uri.split("/").pop(),
+          };
+        }
+      }
+
+      // Bluesky profiles
+      if (uri.includes("bsky.app/profile/") || uri.includes("bsky.social")) {
+        return {
+          entityType: "PERSON",
+          entityTable: "person_entities",
+          name: uri.split("/").pop(),
+        };
+      }
+
+      // GitHub profiles (single path segment = user profile)
+      if (uri.includes("github.com/")) {
+        const path = uri.split("github.com/")[1]?.replace(/^\/|\/$/g, '') || '';
+        const segments = path.split('/').filter(s => s);
+        if (segments.length === 1) {
+          return {
+            entityType: "PERSON",
+            entityTable: "person_entities",
+            name: segments[0],
+          };
+        }
       }
 
       // Organization websites
