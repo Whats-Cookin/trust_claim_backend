@@ -38,7 +38,6 @@ export async function getClaimGraph(req: Request, res: Response): Promise<Respon
       include: {
         edgesFrom: {
           include: {
-            claim: true,
             startNode: true,
             endNode: true,
           },
@@ -46,7 +45,6 @@ export async function getClaimGraph(req: Request, res: Response): Promise<Respon
         },
         edgesTo: {
           include: {
-            claim: true,
             startNode: true,
             endNode: true,
           },

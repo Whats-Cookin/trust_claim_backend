@@ -36,14 +36,12 @@ export async function getNodeById(req: Request, res: Response): Promise<Response
       include: {
         edgesFrom: {
           include: {
-            claim: true,
             endNode: true,
           },
           take: 20
         },
         edgesTo: {
           include: {
-            claim: true,
             startNode: true,
           },
           take: 20
@@ -107,7 +105,6 @@ export async function expandNode(req: Request, res: Response): Promise<Response 
       include: {
         edgesFrom: {
           include: {
-            claim: true,
             endNode: true,
           },
           take: Number(limit),
@@ -115,7 +112,6 @@ export async function expandNode(req: Request, res: Response): Promise<Response 
         },
         edgesTo: {
           include: {
-            claim: true,
             startNode: true,
           },
           take: Number(limit),
