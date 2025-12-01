@@ -40,8 +40,6 @@ CREATE TABLE "Node" (
     "descrip" TEXT NOT NULL,
     "image" TEXT,
     "thumbnail" TEXT,
-    "editedAt" TIMESTAMP WITHOUT TIME ZONE,
-    "editedBy" VARCHAR(255),
 
     CONSTRAINT "Node_pkey" PRIMARY KEY ("id")
 );
@@ -151,14 +149,7 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- Node unique constraint will be added by migration 20250120000000_add_node_uri_unique_constraint
 
--- CreateIndex
-CREATE INDEX "idx_node_enttype" ON "Node"("entType");
-
--- CreateIndex
-CREATE INDEX "idx_node_enttype_name" ON "Node"("entType", "name") WHERE "name" IS NOT NULL;
-
--- CreateIndex
-CREATE INDEX "idx_node_name_descrip_trgm" ON "Node" USING GIN ("name" gin_trgm_ops, "descrip" gin_trgm_ops);
+-- Node indexes will be added later if needed
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Edge_unique_constraint" ON "Edge"("startNodeId", "endNodeId", "claimId");
@@ -175,20 +166,7 @@ CREATE INDEX "idx_endnodeid" ON "Edge"("endNodeId");
 -- CreateIndex
 CREATE INDEX "idx_startnodeid" ON "Edge"("startNodeId");
 
--- CreateIndex
-CREATE INDEX "idx_claim_sourceuri_trgm" ON "Claim" USING GIN ("sourceURI" gin_trgm_ops);
-
--- CreateIndex
-CREATE INDEX "idx_claim_statement_trgm" ON "Claim" USING GIN ("statement" gin_trgm_ops);
-
--- CreateIndex
-CREATE INDEX "idx_effective_date" ON "Claim"("effectiveDate");
-
--- CreateIndex
-CREATE INDEX "idx_object" ON "Claim" USING GIN ("object" gin_trgm_ops);
-
--- CreateIndex
-CREATE INDEX "idx_subject" ON "Claim" USING GIN ("subject" gin_trgm_ops);
+-- Claim indexes may be added later
 
 -- Credential and uri_entities indexes will be added by their respective migrations
 
