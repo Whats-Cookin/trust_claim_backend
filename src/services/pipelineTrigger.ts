@@ -3,19 +3,22 @@ import axios from 'axios';
 export class PipelineTrigger {
   private static readonly PIPELINE_URL = process.env.PIPELINE_SERVICE_URL || 'http://localhost:8001';
   
-  static async processClaim(claimId: number): Promise<void> {
+  static async processClaim(claimId: number, subjectEntityType?: string): Promise<void> {
     try {
-      console.log(`Triggering pipeline for claim ${claimId}`);
-      
-      const response = await axios.post(`${this.PIPELINE_URL}/process-claim`, {
-        claim_id: claimId
-      }, {
+      console.log(`Triggering pipeline for claim ${claimId}`, subjectEntityType ? `with entity hint: ${subjectEntityType}` : '');
+
+      const payload: { claim_id: number; subject_entity_type?: string } = { claim_id: claimId };
+      if (subjectEntityType) {
+        payload.subject_entity_type = subjectEntityType;
+      }
+
+      const response = await axios.post(`${this.PIPELINE_URL}/process-claim`, payload, {
         headers: {
           'Content-Type': 'application/json'
         },
         timeout: 30000 // 30 second timeout
       });
-      
+
       console.log(`Pipeline response for claim ${claimId}:`, response.data);
     } catch (error) {
       console.error(`Failed to trigger pipeline for claim ${claimId}:`, error);

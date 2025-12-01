@@ -5,6 +5,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email?: string;
+    did?: string;  // DID for wallet-authenticated users
   };
 }
 
@@ -24,7 +25,8 @@ export function verifyToken(req: AuthRequest, res: Response, next: NextFunction)
     const decoded = jwt.verify(token, process.env.ACCESS_SECRET || 'access-secret') as any;
     req.user = {
       id: decoded.userId || decoded.id,
-      email: decoded.email
+      email: decoded.email,
+      did: decoded.did  // Preserve DID for wallet-authenticated users
     };
     next();
   } catch (error) {

@@ -4,8 +4,52 @@ import { AuthRequest } from '../lib/auth';
 import { userIdToUri } from '../lib/validators';
 
 /**
- * Helper function to find all linked subjects via SAME_AS claims (transitive closure)
- * Performs bidirectional graph traversal to find all URIs connected via SAME_AS
+ * Relationship types that indicate identity equivalence.
+ * These are used for transitive identity linking (e.g., "this GitHub is the same person as this DID").
+ *
+ * Supports both:
+ * - Legacy: claim="SAME_AS"
+ * - New: claim="RELATED_TO" with aspect="relationship:same-as"
+ *
+ * Future relationship types (e.g., "worked-for", "subsidiary-of") would use different aspects
+ * and would NOT be included here since they don't imply identity equivalence.
+ */
+export const IDENTITY_EQUIVALENT_ASPECTS = ['relationship:same-as'] as const;
+
+/**
+ * Builds a Prisma where clause to find identity-equivalent claims.
+ * This is the single source of truth for what constitutes an identity link.
+ *
+ * @param uriField - Which field to match the URI against ('subject' or 'object')
+ * @param uri - The URI to search for
+ * @returns Prisma where clause
+ */
+export function buildIdentityLinkWhereClause(uriField: 'subject' | 'object', uri: string) {
+  const baseCondition = uriField === 'subject'
+    ? { subject: uri, object: { not: null } }
+    : { object: uri };
+
+  return {
+    ...baseCondition,
+    OR: [
+      // Legacy: direct SAME_AS claim type
+      { claim: "SAME_AS" },
+      // New: RELATED_TO with identity-equivalent aspect
+      {
+        claim: "RELATED_TO",
+        aspect: { in: [...IDENTITY_EQUIVALENT_ASPECTS] }
+      }
+    ]
+  };
+}
+
+/**
+ * Helper function to find all linked subjects via identity-equivalent claims (transitive closure)
+ * Performs bidirectional graph traversal to find all URIs connected via SAME_AS or equivalent relationships.
+ *
+ * Recognizes:
+ * - claim="SAME_AS" (legacy)
+ * - claim="RELATED_TO" with aspect="relationship:same-as" (new)
  */
 export async function findLinkedSubjects(uri: string): Promise<Set<string>> {
   const linkedSubjects = new Set<string>();
@@ -19,22 +63,15 @@ export async function findLinkedSubjects(uri: string): Promise<Set<string>> {
     if (visited.has(currentUri)) continue;
     visited.add(currentUri);
 
-    // Find SAME_AS claims where this URI is the subject
+    // Find identity-equivalent claims where this URI is the subject
     const subjectClaims = await prisma.claim.findMany({
-      where: {
-        subject: currentUri,
-        claim: "SAME_AS",
-        object: { not: null },
-      },
+      where: buildIdentityLinkWhereClause('subject', currentUri),
       select: { object: true },
     });
 
-    // Find SAME_AS claims where this URI is the object
+    // Find identity-equivalent claims where this URI is the object
     const objectClaims = await prisma.claim.findMany({
-      where: {
-        object: currentUri,
-        claim: "SAME_AS",
-      },
+      where: buildIdentityLinkWhereClause('object', currentUri),
       select: { subject: true },
     });
 
@@ -191,7 +228,8 @@ export async function checkIsMe(req: AuthRequest, res: Response): Promise<Respon
     }
 
     const userId = req.user.id;
-    console.log('Checking if subjectUri is linked to user:', { userId, subjectUri });
+    const userDid = req.user.did;  // DID for wallet-authenticated users
+    console.log('Checking if subjectUri is linked to user:', { userId, userDid, subjectUri });
 
     // Convert user ID to URI format
     const userUri = userIdToUri(userId);
@@ -205,9 +243,18 @@ export async function checkIsMe(req: AuthRequest, res: Response): Promise<Respon
     }
 
     console.log('User URI:', userUri);
+    console.log('User DID:', userDid || 'none');
 
     // Find all subjects linked to the user's URI
     const userSubjects = await findLinkedSubjects(userUri);
+
+    // If user has a DID, also find subjects linked to the DID
+    // This handles wallet-authenticated users whose DID may have SAME_AS claims
+    if (userDid) {
+      const didSubjects = await findLinkedSubjects(userDid);
+      didSubjects.forEach(s => userSubjects.add(s));
+    }
+
     const isMe = userSubjects.has(subjectUri);
 
     console.log(`subjectUri ${isMe ? 'IS' : 'IS NOT'} linked to user`);

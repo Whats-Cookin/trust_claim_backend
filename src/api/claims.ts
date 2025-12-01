@@ -5,6 +5,7 @@ import { EntityDetector } from '../services/entityDetector';
 import { PipelineTrigger } from '../services/pipelineTrigger';
 import { signClaimWithServerKey } from '../lib/crypto';
 import { isValidUri, userIdToUri } from '../lib/validators';
+import { findLinkedSubjects } from './identity';
 // File system imports removed - images now stored in database
 import crypto from 'crypto';
 function validateImageData(imageData: any, index: number): { isValid: boolean; error?: string; details?: any } {
@@ -533,14 +534,14 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       });
     }
 
-    const { 
+    const {
       name,
-      subject, 
-      claim, 
-      object, 
-      sourceURI, 
-      howKnown, 
-      confidence, 
+      subject,
+      claim,
+      object,
+      sourceURI,
+      howKnown,
+      confidence,
       statement,
       aspect,
       stars,
@@ -551,6 +552,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       issuerId: clientIssuerId,
       issuerIdType: clientIssuerIdType,
       images, // Add images field
+      subjectEntityType, // Optional hint for subject entity type (PERSON/ORGANIZATION)
       ...otherFields // Capture any other fields for debugging
     } = req.body;
     
@@ -747,7 +749,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     await EntityDetector.processClaimEntities(newClaim, name);
 
 // Still fine to run the heavy pipeline in background
-     PipelineTrigger.processClaim(newClaim.id).catch(console.error);
+     PipelineTrigger.processClaim(newClaim.id, subjectEntityType).catch(console.error);
     // Include image records in response
     const response = {
       success: true,
@@ -895,57 +897,6 @@ export async function getClaim(req: Request, res: Response): Promise<Response | 
     console.log('Error response being sent:', JSON.stringify(errorResponse, null, 2));
     return res.status(500).json(errorResponse);
   }
-}
-
-// Helper function to find all linked subjects via SAME_AS claims
-async function findLinkedSubjects(uri: string): Promise<Set<string>> {
-  const linkedSubjects = new Set<string>();
-  linkedSubjects.add(uri); // Start with the original URI
-
-  const visited = new Set<string>();
-  const toVisit = [uri];
-
-  while (toVisit.length > 0) {
-    const currentUri = toVisit.pop()!;
-    if (visited.has(currentUri)) continue;
-    visited.add(currentUri);
-
-    // Find SAME_AS claims where this URI is the subject
-    const subjectClaims = await prisma.claim.findMany({
-      where: {
-        subject: currentUri,
-        claim: "SAME_AS",
-        object: { not: null },
-      },
-      select: { object: true },
-    });
-
-    // Find SAME_AS claims where this URI is the object
-    const objectClaims = await prisma.claim.findMany({
-      where: {
-        object: currentUri,
-        claim: "SAME_AS",
-      },
-      select: { subject: true },
-    });
-
-    // Add all found URIs to our set and to visit list
-    for (const claim of subjectClaims) {
-      if (claim.object && !visited.has(claim.object)) {
-        linkedSubjects.add(claim.object);
-        toVisit.push(claim.object);
-      }
-    }
-
-    for (const claim of objectClaims) {
-      if (!visited.has(claim.subject)) {
-        linkedSubjects.add(claim.subject);
-        toVisit.push(claim.subject);
-      }
-    }
-  }
-
-  return linkedSubjects;
 }
 
 // Get claims for a subject and all linked subjects
