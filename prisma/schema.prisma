@@ -61,6 +61,8 @@ model Node {
   thumbnail String? // thumbnail?
   edgesTo   Edge[]     @relation("edgeTo")
   edgesFrom Edge[]     @relation("edgeFrom")
+  editedAt  DateTime?
+  editedBy  String?
 }
 
 // NEW MODEL: All claims are nodes. Three edge types only: subject, object, source

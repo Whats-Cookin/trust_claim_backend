@@ -16,11 +16,19 @@ CREATE TYPE "EdgeLabel" AS ENUM ('subject', 'object', 'source');
 -- DropForeignKey
 ALTER TABLE "Edge" DROP CONSTRAINT "Edge_endNodeId_fkey";
 
--- Drop Claim indexes if they exist
+-- DropIndex
 DROP INDEX IF EXISTS "idx_claim_sourceuri_trgm";
+
+-- DropIndex
 DROP INDEX IF EXISTS "idx_claim_statement_trgm";
+
+-- DropIndex
 DROP INDEX IF EXISTS "idx_effective_date";
+
+-- DropIndex
 DROP INDEX IF EXISTS "idx_object";
+
+-- DropIndex
 DROP INDEX IF EXISTS "idx_subject";
 
 -- DropIndex
@@ -38,9 +46,10 @@ DROP INDEX "idx_endnodeid";
 -- DropIndex
 DROP INDEX "idx_startnodeid";
 
--- Drop Node indexes if they exist
+-- DropIndex
 DROP INDEX IF EXISTS "idx_node_enttype";
-DROP INDEX IF EXISTS "idx_node_enttype_name";
+
+-- DropIndex
 DROP INDEX IF EXISTS "idx_node_name_descrip_trgm";
 
 -- AlterTable (Handle both SERIAL and VARCHAR cases)
@@ -90,8 +99,8 @@ ALTER TABLE "Edge" ALTER COLUMN "label" SET NOT NULL;
 ALTER TABLE "Node" DROP COLUMN IF EXISTS "editedAt",
 DROP COLUMN IF EXISTS "editedBy";
 
--- AlterTable uri_entities (if it exists - it should have been created by add_credential_entity_system)
--- Skipping since uri_entities is created by a different migration
+-- AlterTable
+ALTER TABLE "uri_entities" ALTER COLUMN "updated_at" DROP DEFAULT;
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Edge_startNodeId_label_claimId_key" ON "Edge"("startNodeId", "label", "claimId");
