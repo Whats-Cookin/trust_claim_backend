@@ -52,22 +52,52 @@ DROP INDEX "idx_node_enttype";
 -- DropIndex
 DROP INDEX "idx_node_name_descrip_trgm";
 
--- AlterTable
-ALTER TABLE "Credential" DROP CONSTRAINT "Credential_pkey",
-ALTER COLUMN "id" DROP DEFAULT,
-ALTER COLUMN "id" SET DATA TYPE TEXT,
-ADD CONSTRAINT "Credential_pkey" PRIMARY KEY ("id");
-DROP SEQUENCE "Credential_id_seq";
+-- AlterTable (Handle both SERIAL and VARCHAR cases)
+-- First check if we need to change the type at all
+DO $$
+BEGIN
+    -- Check if Credential_id_seq exists (would mean id is SERIAL)
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Credential_id_seq') THEN
+        -- Change from SERIAL to TEXT
+        ALTER TABLE "Credential" ALTER COLUMN "id" DROP DEFAULT;
+        ALTER TABLE "Credential" ALTER COLUMN "id" SET DATA TYPE TEXT;
+        DROP SEQUENCE "Credential_id_seq";
+    ELSE
+        -- Already VARCHAR or TEXT, just ensure it's TEXT
+        ALTER TABLE "Credential" ALTER COLUMN "id" SET DATA TYPE TEXT;
+    END IF;
+END $$;
 
--- AlterTable
+-- AlterTable Edge
+-- Since the Edge table was truncated, we can safely modify it
+-- But handle any potential NULL values just in case
+DELETE FROM "Edge" WHERE "startNodeId" IS NULL OR "endNodeId" IS NULL;
+
 ALTER TABLE "Edge" ALTER COLUMN "startNodeId" SET NOT NULL,
-ALTER COLUMN "endNodeId" SET NOT NULL,
-DROP COLUMN "label",
-ADD COLUMN     "label" "EdgeLabel" NOT NULL;
+ALTER COLUMN "endNodeId" SET NOT NULL;
 
--- AlterTable
-ALTER TABLE "Node" DROP COLUMN "editedAt",
-DROP COLUMN "editedBy";
+-- Convert label from TEXT to EdgeLabel enum
+-- We need to handle the conversion carefully
+ALTER TABLE "Edge" ADD COLUMN "label_new" "EdgeLabel";
+
+-- Since Edge table should be empty after truncation, but just in case:
+-- Map any existing labels to the new enum values
+UPDATE "Edge" SET "label_new" =
+    CASE
+        WHEN "label" = 'subject' THEN 'subject'::"EdgeLabel"
+        WHEN "label" = 'object' THEN 'object'::"EdgeLabel"
+        WHEN "label" = 'source' THEN 'source'::"EdgeLabel"
+        ELSE 'subject'::"EdgeLabel"  -- Default fallback
+    END;
+
+ALTER TABLE "Edge" DROP COLUMN "label";
+ALTER TABLE "Edge" RENAME COLUMN "label_new" TO "label";
+ALTER TABLE "Edge" ALTER COLUMN "label" SET NOT NULL;
+
+-- AlterTable Node
+-- Drop columns if they exist (they exist on the server but not in our schema)
+ALTER TABLE "Node" DROP COLUMN IF EXISTS "editedAt",
+DROP COLUMN IF EXISTS "editedBy";
 
 -- AlterTable
 ALTER TABLE "uri_entities" ALTER COLUMN "updated_at" DROP DEFAULT;
