@@ -191,17 +191,25 @@ const reportSubject = buildReportSubject(
         total: validations.length
       },
       relatedClaims,
-      images: images.map(img => ({
-        id: img.id,
-        claimId: img.claimId,
-        url: `/api/images/${img.id}`, // Always use the API endpoint for serving images
-        digestMultibase: img.digestMultibase,
-        metadata: img.metadata,
-        effectiveDate: img.effectiveDate,
-        createdDate: img.createdDate,
-        owner: img.owner,
-        signature: img.signature
-      }))
+      images: images.map(img => {
+        const metadata = img.metadata as any;
+        // For videos stored externally (DO Spaces), use the original URL
+        // For images, use the API endpoint
+        const isVideo = metadata?.type === 'video' || img.url?.includes('.webm') || img.url?.includes('.mp4');
+        const isExternalUrl = img.url?.startsWith('http');
+
+        return {
+          id: img.id,
+          claimId: img.claimId,
+          url: (isVideo && isExternalUrl) ? img.url : `/api/images/${img.id}`,
+          digestMultibase: img.digestMultibase,
+          metadata: img.metadata,
+          effectiveDate: img.effectiveDate,
+          createdDate: img.createdDate,
+          owner: img.owner,
+          signature: img.signature
+        };
+      })
     });
   } catch (error) {
     console.error('Error generating claim report:', error);
