@@ -3,18 +3,18 @@ import AWS from 'aws-sdk';
 import crypto from 'crypto';
 import { AuthRequest } from '../../lib/auth';
 
-// Configure DigitalOcean Spaces (S3-compatible)
-const spacesEndpoint = new AWS.Endpoint(process.env.DO_SPACES_ENDPOINT || 'nyc3.digitaloceanspaces.com');
+// Configure S3-compatible storage
+const storageEndpoint = new AWS.Endpoint(process.env.LT_STORAGE_ENDPOINT || 'sfo3.digitaloceanspaces.com');
 const s3 = new AWS.S3({
-  endpoint: spacesEndpoint as any,
-  accessKeyId: process.env.DO_SPACES_KEY,
-  secretAccessKey: process.env.DO_SPACES_SECRET,
-  region: process.env.DO_SPACES_REGION || 'nyc3',
+  endpoint: storageEndpoint as any,
+  accessKeyId: process.env.LT_STORAGE_KEY,
+  secretAccessKey: process.env.LT_STORAGE_SECRET,
+  region: process.env.LT_STORAGE_REGION || 'sfo3',
   signatureVersion: 'v4'
 });
 
-const BUCKET_NAME = process.env.DO_SPACES_BUCKET || 'linkedtrust-videos';
-const CDN_URL = process.env.DO_SPACES_CDN_URL || `https://${BUCKET_NAME}.nyc3.cdn.digitaloceanspaces.com`;
+const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-videos';
+const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB max (roughly 30 seconds)
 
 /**
@@ -218,10 +218,10 @@ function generateVideoSignature(videoUrl: string, userId: string): string {
 // Environment variable checks
 export function checkVideoConfig(): { configured: boolean; missing: string[] } {
   const required = [
-    'DO_SPACES_ENDPOINT',
-    'DO_SPACES_KEY', 
-    'DO_SPACES_SECRET',
-    'DO_SPACES_BUCKET'
+    'LT_STORAGE_ENDPOINT',
+    'LT_STORAGE_KEY', 
+    'LT_STORAGE_SECRET',
+    'LT_STORAGE_BUCKET'
   ];
   
   const missing = required.filter(key => !process.env[key]);

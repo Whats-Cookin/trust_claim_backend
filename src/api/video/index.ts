@@ -2,16 +2,16 @@ import { Response } from 'express';
 import { AuthRequest } from '../../lib/auth';
 import { S3 } from 'aws-sdk';
 import crypto from 'crypto';
-// Configure S3 client for DigitalOcean Spaces
-const spacesEndpoint = new S3({
-  endpoint: process.env.DO_SPACES_ENDPOINT || 'https://nyc3.digitaloceanspaces.com',
-  accessKeyId: process.env.DO_SPACES_KEY || '',
-  secretAccessKey: process.env.DO_SPACES_SECRET || '',
+// Configure S3-compatible storage client
+const storageClient = new S3({
+  endpoint: process.env.LT_STORAGE_ENDPOINT || 'https://sfo3.digitaloceanspaces.com',
+  accessKeyId: process.env.LT_STORAGE_KEY || '',
+  secretAccessKey: process.env.LT_STORAGE_SECRET || '',
   s3ForcePathStyle: false,
   signatureVersion: 'v4',
 });
-const BUCKET_NAME = process.env.DO_SPACES_BUCKET || 'linkedtrust-videos';
-const CDN_URL = process.env.DO_SPACES_CDN_URL || `https://${BUCKET_NAME}.nyc3.cdn.digitaloceanspaces.com`;
+const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-videos';
+const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
 /**
  * @swagger
  * /api/video/upload-url:
@@ -51,7 +51,7 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
     // Create a path that includes user ID for organization
     const key = `videos/${userId}/${timestamp}_${videoId}.webm`;
     // Generate presigned URL with constraints
-    const uploadUrl = await spacesEndpoint.getSignedUrlPromise('putObject', {
+    const uploadUrl = await storageClient.getSignedUrlPromise('putObject', {
       Bucket: BUCKET_NAME,
       Key: key,
       Expires: 300, // 5 minutes to upload
@@ -109,7 +109,7 @@ export async function getThumbnailUploadUrl(req: AuthRequest, res: Response): Pr
     }
     const timestamp = Date.now();
     const key = `thumbnails/${userId}/${timestamp}_${videoId}.jpg`;
-    const uploadUrl = await spacesEndpoint.getSignedUrlPromise('putObject', {
+    const uploadUrl = await storageClient.getSignedUrlPromise('putObject', {
       Bucket: BUCKET_NAME,
       Key: key,
       Expires: 300,
