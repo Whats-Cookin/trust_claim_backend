@@ -13,7 +13,7 @@ const s3 = new AWS.S3({
   signatureVersion: 'v4'
 });
 
-const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-videos';
+const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
 const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB max (roughly 30 seconds)
 

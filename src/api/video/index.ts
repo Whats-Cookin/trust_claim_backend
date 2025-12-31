@@ -10,7 +10,7 @@ const storageClient = new S3({
   s3ForcePathStyle: false,
   signatureVersion: 'v4',
 });
-const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-videos';
+const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
 const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
 /**
  * @swagger
@@ -56,13 +56,6 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
       Key: key,
       Expires: 300, // 5 minutes to upload
       ContentType: 'video/webm',
-      // Set max file size to ~30MB (30 seconds at ~1MB/sec)
-      Conditions: [
-        ['content-length-range', 0, 30 * 1024 * 1024],
-        ['starts-with', '$Content-Type', 'video/']
-      ],
-      // Add CORS headers
-      ResponseContentDisposition: 'inline',
     });
     const videoUrl = `${CDN_URL}/${key}`;
     res.json({
@@ -114,9 +107,6 @@ export async function getThumbnailUploadUrl(req: AuthRequest, res: Response): Pr
       Key: key,
       Expires: 300,
       ContentType: 'image/jpeg',
-      Conditions: [
-        ['content-length-range', 0, 2 * 1024 * 1024] // Max 2MB for thumbnail
-      ]
     });
     const thumbnailUrl = `${CDN_URL}/${key}`;
     res.json({
