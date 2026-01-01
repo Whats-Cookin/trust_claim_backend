@@ -209,24 +209,10 @@ app.get('/api/keys/server', (_req, res) => {
 });
 
 // Video upload endpoints
-app.post('/api/video/upload-url', verifyToken, videoApi.getVideoUploadUrl);
+app.post('/api/video/upload', verifyToken, videoApi.videoUploadMiddleware, videoApi.uploadVideo);
 app.post('/api/video/confirm', verifyToken, videoApi.confirmVideoUpload);
 app.get('/api/video/claim/:claimId', videoApi.getClaimVideos);
 app.delete('/api/video/:videoId', verifyToken, videoApi.deleteVideo);
-
-// Video config check endpoint (for debugging)
-app.get('/api/video/config', (_req, res) => {
-  const config = videoApi.checkVideoConfig();
-  if (config.configured) {
-    res.json({ status: 'configured' });
-  } else {
-    res.status(500).json({ 
-      status: 'not configured', 
-      missing: config.missing,
-      message: 'Video upload requires DigitalOcean Spaces configuration' 
-    });
-  }
-});
 
 // Error handling middleware
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

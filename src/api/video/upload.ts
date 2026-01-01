@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import AWS from 'aws-sdk';
 import crypto from 'crypto';
+import multer from 'multer';
 import { AuthRequest } from '../../lib/auth';
 
 // Configure S3-compatible storage
@@ -10,46 +11,63 @@ const s3 = new AWS.S3({
   secretAccessKey: process.env.LT_STORAGE_SECRET,
   region: process.env.LT_STORAGE_REGION || 'sfo3',
   signatureVersion: 'v4',
-  s3ForcePathStyle: false, // Use virtual-hosted style URLs (bucket.endpoint)
+  s3ForcePathStyle: false,
 });
 
 const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
 const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
+const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+export const videoUploadMiddleware = multer({
+  storage,
+  limits: { fileSize: MAX_VIDEO_SIZE },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only video files are allowed'));
+    }
+  }
+}).single('video');
 
 /**
- * Generate a presigned URL for direct video upload from browser
- * This allows the frontend to upload directly to DigitalOcean Spaces
- * without sending the video through our backend
+ * Upload video directly to S3 via backend
+ * Frontend sends video file, backend uploads to DigitalOcean Spaces
  */
-export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promise<Response | void> {
+export async function uploadVideo(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
-    // Generate unique video ID
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file provided' });
+    }
+
     const videoId = crypto.randomBytes(16).toString('hex');
     const timestamp = Date.now();
     const userId = req.user?.id || 'anonymous';
-    
+
     // Create a key that includes user ID for organization
     const key = `videos/${userId}/${timestamp}_${videoId}.webm`;
-    
-    // Generate presigned PUT URL for direct upload
-    const uploadUrl = s3.getSignedUrl('putObject', {
+
+    // Upload to S3
+    await s3.upload({
       Bucket: BUCKET_NAME,
       Key: key,
-      Expires: 300, // 5 minutes to upload
-      ContentType: 'video/webm',
-    });
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype || 'video/webm',
+      ACL: 'public-read',
+    }).promise();
 
     const videoUrl = `${CDN_URL}/${key}`;
 
     res.json({
-      uploadUrl,
+      success: true,
       videoUrl,
       videoId,
-      expiresIn: 300
     });
   } catch (error) {
-    console.error('Error generating video upload URL:', error);
-    res.status(500).json({ error: 'Failed to generate upload URL' });
+    console.error('Error uploading video:', error);
+    res.status(500).json({ error: 'Failed to upload video' });
   }
 }
 
@@ -59,19 +77,19 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
  */
 export async function confirmVideoUpload(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
-    const { 
-      videoId, 
-      videoUrl, 
-      duration, 
+    const {
+      videoId,
+      videoUrl,
+      duration,
       claimId,
       transcript,
-      thumbnailUrl 
+      thumbnailUrl
     } = req.body;
-    
+
     if (!videoUrl || !claimId) {
       return res.status(400).json({ error: 'videoUrl and claimId are required' });
     }
-    
+
     // Verify the video exists in Spaces (optional but recommended)
     try {
       const key = videoUrl.replace(CDN_URL + '/', '');
@@ -82,20 +100,20 @@ export async function confirmVideoUpload(req: AuthRequest, res: Response): Promi
     } catch (error) {
       return res.status(404).json({ error: 'Video not found in storage' });
     }
-    
+
     // Create Image record for the video
     const { prisma } = await import('../../lib/prisma');
-    
+
     const videoRecord = await prisma.image.create({
       data: {
         claimId: parseInt(claimId),
-        url: videoUrl, // Store URL directly
-        digestMultibase: videoId, // Using videoId as a simple identifier
+        url: videoUrl,
+        digestMultibase: videoId,
         metadata: {
           type: 'video',
           contentType: 'video/webm',
           filename: `video_${claimId}.webm`,
-          duration: Math.min(duration || 30, 30), // Enforce 30 second max
+          duration: Math.min(duration || 30, 30),
           thumbnail: thumbnailUrl,
           transcript: transcript || null,
           originalUrl: videoUrl,
@@ -107,7 +125,7 @@ export async function confirmVideoUpload(req: AuthRequest, res: Response): Promi
         signature: generateVideoSignature(videoUrl, req.user?.id || 'anonymous')
       }
     });
-    
+
     res.json({
       success: true,
       video: videoRecord
@@ -125,7 +143,7 @@ export async function getClaimVideos(req: Request, res: Response): Promise<Respo
   try {
     const { claimId } = req.params;
     const { prisma } = await import('../../lib/prisma');
-    
+
     const videos = await prisma.image.findMany({
       where: {
         claimId: parseInt(claimId),
@@ -138,7 +156,7 @@ export async function getClaimVideos(req: Request, res: Response): Promise<Respo
         createdDate: 'desc'
       }
     });
-    
+
     res.json({ videos });
   } catch (error) {
     console.error('Error fetching claim videos:', error);
@@ -153,22 +171,19 @@ export async function deleteVideo(req: AuthRequest, res: Response): Promise<Resp
   try {
     const { videoId } = req.params;
     const { prisma } = await import('../../lib/prisma');
-    
-    // Find the video
+
     const video = await prisma.image.findUnique({
       where: { id: parseInt(videoId) }
     });
-    
+
     if (!video) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
-    // Check ownership
+
     if (video.owner !== req.user?.id && req.user?.id) {
       return res.status(403).json({ error: 'Not authorized to delete this video' });
     }
-    
-    // Soft delete by updating metadata
+
     await prisma.image.update({
       where: { id: parseInt(videoId) },
       data: {
@@ -179,7 +194,7 @@ export async function deleteVideo(req: AuthRequest, res: Response): Promise<Resp
         }
       }
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting video:', error);
@@ -187,7 +202,6 @@ export async function deleteVideo(req: AuthRequest, res: Response): Promise<Resp
   }
 }
 
-// Helper function to generate a simple signature for the video
 function generateVideoSignature(videoUrl: string, userId: string): string {
   return crypto
     .createHash('sha256')
@@ -195,17 +209,16 @@ function generateVideoSignature(videoUrl: string, userId: string): string {
     .digest('base64');
 }
 
-// Environment variable checks
 export function checkVideoConfig(): { configured: boolean; missing: string[] } {
   const required = [
     'LT_STORAGE_ENDPOINT',
-    'LT_STORAGE_KEY', 
+    'LT_STORAGE_KEY',
     'LT_STORAGE_SECRET',
     'LT_STORAGE_BUCKET'
   ];
-  
+
   const missing = required.filter(key => !process.env[key]);
-  
+
   return {
     configured: missing.length === 0,
     missing
