@@ -15,7 +15,6 @@ const s3 = new AWS.S3({
 
 const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
 const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
-const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB max (roughly 30 seconds)
 
 /**
  * Generate a presigned URL for direct video upload from browser
@@ -32,39 +31,20 @@ export async function getVideoUploadUrl(req: AuthRequest, res: Response): Promis
     // Create a key that includes user ID for organization
     const key = `videos/${userId}/${timestamp}_${videoId}.webm`;
     
-    // Generate presigned POST data for secure upload
-    // Using POST instead of PUT for better browser compatibility
-    const params = {
+    // Generate presigned PUT URL for direct upload
+    const uploadUrl = s3.getSignedUrl('putObject', {
       Bucket: BUCKET_NAME,
-      Fields: {
-        key: key,
-        'Content-Type': 'video/webm',
-        'x-amz-meta-userid': userId,
-        'x-amz-meta-purpose': 'validation',
-        'x-amz-meta-max-duration': '30'
-      },
-      Expires: 300, // URL expires in 5 minutes
-      Conditions: [
-        ['content-length-range', 0, MAX_VIDEO_SIZE],
-        ['starts-with', '$Content-Type', 'video/'],
-        {'x-amz-meta-userid': userId}
-      ]
-    };
-    
-    // Generate the presigned POST data
-    const presignedPost = s3.createPresignedPost(params);
-    
-    // Generate video metadata
+      Key: key,
+      Expires: 300, // 5 minutes to upload
+      ContentType: 'video/webm',
+    });
+
     const videoUrl = `${CDN_URL}/${key}`;
-    const thumbnailUrl = `${CDN_URL}/${key.replace('.webm', '_thumb.jpg')}`; // We'll generate this later
-    
+
     res.json({
-      uploadData: presignedPost,
-      videoId,
+      uploadUrl,
       videoUrl,
-      thumbnailUrl,
-      maxDuration: 30,
-      maxSizeMB: 30,
+      videoId,
       expiresIn: 300
     });
   } catch (error) {
