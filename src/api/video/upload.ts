@@ -4,18 +4,31 @@ import crypto from 'crypto';
 import multer from 'multer';
 import { AuthRequest } from '../../lib/auth';
 
-// Configure S3-compatible storage
-const s3 = new AWS.S3({
-  endpoint: process.env.LT_STORAGE_ENDPOINT || 'https://sfo3.digitaloceanspaces.com',
-  accessKeyId: process.env.LT_STORAGE_KEY,
-  secretAccessKey: process.env.LT_STORAGE_SECRET,
-  region: process.env.LT_STORAGE_REGION || 'sfo3',
-  signatureVersion: 'v4',
-  s3ForcePathStyle: false,
-});
+// Lazy-initialized S3 client (env vars may not be loaded at import time)
+let s3: AWS.S3 | null = null;
 
-const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
-const CDN_URL = process.env.LT_STORAGE_CDN_URL || `https://${BUCKET_NAME}.sfo3.cdn.digitaloceanspaces.com`;
+function getS3Client(): AWS.S3 {
+  if (!s3) {
+    s3 = new AWS.S3({
+      endpoint: process.env.LT_STORAGE_ENDPOINT || 'https://sfo3.digitaloceanspaces.com',
+      accessKeyId: process.env.LT_STORAGE_KEY,
+      secretAccessKey: process.env.LT_STORAGE_SECRET,
+      region: process.env.LT_STORAGE_REGION || 'sfo3',
+      signatureVersion: 'v4',
+      s3ForcePathStyle: false,
+    });
+  }
+  return s3;
+}
+
+function getBucketName(): string {
+  return process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
+}
+
+function getCdnUrl(): string {
+  const bucket = getBucketName();
+  return process.env.LT_STORAGE_CDN_URL || `https://${bucket}.sfo3.cdn.digitaloceanspaces.com`;
+}
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB
 
 // Configure multer for memory storage
@@ -58,15 +71,15 @@ export async function uploadVideo(req: AuthRequest, res: Response): Promise<Resp
     console.log(`Uploading video: ${key} (${req.file.size} bytes)`);
 
     // Upload to S3
-    await s3.upload({
-      Bucket: BUCKET_NAME,
+    await getS3Client().upload({
+      Bucket: getBucketName(),
       Key: key,
       Body: req.file.buffer,
       ContentType: req.file.mimetype || 'video/webm',
       ACL: 'public-read',
     }).promise();
 
-    const videoUrl = `${CDN_URL}/${key}`;
+    const videoUrl = `${getCdnUrl()}/${key}`;
     console.log(`Video uploaded successfully: ${videoUrl}`);
 
     res.json({
@@ -102,9 +115,9 @@ export async function confirmVideoUpload(req: AuthRequest, res: Response): Promi
 
     // Verify the video exists in Spaces (optional but recommended)
     try {
-      const key = videoUrl.replace(CDN_URL + '/', '');
-      await s3.headObject({
-        Bucket: BUCKET_NAME,
+      const key = videoUrl.replace(getCdnUrl() + '/', '');
+      await getS3Client().headObject({
+        Bucket: getBucketName(),
         Key: key
       }).promise();
     } catch (error) {
