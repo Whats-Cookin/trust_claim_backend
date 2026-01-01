@@ -38,6 +38,12 @@ export const videoUploadMiddleware = multer({
  */
 export async function uploadVideo(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
+    // Check S3 config first
+    if (!process.env.LT_STORAGE_KEY || !process.env.LT_STORAGE_SECRET) {
+      console.error('Video upload failed: Missing LT_STORAGE_KEY or LT_STORAGE_SECRET');
+      return res.status(500).json({ error: 'Video storage not configured' });
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'No video file provided' });
     }
@@ -49,6 +55,8 @@ export async function uploadVideo(req: AuthRequest, res: Response): Promise<Resp
     // Create a key that includes user ID for organization
     const key = `videos/${userId}/${timestamp}_${videoId}.webm`;
 
+    console.log(`Uploading video: ${key} (${req.file.size} bytes)`);
+
     // Upload to S3
     await s3.upload({
       Bucket: BUCKET_NAME,
@@ -59,14 +67,16 @@ export async function uploadVideo(req: AuthRequest, res: Response): Promise<Resp
     }).promise();
 
     const videoUrl = `${CDN_URL}/${key}`;
+    console.log(`Video uploaded successfully: ${videoUrl}`);
 
     res.json({
       success: true,
       videoUrl,
       videoId,
     });
-  } catch (error) {
-    console.error('Error uploading video:', error);
+  } catch (error: any) {
+    console.error('Error uploading video:', error?.message || error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     res.status(500).json({ error: 'Failed to upload video' });
   }
 }
