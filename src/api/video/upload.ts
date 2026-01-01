@@ -4,13 +4,13 @@ import crypto from 'crypto';
 import { AuthRequest } from '../../lib/auth';
 
 // Configure S3-compatible storage
-const storageEndpoint = new AWS.Endpoint(process.env.LT_STORAGE_ENDPOINT || 'sfo3.digitaloceanspaces.com');
 const s3 = new AWS.S3({
-  endpoint: storageEndpoint as any,
+  endpoint: process.env.LT_STORAGE_ENDPOINT || 'https://sfo3.digitaloceanspaces.com',
   accessKeyId: process.env.LT_STORAGE_KEY,
   secretAccessKey: process.env.LT_STORAGE_SECRET,
   region: process.env.LT_STORAGE_REGION || 'sfo3',
-  signatureVersion: 'v4'
+  signatureVersion: 'v4',
+  s3ForcePathStyle: false, // Use virtual-hosted style URLs (bucket.endpoint)
 });
 
 const BUCKET_NAME = process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
