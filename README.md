@@ -209,10 +209,14 @@ DATABASE_URL="postgresql://postgres:postgres@postgres:5432/claim"
 
 ACCESS_SECRET='...'
 REFRESH_SECRET='...'
-AWS_ACCESS_KEY_ID='...'
-AWS_SECRET_ACCESS_KEY='...'
-AWS_STORAGE_BUCKET_NAME='...'
-AWS_S3_REGION_NAME='...'
+
+# Video storage (S3-compatible, e.g. DigitalOcean Spaces)
+LT_STORAGE_ENDPOINT='https://sfo3.digitaloceanspaces.com'
+LT_STORAGE_KEY='...'
+LT_STORAGE_SECRET='...'
+LT_STORAGE_BUCKET='linkedtrust-dev'
+LT_STORAGE_REGION='sfo3'
+LT_STORAGE_CDN_URL='https://linkedtrust-dev.sfo3.cdn.digitaloceanspaces.com'
 
 DATA_PIPELINE_MS='http://trust-claim-data-pipeline:5000'
 ```

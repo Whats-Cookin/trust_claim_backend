@@ -208,11 +208,8 @@ app.get('/api/keys/server', (_req, res) => {
   res.json(getServerPublicKey());
 });
 
-// Video upload endpoints
+// Video upload endpoint
 app.post('/api/video/upload', verifyToken, videoApi.videoUploadMiddleware, videoApi.uploadVideo);
-app.post('/api/video/confirm', verifyToken, videoApi.confirmVideoUpload);
-app.get('/api/video/claim/:claimId', videoApi.getClaimVideos);
-app.delete('/api/video/:videoId', verifyToken, videoApi.deleteVideo);
 
 // Error handling middleware
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
