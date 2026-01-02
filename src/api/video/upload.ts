@@ -96,7 +96,18 @@ export async function uploadVideo(req: AuthRequest, res: Response): Promise<Resp
     });
   } catch (error: any) {
     console.error('Error uploading video:', error?.message || error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
-    res.status(500).json({ error: 'Failed to upload video' });
+    console.error('Error code:', error?.code);
+
+    // Return actual error to frontend for debugging
+    const errorMessage = error?.message || 'Unknown error';
+    const errorCode = error?.code || 'UNKNOWN';
+
+    res.status(500).json({
+      error: errorMessage,
+      code: errorCode,
+      details: error?.code === 'SignatureDoesNotMatch'
+        ? 'Storage credentials mismatch - check LT_STORAGE_KEY and LT_STORAGE_SECRET'
+        : undefined
+    });
   }
 }
