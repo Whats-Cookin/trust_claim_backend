@@ -17,7 +17,8 @@ jest.mock('aws-sdk', () => {
   return {
     S3: jest.fn().mockImplementation(() => ({
       upload: mockUpload
-    }))
+    })),
+    Credentials: jest.fn().mockImplementation((opts) => opts)
   };
 });
 

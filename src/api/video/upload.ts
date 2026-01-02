@@ -9,10 +9,16 @@ let s3: AWS.S3 | null = null;
 
 function getS3Client(): AWS.S3 {
   if (!s3) {
+    // Explicitly create credentials to prevent AWS SDK from using
+    // AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY from environment
+    const credentials = new AWS.Credentials({
+      accessKeyId: process.env.LT_STORAGE_KEY || '',
+      secretAccessKey: process.env.LT_STORAGE_SECRET || '',
+    });
+
     s3 = new AWS.S3({
       endpoint: process.env.LT_STORAGE_ENDPOINT || 'https://sfo3.digitaloceanspaces.com',
-      accessKeyId: process.env.LT_STORAGE_KEY,
-      secretAccessKey: process.env.LT_STORAGE_SECRET,
+      credentials,
       region: process.env.LT_STORAGE_REGION || 'sfo3',
       signatureVersion: 'v4',
       s3ForcePathStyle: false,
