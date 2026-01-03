@@ -65,6 +65,15 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       return res.status(404).json({ error: 'Claim not found' });
     }
     
+    // NEW MODEL: Claim node is always at /claims/{id} with entType = 'CLAIM'
+    const claimNodeUri = `https://live.linkedtrust.us/claims/${claimIdNum}`;
+    const claimNode = await prisma.node.findFirst({
+      where: {
+        nodeUri: claimNodeUri,
+        entType: 'CLAIM'
+      }
+    });
+
     // Get all edges for this claim (for display purposes)
     const edges = await prisma.edge.findMany({
       where: { claimId: claimIdNum },
@@ -74,81 +83,28 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       }
     });
 
-    // Build all possible URIs that could reference this claim
-    // Different environments use different base URLs
-    const possibleClaimUris = [
-      `https://live.linkedtrust.us/claims/${claimIdNum}`,
-      `https://dev.linkedtrust.us/claims/${claimIdNum}`,
-      `http://localhost:9000/claims/${claimIdNum}`,
-      // Also check for /api/claims/ format
-      `https://live.linkedtrust.us/api/claims/${claimIdNum}`,
-      `https://dev.linkedtrust.us/api/claims/${claimIdNum}`,
-      `http://localhost:9000/api/claims/${claimIdNum}`,
-    ];
-
-    // Get validations by querying Claims directly
-    // A validation is a claim whose subject points to this claim's URI
-    // and has a validation-type claim type
-    const validationClaimTypes = ['validated', 'is_vouched_for', 'agree', 'verified', 'rejected', 'disagree', 'impact'];
-
-    const validationClaims = await prisma.claim.findMany({
-      where: {
-        subject: { in: possibleClaimUris },
-        claim: { in: validationClaimTypes },
-        id: { not: claimIdNum }  // Don't include self
-      },
-      orderBy: { effectiveDate: 'desc' }
-    });
-
-    // Get issuer info for each validation (try to get name from nodes or entities)
-    const validations = await Promise.all(validationClaims.map(async (valClaim) => {
-      // Try to get issuer name from node or entity
-      let issuerName = valClaim.issuerId || 'Anonymous';
-      let issuerImage = null;
-
-      if (valClaim.issuerId) {
-        // Check if there's a node for this issuer
-        const issuerNode = await prisma.node.findFirst({
-          where: { nodeUri: valClaim.issuerId }
-        });
-        if (issuerNode) {
-          issuerName = issuerNode.name || issuerName;
-          issuerImage = issuerNode.image;
-        } else {
-          // Try UriEntity
-          const issuerEntity = await prisma.uriEntity.findUnique({
-            where: { uri: valClaim.issuerId }
-          });
-          if (issuerEntity) {
-            issuerName = issuerEntity.name || issuerName;
-            issuerImage = issuerEntity.image;
-          }
+    // Get validations: claims whose OBJECT edge points to this claim node
+    // NEW: Validation structure is [Validator] <--subject-- [ValidationClaim] --object--> [ThisClaim]
+    let validations: any[] = [];
+    if (claimNode) {
+      const validationEdges = await prisma.edge.findMany({
+        where: {
+          endNodeId: claimNode.id,
+          label: 'object',  // Validations point to this claim via object edge
+          claimId: { not: claimIdNum }  // Don't include self
+        },
+        include: {
+          claim: true,
+          startNode: true  // This is the validation claim node
         }
-      }
-
-      // Get any images/videos associated with this validation claim
-      const valImages = await prisma.image.findMany({
-        where: { claimId: valClaim.id }
       });
 
-      return {
-        ...valClaim,
-        issuer_name: issuerName,
-        image: issuerImage,
-        // Include media (images and videos) from this validation
-        media: valImages.map(img => {
-          const metadata = img.metadata as any;
-          const isVideo = metadata?.type === 'video' || img.url?.includes('.webm') || img.url?.includes('.mp4');
-          const isExternalUrl = img.url?.startsWith('http');
-          return {
-            id: img.id,
-            url: (isVideo && isExternalUrl) ? img.url : `/api/images/${img.id}`,
-            metadata: img.metadata,
-            type: isVideo ? 'video' : 'image'
-          };
-        })
-      };
-    }));
+      // Transform to include image from validator
+      validations = validationEdges.map(edge => ({
+        ...edge.claim,
+        image: edge.startNode?.image || null
+      }));
+    }
     
     // Get related claims about same subject
     const relatedClaimsData = await prisma.claim.findMany({
@@ -232,11 +188,7 @@ const reportSubject = buildReportSubject(
       subjectNode,
       validations,
       validationSummary: {
-        total: validations.length,
-        supporting: validations.filter((v: any) => ['validated', 'is_vouched_for', 'agree', 'verified', 'impact'].includes(v.claim)).length,
-        dissenting: validations.filter((v: any) => ['rejected', 'disagree'].includes(v.claim)).length,
-        withVideo: validations.filter((v: any) => v.media?.some((m: any) => m.type === 'video')).length,
-        withImage: validations.filter((v: any) => v.media?.some((m: any) => m.type === 'image')).length,
+        total: validations.length
       },
       relatedClaims,
       images: images.map(img => {
