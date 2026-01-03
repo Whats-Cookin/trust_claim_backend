@@ -65,8 +65,9 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       return res.status(404).json({ error: 'Claim not found' });
     }
     
-    // NEW MODEL: Claim node is always at /claims/{id} with entType = 'CLAIM'
-    const claimNodeUri = `https://live.linkedtrust.us/claims/${claimIdNum}`;
+    // Claim node URI uses the environment's base URL
+    const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'https://live.linkedtrust.us';
+    const claimNodeUri = `${baseUrl}/claims/${claimIdNum}`;
     const claimNode = await prisma.node.findFirst({
       where: {
         nodeUri: claimNodeUri,
