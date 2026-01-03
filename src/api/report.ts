@@ -83,14 +83,14 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       }
     });
 
-    // Get validations: claims whose OBJECT edge points to this claim node
-    // NEW: Validation structure is [Validator] <--subject-- [ValidationClaim] --object--> [ThisClaim]
+    // Get validations: claims whose SUBJECT edge points to this claim node
+    // Validation structure: ValidationClaim.subject = claim being validated, ValidationClaim.source = validator
     let validations: any[] = [];
     if (claimNode) {
       const validationEdges = await prisma.edge.findMany({
         where: {
           endNodeId: claimNode.id,
-          label: 'object',  // Validations point to this claim via object edge
+          label: 'subject',  // Validation claims have subject pointing to the claim being validated
           claimId: { not: claimIdNum }  // Don't include self
         },
         include: {
@@ -99,10 +99,46 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
         }
       });
 
-      // Transform to include image from validator
-      validations = validationEdges.map(edge => ({
+      // Validation claim types - claims that attest to another claim's validity
+      const supportingClaimTypes = ['validated', 'is_vouched_for', 'agree', 'verified'];
+      const dissentingClaimTypes = ['rejected', 'disagree'];
+      const allValidationTypes = [...supportingClaimTypes, ...dissentingClaimTypes];
+
+      // Filter to validation-type claims only
+      const validationClaims = validationEdges.filter(
+        edge => edge.claim && allValidationTypes.includes(edge.claim.claim?.toLowerCase() || '')
+      );
+
+      // Get media (images/videos) for each validation claim
+      const validationClaimIds = validationClaims.map(e => e.claim!.id);
+      const validationMedia = await prisma.image.findMany({
+        where: { claimId: { in: validationClaimIds } }
+      });
+
+      // Group media by claim ID
+      const mediaByClaimId = new Map<number, any[]>();
+      validationMedia.forEach(img => {
+        const list = mediaByClaimId.get(img.claimId) || [];
+        const metadata = img.metadata as any;
+        const isVideo = metadata?.type === 'video' || img.url?.includes('.webm') || img.url?.includes('.mp4');
+        list.push({
+          id: img.id,
+          url: img.url?.startsWith('http') ? img.url : `/api/images/${img.id}`,
+          type: isVideo ? 'video' : 'image',
+          metadata: img.metadata
+        });
+        mediaByClaimId.set(img.claimId, list);
+      });
+
+      // Transform validations with issuer info and media
+      validations = validationClaims.map(edge => ({
         ...edge.claim,
-        image: edge.startNode?.image || null
+        // The issuer is the person/entity who created the validation claim
+        issuer_name: edge.claim?.issuerId || 'Anonymous',
+        // Image from the validation claim's node (if any)
+        image: edge.startNode?.image || null,
+        // Media (videos/images) attached to this validation
+        media: mediaByClaimId.get(edge.claim!.id) || []
       }));
     }
     
@@ -188,7 +224,18 @@ const reportSubject = buildReportSubject(
       subjectNode,
       validations,
       validationSummary: {
-        total: validations.length
+        total: validations.length,
+        // Count supporting vs dissenting attestations
+        supporting: validations.filter((v: any) =>
+          ['validated', 'is_vouched_for', 'agree', 'verified'].includes(v.claim?.toLowerCase())
+        ).length,
+        dissenting: validations.filter((v: any) =>
+          ['rejected', 'disagree'].includes(v.claim?.toLowerCase())
+        ).length,
+        // Count attestations with video evidence
+        withVideo: validations.filter((v: any) =>
+          v.media?.some((m: any) => m.type === 'video')
+        ).length
       },
       relatedClaims,
       images: images.map(img => {
