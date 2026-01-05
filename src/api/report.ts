@@ -101,7 +101,7 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       });
 
       // Validation claim types - claims that attest to another claim's validity
-      const supportingClaimTypes = ['validated', 'is_vouched_for', 'agree', 'verified'];
+      const supportingClaimTypes = ['validated', 'is_vouched_for', 'agree', 'verified', 'rated'];
       const dissentingClaimTypes = ['rejected', 'disagree'];
       const allValidationTypes = [...supportingClaimTypes, ...dissentingClaimTypes];
 
@@ -228,7 +228,7 @@ const reportSubject = buildReportSubject(
         total: validations.length,
         // Count supporting vs dissenting attestations
         supporting: validations.filter((v: any) =>
-          ['validated', 'is_vouched_for', 'agree', 'verified'].includes(v.claim?.toLowerCase())
+          ['validated', 'is_vouched_for', 'agree', 'verified', 'rated'].includes(v.claim?.toLowerCase())
         ).length,
         dissenting: validations.filter((v: any) =>
           ['rejected', 'disagree'].includes(v.claim?.toLowerCase())
