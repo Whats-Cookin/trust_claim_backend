@@ -552,6 +552,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       issuerId: clientIssuerId,
       issuerIdType: clientIssuerIdType,
       images, // Add images field
+      videoUrl, // Video testimonial URL (uploaded separately via /api/video/upload)
       subjectEntityType, // Optional hint for subject entity type (PERSON/ORGANIZATION)
       ...otherFields // Capture any other fields for debugging
     } = req.body;
@@ -742,7 +743,46 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
         }
       }
     }
-    
+
+    // Process videoUrl if provided (uploaded separately via /api/video/upload)
+    if (videoUrl && typeof videoUrl === 'string' && videoUrl.trim().length > 0) {
+      console.log('Processing video URL:', videoUrl);
+      try {
+        // Generate a simple signature for the video URL
+        const videoSignature = crypto
+          .createHash('sha256')
+          .update(videoUrl)
+          .digest('base64');
+
+        // Save video as an Image record with type: 'video' in metadata
+        const videoRecord = await prisma.image.create({
+          data: {
+            claimId: newClaim.id,
+            url: videoUrl, // Store the external video URL directly
+            digestMultibase: `f${videoSignature}`,
+            metadata: {
+              type: 'video',
+              contentType: 'video/webm',
+              filename: `video_${newClaim.id}.webm`
+            },
+            effectiveDate: new Date(),
+            owner: userIdUri || '',
+            signature: videoSignature
+          }
+        });
+
+        imageRecords.push(videoRecord);
+        console.log('Video record created with ID:', videoRecord.id);
+      } catch (videoError) {
+        console.error('Failed to save video URL:', videoError);
+        imageErrors.push({
+          index: 'video',
+          error: `Failed to save video: ${videoError instanceof Error ? videoError.message : String(videoError)}`,
+          videoUrl
+        });
+      }
+    }
+
     console.log('Starting background processes...');
 
     // Detect entities in the background
