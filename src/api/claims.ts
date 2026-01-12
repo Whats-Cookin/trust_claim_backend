@@ -489,8 +489,8 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       console.error('   4. Invalid base64 format');
       console.error('✅ Expected Format: { filename: "image.jpg", contentType: "image/jpeg", base64: "data:image/jpeg;base64,abc123...", metadata: {...}, effectiveDate: "2024-01-01T00:00:00Z" }');
       console.error('=========================');
-      return res.status(400).json({ 
-        error: 'Invalid request data',
+      return res.status(400).json({
+        error: `Validation failed: ${validation.errors.join('; ')}`,
         details: validation.errors,
         validationDetails: validation.validationDetails,
         received: {

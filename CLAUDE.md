@@ -1,5 +1,29 @@
 # Claude Code Notes
 
+## CRITICAL: Production Server Safety
+
+**This is a LIVE PRODUCTION SERVER (live.linkedtrust.us). DO NOT:**
+
+- **NEVER delete directories like `build/`, `dist/`, `node_modules/`** - These contain running production code
+- **NEVER run `rm -rf` on any directory** without explicit user approval
+- **NEVER run `pm2 delete`, `pm2 kill`, or restart PM2 directly** - Follow README instructions exactly
+- **NEVER update PM2 globally** - It breaks the systemd service configuration
+- **NEVER assume a directory is "stale"** - If it exists, it's probably needed
+
+**When making changes:**
+1. Read the README deployment instructions completely
+2. Only run `npm run build` - PM2 watches for changes automatically
+3. If something breaks, DO NOT make random fixes - ask the user first
+
+## IMPORTANT: tsconfig.json outDir
+
+**tsconfig.json `outDir` is set to `"build"` - DO NOT change to `"dist"`**
+
+- Production PM2 runs from `build/index.js`
+- The ecosystem.config.js references `dist/` but that's outdated
+- Changing outDir to dist will break production deployment
+- If dev server uses ecosystem.config.js, update it to use `build/` instead of `dist/`
+
 ## Deployment (DEV Server)
 
 **This applies to the DEV server only. Production has a different setup.**
