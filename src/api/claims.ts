@@ -8,6 +8,30 @@ import { isValidUri, userIdToUri } from '../lib/validators';
 import { findLinkedSubjects } from './identity';
 // File system imports removed - images now stored in database
 import crypto from 'crypto';
+
+/**
+ * Format an image/video record for API response.
+ * Videos return their actual CDN URL, images use the API endpoint.
+ */
+function formatMediaRecord(img: any) {
+  const isVideo = (img.metadata as any)?.type === 'video';
+  return {
+    id: img.id,
+    claimId: img.claimId,
+    // Videos: return the stored CDN URL directly
+    // Images: use the API endpoint which serves from database
+    url: isVideo ? img.url : `/api/images/${img.id}`,
+    type: isVideo ? 'video' : 'image',
+    contentType: (img.metadata as any)?.contentType || (isVideo ? 'video/webm' : 'image/jpeg'),
+    filename: (img.metadata as any)?.filename || `${isVideo ? 'video' : 'image'}_${img.id}`,
+    digestMultibase: img.digestMultibase,
+    metadata: img.metadata,
+    effectiveDate: img.effectiveDate,
+    createdDate: img.createdDate,
+    owner: img.owner,
+    signature: img.signature
+  };
+}
 function validateImageData(imageData: any, index: number): { isValid: boolean; error?: string; details?: any } {
   console.log(`Validating image ${index}:`, {
     isObject: typeof imageData === 'object',
@@ -897,28 +921,16 @@ export async function getClaim(req: Request, res: Response): Promise<Response | 
     
     console.log(`Found ${images.length} images for claim ${claimId}`);
     
-    const response = { 
+    const response = {
       success: true,
       claim,
-      images: images.map(img => ({
-        id: img.id,
-        claimId: img.claimId,
-        url: `/api/images/${img.id}`, // Always use the API endpoint for serving images
-        contentType: (img.metadata as any)?.contentType || 'image/jpeg',
-        filename: (img.metadata as any)?.filename || `image_${img.id}`,
-        digestMultibase: img.digestMultibase,
-        metadata: img.metadata,
-        effectiveDate: img.effectiveDate,
-        createdDate: img.createdDate,
-        owner: img.owner,
-        signature: img.signature
-      }))
+      images: images.map(formatMediaRecord)
     };
-    
+
     console.log('=== Response being sent ===');
     console.log('Response size - claim:', !!response.claim, 'images count:', response.images.length);
     console.log('===========================');
-    
+
     return res.status(200).json(response);
   } catch (error) {
     console.error('=== Error fetching claim ===');
@@ -948,11 +960,12 @@ export async function getClaimsBySubject(req: Request, res: Response) {
 
   try {
     const { uri } = req.params;
-    const { page = 1, limit = 50, includeLinked = 'true' } = req.query;
-    
+    const { page = 1, limit = 50, includeLinked = 'true', depth = '1' } = req.query;
+
     // Validate query parameters
     const pageNum = Number(page);
     const limitNum = Number(limit);
+    const depthNum = Number(depth);
     
     if (isNaN(pageNum) || pageNum < 1) {
       console.error('Invalid page parameter:', page);
@@ -1054,39 +1067,87 @@ export async function getClaimsBySubject(req: Request, res: Response) {
     
     console.log(`Found ${allImages.length} total images`);
     
-    // Group images by claimId
+    // Group images by claimId using formatMediaRecord helper
     const imagesByClaimId = allImages.reduce((acc, img) => {
       if (!acc[img.claimId]) {
         acc[img.claimId] = [];
       }
-      acc[img.claimId].push({
-        id: img.id,
-        claimId: img.claimId,
-        url: `/api/images/${img.id}`, // Always use the API endpoint for serving images
-        contentType: (img.metadata as any)?.contentType || 'image/jpeg',
-        filename: (img.metadata as any)?.filename || `image_${img.id}`,
-        digestMultibase: img.digestMultibase,
-        metadata: img.metadata,
-        effectiveDate: img.effectiveDate,
-        createdDate: img.createdDate,
-        owner: img.owner,
-        signature: img.signature
-      });
+      acc[img.claimId].push(formatMediaRecord(img));
       return acc;
     }, {} as Record<number, any[]>);
-    
+
+    // If depth=2, fetch endorsements (claims where subject is this claim's URI)
+    let endorsementsByClaimId: Record<number, any[]> = {};
+    let endorsementImages: Record<number, any[]> = {};
+
+    if (depthNum === 2 && claimIds.length > 0) {
+      console.log('Fetching endorsements for depth=2...');
+
+      // Build claim URIs for all claims
+      const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+      const claimUris = claimIds.map(id => `${proto}://${host}/api/claim/${id}`);
+
+      // Single query to get all endorsements
+      const endorsements = await prisma.$queryRaw<any[]>`
+        SELECT
+          e.*,
+          CAST(SUBSTRING(e.subject FROM '/api/claim/([0-9]+)$') AS INTEGER) as parent_claim_id
+        FROM "Claim" e
+        WHERE e.subject = ANY(${claimUris})
+        ORDER BY e."effectiveDate" DESC
+      `;
+
+      console.log(`Found ${endorsements.length} endorsements`);
+
+      // Get images for endorsements
+      const endorsementIds = endorsements.map(e => e.id);
+      if (endorsementIds.length > 0) {
+        const endorsementImagesRaw = await prisma.image.findMany({
+          where: { claimId: { in: endorsementIds } }
+        });
+
+        // Group endorsement images
+        endorsementImages = endorsementImagesRaw.reduce((acc, img) => {
+          if (!acc[img.claimId]) {
+            acc[img.claimId] = [];
+          }
+          acc[img.claimId].push(formatMediaRecord(img));
+          return acc;
+        }, {} as Record<number, any[]>);
+      }
+
+      // Group endorsements by parent claim ID
+      endorsementsByClaimId = endorsements.reduce((acc, endorsement) => {
+        const parentId = endorsement.parent_claim_id;
+        if (parentId) {
+          if (!acc[parentId]) {
+            acc[parentId] = [];
+          }
+          // Remove the helper field and add images
+          const { parent_claim_id, ...endorsementData } = endorsement;
+          acc[parentId].push({
+            ...endorsementData,
+            images: endorsementImages[endorsement.id] || []
+          });
+        }
+        return acc;
+      }, {} as Record<number, any[]>);
+    }
+
     // Get total count for all subjects
     console.log('Getting total count...');
-    const total = await prisma.claim.count({ 
-      where: { subject: { in: subjectsToQuery } } 
+    const total = await prisma.claim.count({
+      where: { subject: { in: subjectsToQuery } }
     });
-    
-    const response = { 
+
+    const response = {
       success: true,
       claims: claims.map(claim => ({
         ...claim,
-        images: imagesByClaimId[claim.id] || []
-      })), 
+        images: imagesByClaimId[claim.id] || [],
+        ...(depthNum === 2 && { endorsements: endorsementsByClaimId[claim.id] || [] })
+      })),
       linkedSubjects: subjectsToQuery,
       pagination: {
         page: pageNum,
@@ -1097,7 +1158,8 @@ export async function getClaimsBySubject(req: Request, res: Response) {
       query: {
         originalUri: uri,
         decodedUri,
-        includeLinked: includeLinked === 'true'
+        includeLinked: includeLinked === 'true',
+        depth: depthNum
       }
     };
     

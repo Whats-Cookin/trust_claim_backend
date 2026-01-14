@@ -381,7 +381,12 @@
  * @swagger
  * /api/v4/claims/subject/{uri}:
  *   get:
- *     summary: Get claims by subject URI
+ *     summary: Get claims by subject URI with optional endorsements
+ *     description: |
+ *       Returns all claims about a subject. Use depth=2 to also fetch endorsements
+ *       (claims where the subject is the claim URI itself, e.g., validations/ratings of claims).
+ *       Each claim includes an images array with both images and videos. Videos have type='video'
+ *       and return their CDN URL directly.
  *     tags: [Claims (v4)]
  *     parameters:
  *       - in: path
@@ -389,16 +394,123 @@
  *         required: true
  *         schema:
  *           type: string
- *         description: Subject URI (URL encoded)
+ *         description: Subject URI (base64 encoded or URL encoded)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Items per page (max 1000)
+ *       - in: query
+ *         name: includeLinked
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *           default: 'true'
+ *         description: Include claims from SAME_AS linked identities
+ *       - in: query
+ *         name: depth
+ *         schema:
+ *           type: integer
+ *           enum: [1, 2]
+ *           default: 1
+ *         description: |
+ *           Depth of claim fetching:
+ *           - 1: Just the claims about the subject
+ *           - 2: Also fetch endorsements (claims where subject is the claim URI)
  *     responses:
  *       200:
  *         description: Claims retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 claims:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       subject:
+ *                         type: string
+ *                       claim:
+ *                         type: string
+ *                       statement:
+ *                         type: string
+ *                       images:
+ *                         type: array
+ *                         description: Images and videos associated with the claim
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                             url:
+ *                               type: string
+ *                               description: CDN URL for videos, /api/images/{id} for images
+ *                             type:
+ *                               type: string
+ *                               enum: [image, video]
+ *                             contentType:
+ *                               type: string
+ *                             filename:
+ *                               type: string
+ *                             metadata:
+ *                               type: object
+ *                       endorsements:
+ *                         type: array
+ *                         description: Only present when depth=2. Claims that reference this claim as their subject.
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                             claim:
+ *                               type: string
+ *                             statement:
+ *                               type: string
+ *                             stars:
+ *                               type: integer
+ *                             images:
+ *                               type: array
+ *                               items:
+ *                                 type: object
+ *                 linkedSubjects:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                 query:
+ *                   type: object
+ *                   properties:
+ *                     originalUri:
+ *                       type: string
+ *                     decodedUri:
+ *                       type: string
+ *                     includeLinked:
+ *                       type: boolean
+ *                     depth:
+ *                       type: integer
  */
 
 /**
