@@ -578,6 +578,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       images, // Add images field
       videoUrl, // Video testimonial URL (uploaded separately via /api/video/upload)
       subjectEntityType, // Optional hint for subject entity type (PERSON/ORGANIZATION)
+      replace, // If true, delete existing duplicate and create new (claims are immutable)
       ...otherFields // Capture any other fields for debugging
     } = req.body;
     
@@ -632,7 +633,70 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     };
     
     console.log('Prepared claim data:', JSON.stringify(claimData, null, 2));
-    
+
+    // Check for existing duplicate claim
+    // Uniqueness is based on: subject + issuerId + claim + sourceURI + statement
+    let replacedClaimId: number | null = null;
+    const existingClaim = await prisma.claim.findFirst({
+      where: {
+        subject: claimData.subject,
+        issuerId: claimData.issuerId,
+        claim: claimData.claim,
+        sourceURI: claimData.sourceURI,
+        statement: claimData.statement
+      }
+    });
+
+    if (existingClaim) {
+      console.log('Found existing duplicate claim:', existingClaim.id);
+
+      if (replace === true) {
+        // Claims are immutable - delete the old one and create new
+        console.log('Replace flag set - deleting existing claim and its associated data...');
+
+        // Delete associated edges first (foreign key constraint)
+        const deletedEdges = await prisma.edge.deleteMany({
+          where: { claimId: existingClaim.id }
+        });
+        console.log(`Deleted ${deletedEdges.count} edges for claim ${existingClaim.id}`);
+
+        // Delete associated images
+        const deletedImages = await prisma.image.deleteMany({
+          where: { claimId: existingClaim.id }
+        });
+        console.log(`Deleted ${deletedImages.count} images for claim ${existingClaim.id}`);
+
+        // Delete the claim itself
+        await prisma.claim.delete({
+          where: { id: existingClaim.id }
+        });
+        replacedClaimId = existingClaim.id;
+        console.log(`Deleted existing claim ${existingClaim.id}, proceeding with new claim creation`);
+      } else {
+        // Return 409 Conflict with helpful information
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate claim exists',
+          code: 'DUPLICATE_CLAIM',
+          existingClaim: {
+            id: existingClaim.id,
+            createdAt: existingClaim.createdAt,
+            subject: existingClaim.subject,
+            claim: existingClaim.claim,
+            issuerId: existingClaim.issuerId
+          },
+          hint: 'Use replace: true to delete the existing claim and create a new one. Note: Claims are immutable - this will delete the old claim entirely.',
+          duplicateKey: {
+            subject: claimData.subject,
+            issuerId: claimData.issuerId,
+            claim: claimData.claim,
+            sourceURI: claimData.sourceURI,
+            statement: claimData.statement ? claimData.statement.substring(0, 100) + (claimData.statement.length > 100 ? '...' : '') : null
+          }
+        });
+      }
+    }
+
     // Use client-provided proof if available, otherwise try server signing
     let proof = clientProof || null;
 
@@ -815,9 +879,10 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 // Still fine to run the heavy pipeline in background
      PipelineTrigger.processClaim(newClaim.id, subjectEntityType).catch(console.error);
     // Include image records in response
-    const response = {
+    const response: any = {
       success: true,
       claim: newClaim,
+      ...(replacedClaimId && { replaced: true, replacedClaimId }),
       images: imageRecords.map(img => ({
         id: img.id,
         claimId: img.claimId,

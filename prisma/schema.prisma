@@ -91,6 +91,9 @@ model Edge {
 }
 
 // Raw data from signed claims - generated from composedb stream of TrustClaims
+// IMPORTANT: Claims are IMMUTABLE - they can be deleted but NEVER updated
+// Unique constraint on (subject, issuerId, claim, sourceURI, LEFT(statement, 500))
+// See migration: 20260119000000_add_claim_unique_constraint
 model Claim {
   id            Int       @id @default(autoincrement())
   subject       String

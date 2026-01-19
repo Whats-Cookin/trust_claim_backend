@@ -321,6 +321,14 @@
  * /api/v4/claims:
  *   post:
  *     summary: Create a claim
+ *     description: |
+ *       Creates a new claim. Claims are immutable signed events.
+ *
+ *       **Duplicate Prevention:** Claims are unique by (subject, issuerId, claim, sourceURI, statement).
+ *       If a duplicate exists, returns 409 Conflict unless `replace: true` is set.
+ *
+ *       **Replace Behavior:** Since claims are immutable, `replace: true` will DELETE the existing
+ *       claim (and its edges/images) and create a new one with a new ID.
  *     tags: [Claims (v4)]
  *     security:
  *       - bearerAuth: []
@@ -331,26 +339,43 @@
  *           schema:
  *             $ref: '#/components/schemas/ClaimV4Input'
  *     responses:
- *       201:
- *         description: Claim created successfully
+ *       200:
+ *         description: Claim created successfully (or replaced if replace=true)
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 id:
- *                   type: integer
- *                 subject:
- *                   type: object
+ *                 success:
+ *                   type: boolean
  *                 claim:
- *                   type: string
- *                 object:
  *                   type: object
- *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     subject:
+ *                       type: string
+ *                     claim:
+ *                       type: string
+ *                     object:
+ *                       type: string
+ *                       nullable: true
+ *                 replaced:
+ *                   type: boolean
+ *                   description: True if an existing claim was replaced
+ *                 replacedClaimId:
+ *                   type: integer
+ *                   description: ID of the claim that was deleted (only present if replaced=true)
  *       401:
  *         description: Unauthorized
  *       400:
  *         description: Invalid input
+ *       409:
+ *         description: Duplicate claim exists. Use replace=true to delete and recreate.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DuplicateClaimError'
  */
 
 /**

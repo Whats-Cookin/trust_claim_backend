@@ -317,6 +317,66 @@ const options: swaggerJsdoc.Options = {
               minimum: 0,
               maximum: 1,
             },
+            replace: {
+              type: 'boolean',
+              nullable: true,
+              description: 'If true and a duplicate claim exists (same subject, issuerId, claim, sourceURI, statement), DELETE the existing claim and create a new one. Claims are immutable - this is a delete+create operation. Default: false',
+            },
+          },
+        },
+        DuplicateClaimError: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+            },
+            error: {
+              type: 'string',
+              example: 'Duplicate claim exists',
+            },
+            code: {
+              type: 'string',
+              enum: ['DUPLICATE_CLAIM'],
+            },
+            existingClaim: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'integer',
+                  description: 'ID of the existing duplicate claim',
+                },
+                createdAt: {
+                  type: 'string',
+                  format: 'date-time',
+                },
+                subject: {
+                  type: 'string',
+                },
+                claim: {
+                  type: 'string',
+                },
+                issuerId: {
+                  type: 'string',
+                  nullable: true,
+                },
+              },
+            },
+            hint: {
+              type: 'string',
+              example: 'Use replace: true to delete the existing claim and create a new one',
+            },
+            duplicateKey: {
+              type: 'object',
+              description: 'The fields that define uniqueness',
+              properties: {
+                subject: { type: 'string' },
+                issuerId: { type: 'string', nullable: true },
+                claim: { type: 'string' },
+                sourceURI: { type: 'string', nullable: true },
+                statement: { type: 'string', nullable: true },
+              },
+            },
           },
         },
         Credential: {
