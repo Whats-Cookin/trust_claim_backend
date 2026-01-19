@@ -29,7 +29,7 @@ export async function getGraph(req: Request, res: Response): Promise<Response | 
     
     if (isNumericId) {
       const claimId = parseInt(uri, 10);
-      
+
       // First get edges for this claim to find connected nodes
       const claimEdges = await prisma.edge.findMany({
         where: { claimId },
