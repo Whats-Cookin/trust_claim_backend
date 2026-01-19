@@ -77,8 +77,8 @@ function detectCredentialSchema(credential: any): string {
 // Submit a credential with optional schema and metadata
 export async function submitCredential(req: AuthRequest, res: Response): Promise<Response | void> {
   try {
-    const { credential, schema, metadata } = req.body;
-    
+    const { credential, schema, metadata, replace, replaceBySubject } = req.body;
+
     // Handle both old format (credential only) and new format
     const actualCredential = credential || req.body;
     const hasNewFormat = !!credential;
@@ -97,14 +97,44 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
     });
     
     if (existing) {
-      // Credential exists - just return it with claim URL
-      return res.json({
-        credential: existing,
-        uri: credentialUri,
-        schema: existing.credentialSchema,
-        claimUrl: `${process.env.FRONTEND_URL || 'https://linkedtrust.us'}/claim-credential?uri=${encodeURIComponent(credentialUri)}&schema=${encodeURIComponent(existing.credentialSchema || 'VerifiableCredential')}`,
-        message: 'Credential already exists. Visit the claim URL to claim it.'
-      });
+      if (replace === true) {
+        // Delete existing credential and its UriEntity, then proceed to create new
+        console.log(`Replace flag set - deleting existing credential ${existing.id}`);
+        await prisma.uriEntity.deleteMany({ where: { uri: existing.id } });
+        await prisma.uriEntity.deleteMany({ where: { uri: existing.canonicalUri || '' } });
+        await prisma.credential.delete({ where: { id: existing.id } });
+        console.log(`Deleted existing credential, proceeding with new credential creation`);
+      } else {
+        // Credential exists - just return it with claim URL
+        return res.json({
+          credential: existing,
+          uri: credentialUri,
+          schema: existing.credentialSchema,
+          claimUrl: `${process.env.FRONTEND_URL || 'https://linkedtrust.us'}/claim-credential?uri=${encodeURIComponent(credentialUri)}&schema=${encodeURIComponent(existing.credentialSchema || 'VerifiableCredential')}`,
+          message: 'Credential already exists. Visit the claim URL to claim it.'
+        });
+      }
+    }
+
+    // Check for existing credential by subject (for talent app - one credential per person)
+    if (replaceBySubject === true && actualCredential.credentialSubject?.id) {
+      const subjectId = actualCredential.credentialSubject.id;
+      console.log(`ReplaceBySubject flag set - checking for existing credentials for subject ${subjectId}`);
+
+      // Find credentials with matching credentialSubject.id
+      const existingBySubject = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Credential"
+        WHERE "credentialSubject"->>'id' = ${subjectId}
+      `;
+
+      if (existingBySubject.length > 0) {
+        console.log(`Found ${existingBySubject.length} existing credentials for subject, deleting...`);
+        for (const cred of existingBySubject) {
+          await prisma.uriEntity.deleteMany({ where: { uri: cred.id } });
+          await prisma.credential.delete({ where: { id: cred.id } });
+        }
+        console.log(`Deleted ${existingBySubject.length} credentials for subject ${subjectId}`);
+      }
     }
     
     // Determine schema - use provided schema or auto-detect
@@ -244,6 +274,123 @@ async function _extractClaimsFromCredential(credential: any, userId: string) {
   return claims;
 }
 */
+
+// Query credentials with flexible filtering
+export async function queryCredentials(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const {
+      type,           // Match if type array contains this value
+      issuer,         // Match issuer.id or issuer contains
+      schema,         // Exact match on credentialSchema
+      issuedAfter,    // issuanceDate >= date
+      issuedBefore,   // issuanceDate <= date
+      name: nameQuery,// Partial match (ILIKE)
+      subject,        // Match credentialSubject.id
+      limit = '20',
+      offset = '0',
+      sort = 'recent' // 'recent', 'oldest', 'name'
+    } = req.query;
+
+    // Parse and validate pagination
+    const limitNum = Math.min(Math.max(1, parseInt(limit as string) || 20), 100);
+    const offsetNum = Math.max(0, parseInt(offset as string) || 0);
+
+    // Build where conditions
+    const whereConditions: any[] = [];
+
+    // Type filter - check if JSONB array contains value
+    if (type) {
+      whereConditions.push({
+        type: {
+          array_contains: type as string
+        }
+      });
+    }
+
+    // Issuer filter - check issuer.id or issuer as string
+    if (issuer) {
+      whereConditions.push({
+        OR: [
+          { issuer: { path: ['id'], equals: issuer as string } },
+          { issuer: { equals: issuer as string } }
+        ]
+      });
+    }
+
+    // Schema filter - exact match
+    if (schema) {
+      whereConditions.push({
+        credentialSchema: schema as string
+      });
+    }
+
+    // Date range filters
+    if (issuedAfter) {
+      whereConditions.push({
+        issuanceDate: { gte: new Date(issuedAfter as string) }
+      });
+    }
+    if (issuedBefore) {
+      whereConditions.push({
+        issuanceDate: { lte: new Date(issuedBefore as string) }
+      });
+    }
+
+    // Name filter - partial match
+    if (nameQuery) {
+      whereConditions.push({
+        name: { contains: nameQuery as string, mode: 'insensitive' }
+      });
+    }
+
+    // Subject filter - match credentialSubject.id
+    if (subject) {
+      whereConditions.push({
+        credentialSubject: { path: ['id'], equals: subject as string }
+      });
+    }
+
+    // Build the where clause
+    const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
+
+    // Determine sort order
+    let orderBy: any;
+    switch (sort) {
+      case 'oldest':
+        orderBy = { issuanceDate: 'asc' };
+        break;
+      case 'name':
+        orderBy = { name: 'asc' };
+        break;
+      case 'recent':
+      default:
+        orderBy = { issuanceDate: 'desc' };
+        break;
+    }
+
+    // Execute query with count
+    const [credentials, total] = await Promise.all([
+      prisma.credential.findMany({
+        where,
+        orderBy,
+        skip: offsetNum,
+        take: limitNum
+      }),
+      prisma.credential.count({ where })
+    ]);
+
+    return res.json({
+      credentials,
+      total,
+      limit: limitNum,
+      offset: offsetNum,
+      sort
+    });
+  } catch (error) {
+    console.error('Error querying credentials:', error);
+    return res.status(500).json({ error: 'Failed to query credentials' });
+  }
+}
 
 // Get credential by URI
 export async function getCredential(req: Request, res: Response): Promise<Response | void> {

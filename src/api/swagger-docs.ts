@@ -541,8 +541,128 @@
 /**
  * @swagger
  * /api/v4/credentials:
+ *   get:
+ *     summary: Query credentials with flexible filtering
+ *     description: |
+ *       Search and browse credentials with various filters. Supports pagination and sorting.
+ *       This is generic LinkedClaims infrastructure for any frontend app to discover credentials.
+ *
+ *       **Example queries:**
+ *       - `GET /api/credentials?type=TalentStampCredential` - Find talent credentials
+ *       - `GET /api/credentials?issuer=did:web:talent.linkedtrust.us` - Find by issuer
+ *       - `GET /api/credentials?subject=did:example:123` - Find credentials about a person
+ *       - `GET /api/credentials?issuedAfter=2024-01-01&sort=recent` - Recent credentials
+ *     tags: [Credentials]
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Filter by credential type (e.g., TalentStampCredential, OpenBadgeCredential). Matches if type array contains this value.
+ *         example: TalentStampCredential
+ *       - in: query
+ *         name: issuer
+ *         schema:
+ *           type: string
+ *         description: Filter by issuer ID or DID (e.g., did:web:talent.linkedtrust.us)
+ *         example: did:web:talent.linkedtrust.us
+ *       - in: query
+ *         name: subject
+ *         schema:
+ *           type: string
+ *         description: Filter by credentialSubject.id (the person/entity the credential is about)
+ *         example: did:example:user123
+ *       - in: query
+ *         name: schema
+ *         schema:
+ *           type: string
+ *         description: Filter by credential schema type (exact match)
+ *         example: OpenBadges
+ *       - in: query
+ *         name: issuedAfter
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter credentials issued on or after this date (ISO 8601)
+ *         example: "2024-01-01"
+ *       - in: query
+ *         name: issuedBefore
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter credentials issued on or before this date (ISO 8601)
+ *         example: "2024-12-31"
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filter by name (partial match, case-insensitive)
+ *         example: "Software Engineer"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Number of results to return (max 100)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of results to skip (for pagination)
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [recent, oldest, name]
+ *           default: recent
+ *         description: Sort order - recent (newest first), oldest, or name (alphabetical)
+ *     responses:
+ *       200:
+ *         description: Credentials retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 credentials:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Credential'
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of matching credentials
+ *                 limit:
+ *                   type: integer
+ *                   description: Number of results returned
+ *                 offset:
+ *                   type: integer
+ *                   description: Number of results skipped
+ *                 sort:
+ *                   type: string
+ *                   description: Sort order used
+ *             example:
+ *               credentials:
+ *                 - id: "urn:credential:abc123"
+ *                   type: ["VerifiableCredential", "TalentStampCredential"]
+ *                   issuer: { id: "did:web:talent.linkedtrust.us" }
+ *                   issuanceDate: "2024-06-15T10:30:00Z"
+ *                   name: "Software Engineer Profile"
+ *               total: 42
+ *               limit: 20
+ *               offset: 0
+ *               sort: "recent"
+ *       500:
+ *         description: Internal server error
  *   post:
  *     summary: Submit a credential with optional schema and metadata
+ *     description: |
+ *       Submit a W3C Verifiable Credential for storage. Supports replacement options:
+ *
+ *       - **replace: true** - If a credential with the same URI already exists, delete it and create new
+ *       - **replaceBySubject: true** - Delete any existing credentials for the same credentialSubject.id before creating (useful for talent app - one credential per person)
  *     tags: [Credentials]
  *     security:
  *       - bearerAuth: []
@@ -584,8 +704,14 @@
  *                       visibility:
  *                         type: string
  *                         enum: [public, private, restricted]
+ *                   replace:
+ *                     type: boolean
+ *                     description: If true, delete existing credential with same URI before creating new
+ *                   replaceBySubject:
+ *                     type: boolean
+ *                     description: If true, delete any existing credentials for the same credentialSubject.id (useful for talent app - one credential per person)
  *     responses:
- *       201:
+ *       200:
  *         description: Credential submitted successfully
  *         content:
  *           application/json:
@@ -594,18 +720,21 @@
  *               properties:
  *                 credential:
  *                   $ref: '#/components/schemas/Credential'
- *                 claim:
- *                   type: object
  *                 uri:
  *                   type: string
+ *                   description: The canonical URI for this credential
  *                 schema:
  *                   type: string
+ *                   description: Detected or provided schema type
  *                 metadata:
  *                   type: object
+ *                 claimUrl:
+ *                   type: string
+ *                   description: URL where user can claim this credential
  *       401:
  *         description: Unauthorized
  *       409:
- *         description: Credential already exists
+ *         description: Credential already exists (use replace=true to overwrite)
  */
 
 /**

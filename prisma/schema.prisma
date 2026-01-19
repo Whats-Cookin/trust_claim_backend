@@ -161,8 +161,14 @@ model Credential {
   credentialSchema     String?   @map("credential_schema")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
-  
+
   @@index([canonicalUri])
+  // Additional indexes created via migration 20260119100000:
+  // - issuanceDate (B-tree DESC) for date filtering and recent sorting
+  // - type (GIN) for JSONB array contains queries
+  // - issuer (GIN) for JSONB object contains queries
+  // - credential_schema (B-tree) for exact match filtering
+  // - credentialSubject (GIN) for subject queries
 }
 
 model UriEntity {

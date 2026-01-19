@@ -156,6 +156,9 @@ app.get('/api/identity/is-me', verifyToken, identityApi.checkIsMe);      // Chec
 // Credentials endpoints
 app.post('/api/v4/credentials', verifyToken, credentialsApi.submitCredential);
 app.post('/api/credentials', verifyToken, credentialsApi.submitCredential);
+// Query endpoint MUST come before :uri(*) route to avoid path capture
+app.get('/api/v4/credentials', credentialsApi.queryCredentials);
+app.get('/api/credentials', credentialsApi.queryCredentials);
 app.get('/api/v4/credentials/:uri(*)', credentialsApi.getCredential);
 app.get('/api/credentials/:uri(*)', credentialsApi.getCredential);
 
