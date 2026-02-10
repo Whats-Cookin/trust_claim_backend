@@ -3,15 +3,19 @@ import { prisma } from "../lib/prisma";
 
 export class EntityDetector {
   static async processClaimEntities(claim: Claim, name: any) {
-    // Check each URI in the claim
-    const urisToCheck = [
-      claim.subject,
+    // Apply user-supplied name only to the subject URI
+    if (claim.subject) {
+      await this.detectEntity(claim.subject, name);
+    }
+
+    // For object and source URIs, detect entity without overriding name
+    const otherUris = [
       claim.object,
       claim.sourceURI && claim.sourceURI !== claim.issuerId ? claim.sourceURI : null,
     ].filter(Boolean) as string[];
 
-    for (const uri of urisToCheck) {
-      await this.detectEntity(uri, name);
+    for (const uri of otherUris) {
+      await this.detectEntity(uri, null);
     }
   }
 
