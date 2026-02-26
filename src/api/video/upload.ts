@@ -36,7 +36,7 @@ function getCdnUrl(): string {
   return process.env.LT_STORAGE_CDN_URL || `https://${bucket}.sfo3.cdn.digitaloceanspaces.com`;
 }
 
-const MAX_VIDEO_SIZE = 30 * 1024 * 1024; // 30MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();

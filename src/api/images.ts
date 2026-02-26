@@ -42,14 +42,8 @@ export async function getImage(req: Request, res: Response): Promise<Response | 
       res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
       res.send(transparentPng);
     } else {
-      // For valid external URLs, return a JSON response with the URL
-      // This avoids CORS issues with redirects
-      res.setHeader('Content-Type', 'application/json');
-      res.json({ 
-        imageUrl: image.url,
-        message: 'External image URL - use this URL to fetch the image directly',
-        id: imageId
-      });
+      // Redirect to the actual URL so <img> and <video> tags work directly
+      return res.redirect(302, image.url);
     }
   } catch (error) {
     console.error('Error serving image:', error);
