@@ -96,27 +96,8 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
       }
     });
     
-    if (existing) {
-      if (replace === true) {
-        // Delete existing credential and its UriEntity, then proceed to create new
-        console.log(`Replace flag set - deleting existing credential ${existing.id}`);
-        await prisma.uriEntity.deleteMany({ where: { uri: existing.id } });
-        await prisma.uriEntity.deleteMany({ where: { uri: existing.canonicalUri || '' } });
-        await prisma.credential.delete({ where: { id: existing.id } });
-        console.log(`Deleted existing credential, proceeding with new credential creation`);
-      } else {
-        // Credential exists - just return it with claim URL
-        return res.json({
-          credential: existing,
-          uri: credentialUri,
-          schema: existing.credentialSchema,
-          claimUrl: `${process.env.FRONTEND_URL || 'https://linkedtrust.us'}/claim-credential?uri=${encodeURIComponent(credentialUri)}&schema=${encodeURIComponent(existing.credentialSchema || 'VerifiableCredential')}`,
-          message: 'Credential already exists. Visit the claim URL to claim it.'
-        });
-      }
-    }
-
-    // Check for existing credential by subject (for talent app - one credential per person)
+    // Check for existing credential by subject FIRST (for talent app - one credential per person)
+    // This needs to happen before the existing check since the credential ID might be different
     if (replaceBySubject === true && actualCredential.credentialSubject?.id) {
       const subjectId = actualCredential.credentialSubject.id;
       console.log(`ReplaceBySubject flag set - checking for existing credentials for subject ${subjectId}`);
@@ -134,6 +115,35 @@ export async function submitCredential(req: AuthRequest, res: Response): Promise
           await prisma.credential.delete({ where: { id: cred.id } });
         }
         console.log(`Deleted ${existingBySubject.length} credentials for subject ${subjectId}`);
+        // Re-check if the 'existing' variable was one of the deleted ones
+        // If so, set it to null so we don't return early
+        if (existing && existingBySubject.some(c => c.id === existing.id)) {
+          // The existing credential was deleted, proceed to create new one
+          console.log(`Existing credential ${existing.id} was deleted by replaceBySubject`);
+        }
+      }
+    }
+
+    // Now check if credential still exists (it may have been deleted by replaceBySubject above)
+    const stillExists = existing ? await prisma.credential.findUnique({ where: { id: existing.id } }) : null;
+
+    if (stillExists) {
+      if (replace === true) {
+        // Delete existing credential and its UriEntity, then proceed to create new
+        console.log(`Replace flag set - deleting existing credential ${stillExists.id}`);
+        await prisma.uriEntity.deleteMany({ where: { uri: stillExists.id } });
+        await prisma.uriEntity.deleteMany({ where: { uri: stillExists.canonicalUri || '' } });
+        await prisma.credential.delete({ where: { id: stillExists.id } });
+        console.log(`Deleted existing credential, proceeding with new credential creation`);
+      } else {
+        // Credential exists - just return it with claim URL
+        return res.json({
+          credential: stillExists,
+          uri: credentialUri,
+          schema: stillExists.credentialSchema,
+          claimUrl: `${process.env.FRONTEND_URL || 'https://linkedtrust.us'}/claim-credential?uri=${encodeURIComponent(credentialUri)}&schema=${encodeURIComponent(stillExists.credentialSchema || 'VerifiableCredential')}`,
+          message: 'Credential already exists. Visit the claim URL to claim it.'
+        });
       }
     }
     
