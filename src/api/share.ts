@@ -1,8 +1,17 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { Resvg } from '@resvg/resvg-js';
+import fs from 'fs';
 
 const prisma = new PrismaClient();
+
+// Load Lato font file paths for resvg rendering
+const FONT_DIR = '/usr/share/fonts/truetype/lato';
+const fontPaths: string[] = [];
+for (const name of ['Lato-Regular.ttf', 'Lato-Bold.ttf', 'Lato-Semibold.ttf']) {
+  const p = `${FONT_DIR}/${name}`;
+  if (fs.existsSync(p)) fontPaths.push(p);
+}
 
 // Cache generated images for 1 hour
 const imageCache = new Map<number, { png: Buffer; generatedAt: number }>();
@@ -136,14 +145,15 @@ function buildOgImageSvg(data: ClaimData): string {
   const lines = wrapText(truncate(statementText, 200), 55);
   const statementLines = lines.slice(0, 3); // max 3 lines
 
-  // Stars SVG
+  // Stars as SVG paths (Lato doesn't have the star glyph)
+  const starPath = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z';
   let starsSection = '';
   if (stars && stars > 0) {
-    const starY = 340;
+    const starY = 320;
     for (let i = 0; i < 5; i++) {
       const fill = i < stars ? '#F59E0B' : '#374151';
-      const x = 80 + i * 36;
-      starsSection += `<text x="${x}" y="${starY}" font-size="28" fill="${fill}">&#9733;</text>`;
+      const x = 80 + i * 32;
+      starsSection += `<g transform="translate(${x}, ${starY}) scale(1.1)"><path d="${starPath}" fill="${fill}"/></g>`;
     }
   }
 
@@ -151,7 +161,7 @@ function buildOgImageSvg(data: ClaimData): string {
   const videoIndicator = hasVideo
     ? `<g transform="translate(1020, 80)">
         <rect x="0" y="0" width="100" height="32" rx="16" fill="#059669" />
-        <text x="50" y="22" text-anchor="middle" font-size="13" font-weight="600" fill="white" font-family="system-ui, -apple-system, sans-serif">VIDEO</text>
+        <text x="50" y="22" text-anchor="middle" font-size="13" font-weight="600" fill="white" font-family="Lato, sans-serif">VIDEO</text>
       </g>`
     : '';
 
@@ -170,19 +180,19 @@ function buildOgImageSvg(data: ClaimData): string {
   <rect x="0" y="0" width="${width}" height="4" fill="#3B82F6"/>
 
   <!-- LinkedTrust branding -->
-  <text x="80" y="65" font-size="18" font-weight="600" fill="#94A3B8" font-family="system-ui, -apple-system, sans-serif">LinkedTrust</text>
+  <text x="80" y="65" font-size="18" font-weight="600" fill="#94A3B8" font-family="Lato, sans-serif">LinkedTrust</text>
 
   ${videoIndicator}
 
   <!-- Issuer endorsed Subject -->
-  <text x="80" y="130" font-size="22" fill="#94A3B8" font-family="system-ui, -apple-system, sans-serif">${escapeXml(truncate(issuerName, 40))} ${claimLabel.toLowerCase()}</text>
-  <text x="80" y="175" font-size="36" font-weight="700" fill="#F8FAFC" font-family="system-ui, -apple-system, sans-serif">${escapeXml(truncate(subjectName, 45))}</text>
+  <text x="80" y="130" font-size="22" fill="#94A3B8" font-family="Lato, sans-serif">${escapeXml(truncate(issuerName, 40))} ${claimLabel.toLowerCase()}</text>
+  <text x="80" y="175" font-size="36" font-weight="700" fill="#F8FAFC" font-family="Lato, sans-serif">${escapeXml(truncate(subjectName, 45))}</text>
 
   <!-- Divider -->
   <rect x="80" y="200" width="120" height="3" rx="1.5" fill="#3B82F6"/>
 
   <!-- Statement -->
-  <text x="80" y="250" font-size="20" fill="#CBD5E1" font-family="system-ui, -apple-system, sans-serif">
+  <text x="80" y="250" font-size="20" fill="#CBD5E1" font-family="Lato, sans-serif">
     ${statementLines.map((line, i) => `<tspan x="80" dy="${i === 0 ? 0 : 28}">${escapeXml(line)}</tspan>`).join('\n    ')}
   </text>
 
@@ -190,9 +200,9 @@ function buildOgImageSvg(data: ClaimData): string {
 
   <!-- Bottom bar -->
   <rect x="0" y="${height - 60}" width="${width}" height="60" fill="#0F172A" opacity="0.8"/>
-  <text x="80" y="${height - 25}" font-size="15" fill="#64748B" font-family="system-ui, -apple-system, sans-serif">Verified on LinkedTrust.us</text>
+  <text x="80" y="${height - 25}" font-size="15" fill="#64748B" font-family="Lato, sans-serif">Verified on LinkedTrust.us</text>
 
-  ${hasVideo ? `<text x="${width - 80}" y="${height - 25}" text-anchor="end" font-size="15" fill="#64748B" font-family="system-ui, -apple-system, sans-serif">Click to watch video</text>` : ''}
+  ${hasVideo ? `<text x="${width - 80}" y="${height - 25}" text-anchor="end" font-size="15" fill="#64748B" font-family="Lato, sans-serif">Click to watch video</text>` : ''}
 </svg>`;
 }
 
@@ -223,6 +233,11 @@ export async function getOgImage(req: Request, res: Response): Promise<Response 
     const svg = buildOgImageSvg(data);
     const resvg = new Resvg(svg, {
       fitTo: { mode: 'width', value: 1200 },
+      font: {
+        fontFiles: fontPaths,
+        loadSystemFonts: false,
+        defaultFontFamily: 'Lato',
+      },
     });
     const pngData = resvg.render();
     const pngBuffer = pngData.asPng();
