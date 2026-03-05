@@ -28,6 +28,7 @@ import * as identityApi from './api/identity';
 import * as legacyClaimsApi from './api/legacyClaims';
 import * as videoApi from './api/video/upload';
 import * as badgeApi from './api/badge/image';
+import * as shareApi from './api/share';
 import { verifyLinkedInProfile } from './api/linkedin/verifyProfile';
 import { verifyLinkedInAge } from './api/linkedin/verifyAge';
 import { verifyGitHubProfile } from './api/github/verifyProfile';
@@ -217,6 +218,10 @@ app.post('/api/video/upload', verifyToken, videoApi.videoUploadMiddleware, video
 
 // Badge image endpoint (PNG for email embedding)
 app.get('/api/badge-image/:claimId', badgeApi.getBadgeImage);
+
+// Social sharing endpoints (public, no auth)
+app.get('/api/og-image/:claimId', shareApi.getOgImage);
+app.get('/api/share/:claimId', shareApi.getSharePage);
 
 // Error handling middleware
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
