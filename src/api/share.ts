@@ -266,13 +266,14 @@ export async function getSharePage(req: Request, res: Response): Promise<Respons
     }
 
     const frontendUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'https://live.linkedtrust.us';
-    const backendUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
+    // og:image URL must be publicly reachable — use frontend URL since nginx routes /api/* to backend
+    const publicBaseUrl = frontendUrl;
 
     const title = `${escapeHtml(truncate(data.issuerName, 30))} endorsed ${escapeHtml(truncate(data.subjectName, 30))}`;
     const description = data.statement
       ? escapeHtml(truncate(data.statement, 200))
       : `An endorsement on LinkedTrust`;
-    const ogImageUrl = `${backendUrl}/api/og-image/${claimId}`;
+    const ogImageUrl = `${publicBaseUrl}/api/og-image/${claimId}`;
     const canonicalUrl = `${frontendUrl}/present/${claimId}`;
 
     const html = `<!DOCTYPE html>
