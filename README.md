@@ -27,15 +27,39 @@ Claim: a signed set of structured data with the raw claim or attestation, often 
 Node: an entity that a claim is about. This is created in the app as a view of what a claim is about.
 Edge: a representation of a claim that relates to a Node or connects two Nodes. Created in the app as a view of a claim.
 
-## CICD Pipeline with Jenkins
+## Dev Server (VM 200 — dev.linkedtrust.us)
 
-<a name="test, build and deploy"></a> The frontend is fully working with Jenkins CI/CD Integration
-The logs can be found on [jenkins last build](http://68.183.144.184:8080/job/Trustclaim_backend/lastBuild/)
-And for Auth Details to the pipeline, kindly refer to vault [jenkins logins](https://vault.whatscookin.us/app/passwords/view/63d7e1a5-0fab-45a6-b880-cd55530d7d1d), this creds would help you to gain access into the CI/CD pipeline and figure out why the test didn't run as it should, and also review the console outputs to figure out what the issue might be.
+Repo is checked out at `/opt/shared/repos/trust_claim_backend/`. Runs as a systemd service.
 
-For SSH Access into the dev server, kindly refer to this creds in the vault [dev server ssh creds](https://vault.whatscookin.us/app/passwords/view/cbe52954-3f7a-4e5d-9bb7-039389acc42c) this would help you ssh into the dev serverm while inside, the files would be in the `/data/trust_claim_backend` directory and configured with nginx
+**If you're already on the dev server:**
 
-_NB: The production version of this is available on [live.linkedtrust.us](live.linkedtrust.us)_
+```bash
+cd /opt/shared/repos/trust_claim_backend
+git pull
+npm run build
+sudo systemctl restart tmp-trustclaim-dev-backend.service
+```
+
+**If you're not on the dev server:**
+
+```bash
+ssh <your-user>@dev.linkedtrust.us
+# then same commands as above
+```
+
+Service: `tmp-trustclaim-dev-backend.service` (runs `build/index.js` on port 9000)
+
+## Production (VM 508 — live.linkedtrust.us)
+
+Runs via PM2 on VM 508 (10.0.0.158). CI/CD is not yet set up — deploys are manual.
+
+```bash
+ssh ubuntu@10.0.0.158
+cd /data/trust_claim_backend
+git pull
+npm i
+npm run build    # pm2 watches for changes
+```
 
 ## Run the application locally
 
@@ -235,98 +259,26 @@ Value for `ACCESS_SECRET` and `REFRESH_SECRET` can be anything.
 ## To review the server files
 
 
-## Prod deployment is manual
-
-SSH into the server with the private key. If you don't have the key, ask for it in slack.
-
-
-```bash
-cd /data/trust_claim_backend
-```
-
-inspect the running file
+## Prod Troubleshooting (VM 508)
 
 ```bash
 pm2 status index
-pm2 logs index
+pm2 logs trust_claim_backend
 ```
 
-### Update from git and install dependencies
-
+If PM2 process is down:
 ```bash
-nvm use 20
-cd /data/trust_claim_backend
-git pull
-npm i
-```
-
-### If required, database migration
-
-If there is any database migration, it is a good idea to backup the database, otherwise you may skip this step.
-
-```bash
-sudo su postgres
-pg_dump claim > /postgres/backup_filename.sql
-```
-
-Then run the following 2 commands to generate artifacts and deploy migrations [This is already implemented in the CI/CD pipeline, but for local, it's needed].
-
-```bash
-npx prisma generate
-npx prisma migrate deploy
-```
-
-### Rebuild with changes
-
-Then, building the project is enough, because `pm2` is watching for changes.
-
-```bash
-npm run build
-```
-
-### DONE. Troubleshooting:
-
-NOTE: Run this ONLY when the server is down
-
-```bash
-pm2 start trust_claim_backend --watch
-```
-
-To completely reset the pm2 process use
-
-```
-pm2 delete trust_claim_backend
-pm2 start build/index.js --name trust_claim_backend --cwd /data/trust_claim_backend --interpreter /data/home/ubuntu/.nvm/versions/node/v20.18.1/bin/node
+pm2 start build/index.js --name trust_claim_backend --cwd /data/trust_claim_backend
 pm2 save
 ```
 
-Logs are in `/data/home/ubuntu/.pm2/logs`
-Can also view with `pm2 logs trust_claim_backend`
-
-To see all about the pm2 process use
-
+If database migration is needed, back up first:
 ```bash
-PM2_HOME=/data/home/ubuntu/.pm2 /data/home/ubuntu/.nvm/versions/node/v16.15.1/bin/pm2 describe index
-```
-
-#### NGINX config
-
-Nginx config is located here - `/etc/nginx/sites-available/trustclaims.whatscookin.us`. To change the config -
-
-```bash
-sudo vim /etc/nginx/sites-available/trustclaims.whatscookin.us
-```
-
-After changing Nginx config, test it using -
-
-```bash
-sudo nginx -t
-```
-
-Then reload nginx service
-
-```bash
-sudo systemctl reload nginx.service`
+sudo su postgres
+pg_dump claim > /postgres/backup_filename.sql
+exit
+npx prisma generate
+npx prisma migrate deploy
 ```
 
 ## add database into your docker
