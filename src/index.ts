@@ -13,7 +13,7 @@ import { initializeServerKeys, getServerPublicKey } from './lib/crypto';
 dotenv.config();
 
 // Import middleware
-import { verifyToken } from './lib/auth';
+import { verifyToken, optionalToken } from './lib/auth';
 
 // Import API routes
 import * as claimsApi from './api/claims';
@@ -143,8 +143,8 @@ app.get('/api/claim', legacyClaimsApi.getClaimsV3);
 
 // Modern v4 endpoints
 // Claims endpoints
-app.post('/api/v4/claims', verifyToken, claimsApi.createClaim);
-app.post('/api/claims', verifyToken, claimsApi.createClaim);     // MODERN: Create one claim (v4 format)
+app.post('/api/v4/claims', optionalToken, claimsApi.createClaim);
+app.post('/api/claims', optionalToken, claimsApi.createClaim);     // MODERN: Create one claim (v4 format, auth optional)
 app.get('/api/v4/claims/:id', claimsApi.getClaim);
 app.get('/api/claims/:id', claimsApi.getClaim);
 app.get('/api/v4/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
@@ -214,7 +214,7 @@ app.get('/api/keys/server', (_req, res) => {
 });
 
 // Video upload endpoint
-app.post('/api/video/upload', verifyToken, videoApi.videoUploadMiddleware, videoApi.uploadVideo);
+app.post('/api/video/upload', optionalToken, videoApi.videoUploadMiddleware, videoApi.uploadVideo);
 
 // Badge image endpoint (PNG for email embedding)
 app.get('/api/badge-image/:claimId', badgeApi.getBadgeImage);

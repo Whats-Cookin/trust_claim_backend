@@ -37,6 +37,32 @@ export function verifyToken(req: AuthRequest, res: Response, next: NextFunction)
   }
 }
 
+// Like verifyToken but doesn't reject when no token provided.
+// Sets req.user if token exists, continues without it if not.
+export function optionalToken(req: AuthRequest, res: Response, next: NextFunction) {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.ACCESS_SECRET || 'access-secret') as any;
+    req.user = {
+      id: decoded.userId || decoded.id,
+      email: decoded.email,
+      did: decoded.did
+    };
+    next();
+  } catch (error) {
+    if ((error as any).name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'jwt expired' });
+    }
+    // Invalid token — continue without auth rather than blocking
+    next();
+  }
+}
+
 // Generate user URI
 export function getUserUri(userId: string): string {
   return `${process.env.BASE_URL || 'https://linkedtrust.us'}/users/${userId}`;
