@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../lib/auth';
 import { EntityDetector } from '../services/entityDetector';
 import { PipelineTrigger } from '../services/pipelineTrigger';
+import { AtprotoPublisher } from '../services/atprotoPublisher';
 import { signClaimWithServerKey } from '../lib/crypto';
 import { isValidUri, userIdToUri } from '../lib/validators';
 import { findLinkedSubjects } from './identity';
@@ -878,6 +879,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 
 // Still fine to run the heavy pipeline in background
      PipelineTrigger.processClaim(newClaim.id, subjectEntityType).catch(console.error);
+     AtprotoPublisher.publishClaim(newClaim).catch(console.error);
     // Include image records in response
     const response: any = {
       success: true,

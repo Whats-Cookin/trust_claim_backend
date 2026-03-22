@@ -8,6 +8,7 @@ import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './lib/swagger';
 import { initializeServerKeys, getServerPublicKey } from './lib/crypto';
+import { AtprotoIndexer } from './services/atprotoIndexer';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,7 @@ import * as legacyClaimsApi from './api/legacyClaims';
 import * as videoApi from './api/video/upload';
 import * as badgeApi from './api/badge/image';
 import * as shareApi from './api/share';
+import * as atprotoApi from './api/atproto';
 import { verifyLinkedInProfile } from './api/linkedin/verifyProfile';
 import { verifyLinkedInAge } from './api/linkedin/verifyAge';
 import { verifyGitHubProfile } from './api/github/verifyProfile';
@@ -223,6 +225,11 @@ app.get('/api/badge-image/:claimId', badgeApi.getBadgeImage);
 app.get('/api/og-image/:claimId', shareApi.getOgImage);
 app.get('/api/share/:claimId', shareApi.getSharePage);
 
+// ATProto indexer endpoints
+app.get('/api/atproto/claims', atprotoApi.getAtprotoClaims);
+app.get('/api/atproto/check', atprotoApi.checkAtprotoClaim);
+app.post('/api/atproto/backfill', atprotoApi.triggerBackfill);
+
 // Error handling middleware
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err);
@@ -242,6 +249,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Trust Claims backend running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Start ATProto Jetstream indexer (if enabled via ATPROTO_INDEX_ENABLED=true)
+  AtprotoIndexer.start();
 });
 
 export default app;

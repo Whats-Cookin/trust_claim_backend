@@ -15,6 +15,7 @@
     "studio": "prisma studio"
   },
   "dependencies": {
+    "@atproto/api": "^0.19.4",
     "@prisma/client": "^5.7.0",
     "@resvg/resvg-js": "^2.6.2",
     "aws-sdk": "^2.1503.0",
@@ -33,7 +34,8 @@
     "sharp": "^0.34.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
-    "ulid": "^3.0.2"
+    "ulid": "^3.0.2",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

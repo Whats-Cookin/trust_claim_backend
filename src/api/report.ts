@@ -65,15 +65,20 @@ export async function getClaimReport(req: Request, res: Response): Promise<Respo
       return res.status(404).json({ error: 'Claim not found' });
     }
     
-    // Claim node URI uses the environment's base URL
-    const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'https://live.linkedtrust.us';
-    const claimNodeUri = `${baseUrl}/claims/${claimIdNum}`;
-    const claimNode = await prisma.node.findFirst({
-      where: {
-        nodeUri: claimNodeUri,
-        entType: 'CLAIM'
-      }
-    });
+    // Look up claim node — try AT-URI (claimAddress) first, then fall back to legacy URL format
+    let claimNode = null;
+    if (claim.claimAddress && claim.claimAddress.startsWith('at://')) {
+      claimNode = await prisma.node.findFirst({
+        where: { nodeUri: claim.claimAddress, entType: 'CLAIM' }
+      });
+    }
+    if (!claimNode) {
+      const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'https://live.linkedtrust.us';
+      const claimNodeUri = `${baseUrl}/claims/${claimIdNum}`;
+      claimNode = await prisma.node.findFirst({
+        where: { nodeUri: claimNodeUri, entType: 'CLAIM' }
+      });
+    }
 
     // Get all edges for this claim (for display purposes)
     const edges = await prisma.edge.findMany({
