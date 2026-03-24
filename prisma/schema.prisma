@@ -282,7 +282,25 @@ model AuthApp {
   provider     String   // 'github', 'linkedin', 'google'
   appName      String?  @map("app_name")
   createdAt    DateTime @default(now()) @map("created_at")
-  
+
   @@index([clientId, provider])
   @@map("auth_apps")
+}
+
+// ATProto OAuth state — short-lived, used during the authorization flow
+model AtprotoOAuthState {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("atproto_oauth_state")
+}
+
+// ATProto OAuth sessions — long-lived, keyed by DID, used for publishing as user
+model AtprotoOAuthSession {
+  key       String   @id  // DID
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("atproto_oauth_session")
 }

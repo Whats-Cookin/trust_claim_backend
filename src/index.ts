@@ -130,6 +130,11 @@ app.post('/auth/github', authApi.githubAuth);
 app.post('/auth/linkedin', authApi.linkedinAuth);
 app.post('/auth/wallet', authApi.walletAuth);
 
+// ATProto (Bluesky) OAuth
+app.get('/oauth/atproto/client-metadata.json', authApi.atprotoClientMetadata);
+app.post('/auth/atproto/authorize', authApi.atprotoAuthorize);
+app.get('/auth/atproto/callback', authApi.atprotoCallback);
+
 // LinkedIn verification endpoints
 app.post('/api/linkedin/verify-profile', verifyLinkedInProfile);
 app.post('/api/linkedin/verify-age', verifyLinkedInAge);

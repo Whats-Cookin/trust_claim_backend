@@ -879,7 +879,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 
 // Still fine to run the heavy pipeline in background
      PipelineTrigger.processClaim(newClaim.id, subjectEntityType).catch(console.error);
-     AtprotoPublisher.publishClaim(newClaim).catch(console.error);
+     AtprotoPublisher.publishClaim(newClaim, req.user?.did).catch(console.error);
     // Include image records in response
     const response: any = {
       success: true,

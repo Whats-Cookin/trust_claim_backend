@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import { generateVerificationToken } from './linkedin/verifyProfile';
+import { AtprotoOAuth } from '../services/atprotoOAuth';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -708,5 +709,82 @@ export async function walletAuth(req: Request, res: Response): Promise<Response 
   } catch (error) {
     console.error('Wallet auth error:', error);
     return res.status(500).json({ error: 'Wallet authentication failed' });
+  }
+}
+
+// ATProto (Bluesky) OAuth - client metadata endpoint
+export async function atprotoClientMetadata(_req: Request, res: Response): Promise<void> {
+  res.json(AtprotoOAuth.getClientMetadata());
+}
+
+// ATProto OAuth - start authorization
+export async function atprotoAuthorize(req: Request, res: Response): Promise<void> {
+  try {
+    const { handle, skipEmail } = req.body;
+    if (!handle) {
+      res.status(400).json({ error: 'Bluesky handle required' });
+      return;
+    }
+
+    const url = await AtprotoOAuth.authorize(handle, skipEmail);
+    res.json({ url });
+  } catch (error: any) {
+    console.error('ATProto authorize error:', error);
+    res.status(500).json({ error: error.message || 'Failed to start Bluesky login' });
+  }
+}
+
+// ATProto OAuth - handle callback from PDS
+export async function atprotoCallback(req: Request, res: Response): Promise<void> {
+  try {
+    const params = new URLSearchParams(req.query as Record<string, string>);
+
+    const result = await AtprotoOAuth.handleCallback(params);
+
+    // Find or create user by DID
+    let user = await prisma.user.findFirst({
+      where: {
+        authProviderId: result.did,
+        authType: 'OAUTH',
+      },
+    });
+
+    if (!user) {
+      // Check if handle-based email exists
+      const syntheticEmail = `${result.handle}@atproto.local`;
+
+      user = await prisma.user.create({
+        data: {
+          email: syntheticEmail,
+          name: result.displayName || result.handle,
+          authType: 'OAUTH',
+          authProviderId: result.did,
+        },
+      });
+      console.log(`ATProto OAuth: created user ${user.id} for ${result.did} (${result.handle})`);
+    } else {
+      // Update name/handle if changed
+      if (result.displayName && result.displayName !== user.name) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { name: result.displayName },
+        });
+      }
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user.id, result.did);
+
+    // Redirect back to frontend with tokens
+    const baseUrl = process.env.BASE_URL || 'https://dev.linkedtrust.us';
+    const redirectUrl = new URL('/login', baseUrl);
+    redirectUrl.searchParams.set('accessToken', accessToken);
+    redirectUrl.searchParams.set('refreshToken', refreshToken);
+
+    res.redirect(redirectUrl.toString());
+  } catch (error: any) {
+    console.error('ATProto callback error:', error);
+    // Redirect to login with error
+    const baseUrl = process.env.BASE_URL || 'https://dev.linkedtrust.us';
+    res.redirect(`${baseUrl}/login?error=atproto_auth_failed`);
   }
 }

@@ -19,6 +19,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { AtprotoOAuth } from './atprotoOAuth';
 
 const prisma = new PrismaClient();
 const COLLECTION = 'com.linkedclaims.claim';
@@ -149,31 +150,65 @@ function mapClaimToRecord(claim: any): Record<string, any> {
 export class AtprotoPublisher {
   /**
    * Publish a claim to ATProto. Fire-and-forget — never throws.
+   *
+   * If userDid is provided and the user has an OAuth session with
+   * com.linkedclaims.authFull scope, publishes to the USER's repo
+   * (signed by them). Otherwise falls back to the server's app password.
    */
-  static async publishClaim(claim: any): Promise<void> {
+  static async publishClaim(claim: any, userDid?: string): Promise<void> {
     try {
-      if (!isEnabled()) return;
-
       // Don't re-publish claims that came FROM ATProto (indexed via Jetstream)
       if (claim.claimAddress && claim.claimAddress.startsWith('at://')) {
         return;
       }
 
-      const atpAgent = await ensureAgent();
-      if (!atpAgent?.session) {
-        console.error('ATProto publisher: not authenticated, skipping claim', claim.id);
-        return;
+      const record = mapClaimToRecord(claim);
+      let result: any;
+
+      // Try user's OAuth session first
+      if (userDid) {
+        const userSession = await AtprotoOAuth.getSession(userDid);
+        if (userSession) {
+          // Check if session has the authFull scope via token info
+          const tokenInfo = await userSession.getTokenInfo();
+          const scope = tokenInfo.scope || '';
+          if (scope.includes('com.linkedclaims.authFull')) {
+            const { Agent } = await import('@atproto/api');
+            const userAgent = new Agent(userSession);
+
+            result = await userAgent.com.atproto.repo.createRecord({
+              repo: userDid,
+              collection: COLLECTION,
+              record,
+            });
+
+            console.log(`ATProto published claim ${claim.id} to USER repo ${userDid} → ${result.data.uri}`);
+          } else {
+            console.log(`ATProto: user ${userDid} session lacks com.linkedclaims.authFull scope (has: ${scope}), falling back to server`);
+          }
+        } else {
+          console.log(`ATProto: no OAuth session for ${userDid}, falling back to server`);
+        }
       }
 
-      const record = mapClaimToRecord(claim);
+      // Fall back to server's app password if user publish didn't happen
+      if (!result) {
+        if (!isEnabled()) return;
 
-      const result = await atpAgent.com.atproto.repo.createRecord({
-        repo: atpAgent.session.did,
-        collection: COLLECTION,
-        record,
-      });
+        const atpAgent = await ensureAgent();
+        if (!atpAgent?.session) {
+          console.error('ATProto publisher: not authenticated, skipping claim', claim.id);
+          return;
+        }
 
-      console.log(`ATProto published claim ${claim.id} → ${result.data.uri}`);
+        result = await atpAgent.com.atproto.repo.createRecord({
+          repo: atpAgent.session.did,
+          collection: COLLECTION,
+          record,
+        });
+
+        console.log(`ATProto published claim ${claim.id} to SERVER repo → ${result.data.uri}`);
+      }
 
       // Store AT-URI on the claim so the indexer knows not to re-import it
       try {
