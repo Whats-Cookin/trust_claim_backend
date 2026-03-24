@@ -752,10 +752,11 @@ export async function atprotoCallback(req: Request, res: Response): Promise<void
     if (!user) {
       // Check if handle-based email exists
       const syntheticEmail = `${result.handle}@atproto.local`;
+      const emailToStore = result.email || syntheticEmail;
 
       user = await prisma.user.create({
         data: {
-          email: syntheticEmail,
+          email: emailToStore,
           name: result.displayName || result.handle,
           authType: 'OAUTH',
           authProviderId: result.did,
@@ -763,11 +764,19 @@ export async function atprotoCallback(req: Request, res: Response): Promise<void
       });
       console.log(`ATProto OAuth: created user ${user.id} for ${result.did} (${result.handle})`);
     } else {
-      // Update name/handle if changed
+      // Update name/email if changed
+      const updateData: { name?: string; email?: string } = {};
       if (result.displayName && result.displayName !== user.name) {
+        updateData.name = result.displayName;
+      }
+      if (result.email && result.email !== user.email) {
+        updateData.email = result.email;
+      }
+
+      if (Object.keys(updateData).length > 0) {
         await prisma.user.update({
           where: { id: user.id },
-          data: { name: result.displayName },
+          data: updateData,
         });
       }
     }

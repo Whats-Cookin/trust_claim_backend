@@ -171,13 +171,25 @@ export class AtprotoOAuth {
     // Check what scopes were actually granted
     const tokenInfo = await session.getTokenInfo();
     const grantedScope = tokenInfo.scope || '';
+    const grantedScopes = new Set(grantedScope.split(/\s+/).filter(Boolean));
+
+    let email: string | undefined;
+    if (grantedScopes.has('transition:email')) {
+      try {
+        // Pull account email from the authenticated PDS session.
+        const sessionData = await (session as any).agent.com.atproto.server.getSession();
+        email = sessionData?.data?.email;
+      } catch (err) {
+        console.warn('ATProto OAuth: failed to fetch email from com.atproto.server.getSession', err);
+      }
+    }
 
     return {
       did,
       handle,
       displayName,
       avatar,
-      email: undefined, // email comes from a separate API call if scope was granted
+      email,
       scope: grantedScope,
     };
   }
