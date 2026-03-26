@@ -21,6 +21,10 @@ The documentation includes:
 
 See [SWAGGER_SETUP.md](./SWAGGER_SETUP.md) for more details.
 
+## ATProto Integration & SDK
+
+The **[claim-atproto](https://github.com/Cooperation-org/claim-atproto)** repository is the TypeScript SDK for `com.linkedclaims.claim` on ATProto. Its README is the main place for **reading and writing claims**, the **AppView** architecture (how this backend indexes Jetstream and deduplicates by `claimAddress`), the **lexicon schema**, LinkedTrust HTTP helpers (`/api/atproto/*`), OAuth (`com.linkedclaims.authFull`), and Node.js examples.
+
 ## Concepts
 
 Claim: a signed set of structured data with the raw claim or attestation, often signed on front end by the user's DID
