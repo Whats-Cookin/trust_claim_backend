@@ -125,13 +125,16 @@ export class AtprotoOAuth {
   static async authorize(handle: string, skipEmail?: boolean): Promise<string> {
     const client = await ensureClient();
 
+    // Strip leading @ — users commonly type @handle.bsky.social
+    const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+
     // Build scope — always include atproto + our lexicon, optionally email
     let scope = 'atproto com.linkedclaims.authFull';
     if (!skipEmail) {
       scope += ' transition:email';
     }
 
-    const url = await client.authorize(handle, { scope });
+    const url = await client.authorize(cleanHandle, { scope });
     return url.toString();
   }
 
