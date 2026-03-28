@@ -191,10 +191,40 @@ export class AtprotoOAuth {
    */
   static async getSession(did: string): Promise<any> {
     const client = await ensureClient();
-    try {
-      return await client.restore(did);
-    } catch {
-      return null;
+    const MAX_RETRIES = 2;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await client.restore(did);
+      } catch (err: any) {
+        const isLastAttempt = attempt === MAX_RETRIES;
+        const isTransient =
+          err?.code === 'ECONNRESET' ||
+          err?.code === 'ETIMEDOUT' ||
+          err?.code === 'ENOTFOUND' ||
+          err?.code === 'EAI_AGAIN' ||
+          err?.message?.includes('fetch failed') ||
+          (err?.status && err.status >= 500);
+
+        if (isTransient && !isLastAttempt) {
+          const delay = 500 * (attempt + 1);
+          console.warn(
+            `ATProto OAuth: transient error restoring session for ${did} (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${delay}ms:`,
+            err?.message || err
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+
+        // Non-transient or final attempt — log and return null
+        console.error(
+          `ATProto OAuth: failed to restore session for ${did}${isTransient ? ` after ${MAX_RETRIES + 1} attempts` : ''}:`,
+          err
+        );
+        return null;
+      }
     }
+
+    return null;
   }
 }
