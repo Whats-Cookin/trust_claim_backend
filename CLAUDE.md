@@ -1,5 +1,18 @@
 # Claude Code Notes
 
+## CRITICAL: How to Restart the Backend
+
+**This server uses PM2 (not systemctl).**
+
+```bash
+npm run build
+pm2 restart trust-claim-backend --update-env
+```
+
+- `--update-env` is required when `.env` has changed
+- Build outputs to `build/` — PM2 runs from `build/index.js`
+- If build files are owned by another user: `sudo chown -R ubuntu:ubuntu build/`
+
 ## CRITICAL: Production Server Safety
 
 **This is a LIVE PRODUCTION SERVER (live.linkedtrust.us). DO NOT:**
