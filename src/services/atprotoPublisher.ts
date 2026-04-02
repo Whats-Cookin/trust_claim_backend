@@ -169,10 +169,12 @@ export class AtprotoPublisher {
       if (userDid) {
         const userSession = await AtprotoOAuth.getSession(userDid);
         if (userSession) {
-          // Check if session has the authFull scope via token info
+          // Check if session has a scope that grants repo write access.
+          // We accept either com.linkedclaims.authFull (our custom scope, for when
+          // Bluesky supports minimal scopes) or the standard 'atproto' scope.
           const tokenInfo = await userSession.getTokenInfo();
           const scope = tokenInfo.scope || '';
-          if (scope.includes('com.linkedclaims.authFull')) {
+          if (scope.includes('com.linkedclaims.authFull') || scope.includes('atproto')) {
             const { Agent } = await import('@atproto/api');
             const userAgent = new Agent(userSession);
 
@@ -184,7 +186,7 @@ export class AtprotoPublisher {
 
             console.log(`ATProto published claim ${claim.id} to USER repo ${userDid} → ${result.data.uri}`);
           } else {
-            console.log(`ATProto: user ${userDid} session lacks com.linkedclaims.authFull scope (has: ${scope}), falling back to server`);
+            console.log(`ATProto: user ${userDid} session lacks authFull or atproto scope (has: ${scope}), falling back to server`);
           }
         } else {
           console.log(`ATProto: no OAuth session for ${userDid}, falling back to server`);
