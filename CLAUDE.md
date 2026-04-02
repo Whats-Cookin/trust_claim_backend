@@ -108,6 +108,23 @@ Full mapping: `~/work/3-22-2026-atproto-claim-mapping.md`
 | `source.uri` | `sourceURI` | |
 | `evidence[]` | Image table | one row per item |
 
+### Server-Fallback Publishing (design decision, 2026-04)
+
+When a user doesn't have a Bluesky account (no OAuth session), the server publishes
+their claim to ATProto using the server's own app password. The claim lands in the
+server's repo, not the user's. To make provenance clear, the existing `source` field
+on the ATProto record carries the original author info (sourceURI, howKnown, etc.) —
+no new fields needed.
+
+User emails must NEVER be included in ATProto records. Emails are auth-only data.
+The `source` object, `issuerId`, `statement`, and every other published field must be
+checked to ensure no email address leaks onto a public protocol. If a user's only
+identifier is an email, use their LinkedTrust profile URI or omit the identifier
+entirely — do not publish the email.
+
+See `src/services/atprotoPublisher.ts` — the fallback path is the `!result` branch
+around line 197.
+
 ### Validation Claims
 - A validation claim has `subject` = the URI of the thing being validated
 - The `issuerId` = the person/entity making the validation
