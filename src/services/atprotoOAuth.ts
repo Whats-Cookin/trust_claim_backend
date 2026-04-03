@@ -119,6 +119,57 @@ export class AtprotoOAuth {
   }
 
   /**
+   * Try to restore an existing OAuth session for a handle.
+   * Looks up the user's DID in our database and attempts to restore the session.
+   * Returns profile info if a valid session exists, null otherwise.
+   */
+  static async tryRestore(handle: string): Promise<{
+    did: string;
+    handle: string;
+    displayName?: string;
+    avatar?: string;
+    scope: string;
+  } | null> {
+    const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+
+    // Look up DID from our user table — avoids a network call if we've seen this handle before
+    const user = await prisma.user.findFirst({
+      where: {
+        email: `${cleanHandle}@atproto.local`,
+        authType: 'OAUTH',
+      },
+    });
+
+    const did = user?.authProviderId;
+    if (!did) return null;
+
+    const session = await AtprotoOAuth.getSession(did);
+    if (!session) return null;
+
+    // Session is valid — resolve profile for fresh info
+    const { BskyAgent } = await import('@atproto/api');
+    const agent = new BskyAgent({ service: 'https://public.api.bsky.app' });
+
+    let resolvedHandle = cleanHandle;
+    let displayName: string | undefined;
+    let avatar: string | undefined;
+
+    try {
+      const profile = await agent.getProfile({ actor: did });
+      resolvedHandle = profile.data.handle;
+      displayName = profile.data.displayName;
+      avatar = profile.data.avatar;
+    } catch (err) {
+      console.warn('ATProto OAuth: failed to resolve profile for', did, err);
+    }
+
+    const tokenInfo = await session.getTokenInfo();
+    const grantedScope = tokenInfo.scope || '';
+
+    return { did, handle: resolvedHandle, displayName, avatar, scope: grantedScope };
+  }
+
+  /**
    * Start the OAuth authorization flow.
    * Returns the URL to redirect the user to.
    */

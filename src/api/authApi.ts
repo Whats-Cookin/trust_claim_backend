@@ -726,6 +726,26 @@ export async function atprotoAuthorize(req: Request, res: Response): Promise<voi
       return;
     }
 
+    // Try to restore an existing OAuth session before redirecting to Bluesky
+    const existing = await AtprotoOAuth.tryRestore(handle);
+    if (existing) {
+      // Session still valid — find the user and issue tokens directly
+      const user = await prisma.user.findFirst({
+        where: { authProviderId: existing.did, authType: 'OAUTH' },
+      });
+
+      if (user) {
+        const { accessToken, refreshToken } = generateTokens(user.id, existing.did);
+        const baseUrl = process.env.BASE_URL || 'https://dev.linkedtrust.us';
+        const redirectUrl = new URL('/login', baseUrl);
+        redirectUrl.searchParams.set('accessToken', accessToken);
+        redirectUrl.searchParams.set('refreshToken', refreshToken);
+
+        res.json({ url: redirectUrl.toString(), restored: true });
+        return;
+      }
+    }
+
     const url = await AtprotoOAuth.authorize(handle, skipEmail);
     res.json({ url });
   } catch (error: any) {
