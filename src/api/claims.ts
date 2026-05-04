@@ -580,6 +580,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       videoUrl, // Video testimonial URL (uploaded separately via /api/video/upload)
       subjectEntityType, // Optional hint for subject entity type (PERSON/ORGANIZATION)
       replace, // If true, delete existing duplicate and create new (claims are immutable)
+      effectiveDate, // When the event being claimed actually occurred (client-supplied)
       ...otherFields // Capture any other fields for debugging
     } = req.body;
     
@@ -630,7 +631,11 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       unit: unit || null,
       issuerId: clientIssuerId || userIdUri || null,
       issuerIdType: clientIssuerIdType || 'URL',
-      effectiveDate: new Date()
+      effectiveDate: (() => {
+        if (!effectiveDate) return new Date();
+        const d = new Date(effectiveDate);
+        return isNaN(d.getTime()) ? new Date() : d;
+      })()
     };
     
     console.log('Prepared claim data:', JSON.stringify(claimData, null, 2));
