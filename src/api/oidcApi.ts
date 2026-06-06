@@ -96,7 +96,12 @@ export async function authorize(req: Request, res: Response): Promise<void> {
     res.redirect(url.toString());
   };
 
-  if (response_type !== 'code') return fail('unsupported_response_type', 'only authorization code flow is supported');
+  // 'code' = authorization code flow (default, recommended). 'token' = implicit
+  // flow, supported only for legacy clients like Odoo's stock auth_oauth, which
+  // validate the returned token server-side via the userinfo endpoint.
+  if (response_type !== 'code' && response_type !== 'token') {
+    return fail('unsupported_response_type', 'supported: code, token');
+  }
 
   const scopes = grantScopes(scope, client.allowedScopes);
   if (!scopes.includes('openid')) return fail('invalid_scope', 'openid scope is required');
@@ -117,6 +122,23 @@ export async function authorize(req: Request, res: Response): Promise<void> {
 
   // Slide the session forward on each use, so an active user stays logged in.
   setSessionCookie(res, userId);
+
+  // Implicit flow: return the access token in the redirect fragment. The client
+  // (e.g. Odoo) validates it server-side via /oauth/userinfo.
+  if (response_type === 'token') {
+    const accessToken = await oidc.signAccessToken({ userId, clientId: client.clientId, scopes });
+    const url = new URL(redirect_uri);
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: '3600',
+      scope: scopes.join(' '),
+    });
+    if (state) params.set('state', state);
+    url.hash = params.toString();
+    res.redirect(url.toString());
+    return;
+  }
 
   const code = crypto.randomBytes(32).toString('base64url');
   await prisma.oidcAuthCode.create({
@@ -230,9 +252,11 @@ export async function token(req: Request, res: Response): Promise<void> {
 
 // ── /oauth/userinfo ─────────────────────────────────────────────────────────────
 export async function userinfo(req: Request, res: Response): Promise<void> {
+  // Accept the token as a Bearer header (OIDC standard) or as an ?access_token=
+  // query param (how Odoo's auth_oauth calls the validation endpoint).
   const token = req.headers.authorization?.startsWith('Bearer ')
     ? req.headers.authorization.slice(7)
-    : undefined;
+    : (req.query.access_token as string | undefined);
   if (!token) {
     res.status(401).json({ error: 'invalid_token' });
     return;
@@ -252,7 +276,9 @@ export async function userinfo(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const out: Record<string, unknown> = { sub: String(user.id) };
+  // `sub` is the OIDC standard subject; `user_id` is the same value under the key
+  // Odoo's auth_oauth expects from its validation endpoint.
+  const out: Record<string, unknown> = { sub: String(user.id), user_id: String(user.id) };
   if (claims.scopes.includes('email') && user.email) {
     out.email = user.email;
     out.email_verified = true;

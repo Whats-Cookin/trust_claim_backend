@@ -77,3 +77,35 @@ npx ts-node scripts/register-oidc-client.ts \
 
 End users never need a client_id/secret — only the apps do, and public clients
 avoid secrets entirely via PKCE.
+
+## Per-app client setup
+
+### Odoo CRM (crm.linkedtrust.us) — uses implicit flow
+
+Odoo's stock `auth_oauth` uses the OAuth2 implicit flow and validates the token
+server-side. The provider supports this (`response_type=token`, and `/oauth/userinfo`
+accepts `?access_token=` and returns a `user_id` field). No Odoo module needed.
+
+In Odoo: **Settings → Users & Companies → OAuth Providers → New** (or via `odoo-cli`):
+
+| Field | Value |
+|-------|-------|
+| Provider name | LinkedTrust |
+| Client ID | (the registered `lt_…` client_id) |
+| Allowed | ✓ |
+| Login button label (`body`) | Sign in with LinkedTrust |
+| Authorization URL (`auth_endpoint`) | `https://<issuer>/oauth/authorize` |
+| Scope | `openid email trust` |
+| UserInfo URL (`validation_endpoint`) | `https://<issuer>/oauth/userinfo` |
+
+Register the client with the Odoo redirect URI:
+`scripts/register-oidc-client.ts --name "Odoo CRM" --redirect https://crm.linkedtrust.us/auth_oauth/signin --public --scopes "openid email trust"`
+
+NOTE: crm.linkedtrust.us is the live team CRM — apply this when ready; it does not
+change existing password login, only adds the button.
+
+### Taiga (marten.linkedtrust.us, help.raisethevoices.org) — code flow
+
+Taiga needs a contrib auth plugin on the **taiga-back** server (it can't consume
+OIDC by config). See `taiga-contrib-linkedtrust-auth/` and its README for install
+steps. Deploy to both Taiga servers.
