@@ -109,3 +109,27 @@ change existing password login, only adds the button.
 Taiga needs a contrib auth plugin on the **taiga-back** server (it can't consume
 OIDC by config). See `taiga-contrib-linkedtrust-auth/` and its README for install
 steps. Deploy to both Taiga servers.
+
+## Security note (pre-existing — for the team to decide on, not a blocker)
+
+This is a NOTE, not a change. The OIDC code follows the existing convention and
+does not regress anything.
+
+`ACCESS_SECRET` falls back to the literal string `'access-secret'` when the env var
+is unset. This fallback is **pre-existing and app-wide** — it lives in `src/lib/auth.ts`
+(twice), `src/api/authApi.ts`, and now `src/api/oidcApi.ts` (which copied the existing
+pattern). It signs/verifies the login tokens and the IdP session cookie.
+
+Why it matters for an identity provider: if any environment runs without `ACCESS_SECRET`
+set, tokens are signed with a publicly-known secret and could be forged. In practice prod
+almost certainly has it set (existing login already depends on it).
+
+Suggested hardening, when the team chooses to do it (all additive / low-risk):
+1. Confirm `ACCESS_SECRET` is set to a strong random value in every deployed `.env`
+   (live, dev). This is the important one and changes no code.
+2. Optionally centralize it into one helper that throws on startup if unset or equal to
+   the default, so a misconfigured deploy fails closed instead of running insecurely.
+
+Left as a note deliberately: changing the shared `ACCESS_SECRET` handling touches existing,
+working auth on a live server and should be a deliberate, reviewed step — not folded into
+an unrelated merge.
