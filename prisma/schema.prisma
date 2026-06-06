@@ -304,3 +304,37 @@ model AtprotoOAuthSession {
 
   @@map("atproto_oauth_session")
 }
+
+// ── OIDC provider (LinkedTrust-as-trust-provider) ──────────────────────────
+// Registered relying apps that use "Sign in with LinkedTrust" (OIDC clients).
+model OidcClient {
+  id            Int      @id @default(autoincrement())
+  clientId      String   @unique @map("client_id")
+  clientSecret  String   @map("client_secret")   // bcrypt hash; null/empty allowed for public (PKCE-only) clients
+  name          String?
+  redirectUris  String[] @map("redirect_uris")
+  allowedScopes String[] @default(["openid", "profile", "email", "trust"]) @map("allowed_scopes")
+  isPublic      Boolean  @default(false) @map("is_public") // PKCE-only, no client_secret
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("oidc_clients")
+}
+
+// Short-lived authorization codes (Authorization Code flow + PKCE). One-time use.
+model OidcAuthCode {
+  code                String   @id
+  clientId            String   @map("client_id")
+  userId              Int      @map("user_id")
+  redirectUri         String   @map("redirect_uri")
+  scope               String   // space-delimited granted scopes
+  nonce               String?
+  codeChallenge       String?  @map("code_challenge")
+  codeChallengeMethod String?  @map("code_challenge_method") // 'S256'
+  expiresAt           DateTime @map("expires_at")
+  consumedAt          DateTime? @map("consumed_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([clientId])
+  @@index([expiresAt])
+  @@map("oidc_auth_codes")
+}

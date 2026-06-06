@@ -24,6 +24,7 @@ import * as graphApi from './api/graph';
 import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
+import * as oidcApi from './api/oidcApi';
 import * as imagesApi from './api/images';
 import * as identityApi from './api/identity';
 import * as legacyClaimsApi from './api/legacyClaims';
@@ -134,6 +135,14 @@ app.post('/auth/wallet', authApi.walletAuth);
 app.get('/oauth/atproto/client-metadata.json', authApi.atprotoClientMetadata);
 app.post('/auth/atproto/authorize', authApi.atprotoAuthorize);
 app.get('/auth/atproto/callback', authApi.atprotoCallback);
+
+// OIDC provider — "Sign in with LinkedTrust" (LinkedTrust as trust provider)
+app.get('/.well-known/openid-configuration', oidcApi.discovery);
+app.get('/.well-known/jwks.json', oidcApi.jwksHandler);
+app.get('/oauth/authorize', oidcApi.authorize);
+app.post('/oauth/token', oidcApi.token);
+app.get('/oauth/userinfo', oidcApi.userinfo);
+app.post('/oauth/session', oidcApi.session);
 
 // LinkedIn verification endpoints
 app.post('/api/linkedin/verify-profile', verifyLinkedInProfile);
