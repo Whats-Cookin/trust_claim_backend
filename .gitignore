@@ -17,3 +17,7 @@ package-lock.json
 yarn-error.log
 .claude/
 badge-cache/
+
+# DB dumps — never commit (root-level only; prisma/migrations/*.sql stay tracked)
+/*.sql
+*.dump
