@@ -11,6 +11,9 @@
 // that don't support EdDSA — no code change for clients beyond key selection.
 
 import * as jose from 'jose';
+import crypto from 'crypto';
+import { prisma } from './prisma';
+import { prepareForSigning } from './sign-linked-claim';
 
 const ISSUER = process.env.BASE_URL || 'https://dev.linkedtrust.us';
 const KEY_ID = 'server-key-1';
@@ -71,24 +74,110 @@ export interface IdentityClaims {
   name?: string | null;
 }
 
+export interface TrustRole {
+  app: string;
+  role: string | null;
+}
+
 export interface TrustSignal {
   status: 'stub' | 'resolved';
   level: number | null;
   vouches: unknown[];
+  // Graded trust, derived ONLY from root-anchored, signature-verified claims.
+  // Consumers pick their own threshold: hard gate (require a grant/role), soft
+  // gate (admit on any signal), or algorithmic (use `level` as a score).
+  isRoot?: boolean;
+  roots?: string[]; // orgs this subject is a verified trust-root for
+  roles?: TrustRole[]; // app-scoped access grants from a verified root
+  evidence?: number[]; // claim ids backing the above
   note?: string;
 }
 
-// STUB. The real implementation will resolve vouches / roots-of-trust from the
-// Claim graph (subject / claim / object / issuerId / confidence / score) and may
-// read private/encrypted claims. Returns an explicit placeholder so clients can
-// integrate the `trust` claim shape now without us shipping fake data.
-export async function resolveTrustSignal(_userId: number): Promise<TrustSignal> {
-  return {
-    status: 'stub',
-    level: null,
-    vouches: [],
-    note: 'trust resolution not yet implemented (see auth-service-idea.md)',
+const rootDid = () => process.env.LT_ROOT_DID || '';
+const rootPubPem = () => (process.env.LT_ROOT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
+
+// A claim only counts if its PROOF verifies against the configured server root
+// key (the anchor). The `issuerId` string is never trusted on its own — anyone
+// can write one. Custodial: today every trust claim is signed by the root key;
+// when orgs get their own keys this extends to "signer chains to the anchor".
+function verifiedByRoot(claim: {
+  subject: string;
+  claim: string;
+  object: string | null;
+  aspect: string | null;
+  statement: string | null;
+  howKnown: string | null;
+  confidence: number | null;
+  effectiveDate: Date | null;
+  proof: string | null;
+}): boolean {
+  if (!claim.proof) return false;
+  let proof: any;
+  try {
+    proof = JSON.parse(claim.proof);
+  } catch {
+    return false;
+  }
+  if (!proof.proofValue || proof.verificationMethod !== rootDid()) return false;
+  const proofMeta = { ...proof };
+  delete proofMeta.proofValue;
+  const linkedClaim = {
+    subject: claim.subject,
+    claim: claim.claim,
+    object: claim.object || undefined,
+    aspect: claim.aspect || undefined,
+    statement: claim.statement || undefined,
+    howKnown: (claim.howKnown as any) || undefined,
+    confidence: claim.confidence ?? undefined,
+    effectiveDate: claim.effectiveDate || undefined,
   };
+  try {
+    const message = prepareForSigning(linkedClaim as any, proofMeta);
+    return crypto.verify(null, Buffer.from(message), rootPubPem(), Buffer.from(proof.proofValue, 'base64'));
+  } catch {
+    return false;
+  }
+}
+
+// Map an OIDC user to their claim-graph subject DID. Bluesky/wallet users carry
+// a real DID in authProviderId; OAuth-only users have none yet (→ no signal).
+async function subjectDids(userId: number): Promise<string[]> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const id = user?.authProviderId || '';
+  return id.startsWith('did:') ? [id] : [];
+}
+
+// Resolve the user's trust standing from root-anchored capability/grant claims.
+export async function resolveTrustSignal(userId: number): Promise<TrustSignal> {
+  // No anchor configured → we can verify nothing; stay explicit rather than fake.
+  if (!rootDid() || !rootPubPem()) {
+    return { status: 'stub', level: null, vouches: [], note: 'no trust root configured' };
+  }
+  const dids = await subjectDids(userId);
+  if (!dids.length) {
+    return { status: 'resolved', level: 0, vouches: [], isRoot: false, roots: [], roles: [], evidence: [], note: 'no DID identity' };
+  }
+
+  const claims = await prisma.claim.findMany({
+    where: { subject: { in: dids }, claim: { in: ['HAS_CAPABILITY', 'HAS_ACCESS'] }, proof: { not: null } },
+  });
+
+  const roots: string[] = [];
+  const roles: TrustRole[] = [];
+  const evidence: number[] = [];
+  for (const c of claims) {
+    if (!verifiedByRoot(c)) continue; // unsigned / forged / not-by-root → ignored
+    evidence.push(c.id);
+    if (c.claim === 'HAS_CAPABILITY' && c.aspect === 'trust-root' && c.object) {
+      roots.push(c.object);
+    } else if (c.claim === 'HAS_ACCESS' && c.object) {
+      roles.push({ app: c.object, role: c.statement || c.aspect || null });
+    }
+  }
+
+  const isRoot = roots.length > 0;
+  const level = isRoot ? 100 : roles.length ? 50 : 0;
+  return { status: 'resolved', level, vouches: [], isRoot, roots, roles, evidence };
 }
 
 const ISSUED_BY_CLAIM = 'lt';
