@@ -143,6 +143,7 @@ app.get('/oauth/authorize', oidcApi.authorize);
 app.post('/oauth/token', oidcApi.token);
 app.get('/oauth/userinfo', oidcApi.userinfo);
 app.post('/oauth/session', oidcApi.session);
+app.post('/oauth/bind-invite', oidcApi.bindInvite);
 
 // LinkedIn verification endpoints
 app.post('/api/linkedin/verify-profile', verifyLinkedInProfile);

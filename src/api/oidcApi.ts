@@ -19,6 +19,10 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const SESSION_TTL_JWT = '30d';
 const FRONTEND_URL = process.env.FRONTEND_URL || process.env.BASE_URL || 'https://dev.linkedtrust.us';
 const ACCESS_SECRET = process.env.ACCESS_SECRET || 'access-secret';
+// Dedicated secret for SSO invites — NO insecure fallback. If unset, invites are
+// disabled (fail closed) rather than verifiable with a guessable default. This is
+// what makes invites mintable only by someone with this server's .env.
+const INVITE_SECRET = process.env.SSO_INVITE_SECRET;
 
 // ── cookie helpers (single cookie; avoids a global cookie-parser middleware) ──
 function readCookie(req: Request, name: string): string | undefined {
@@ -310,4 +314,89 @@ export async function session(req: Request, res: Response): Promise<void> {
   } catch {
     res.status(401).json({ error: 'invalid_token' });
   }
+}
+
+// ── /oauth/bind-invite ─────────────────────────────────────────────────────────
+// Redeems an admin-minted SSO invite (a JWT signed with ACCESS_SECRET, typ
+// 'sso_invite', carrying a target email + single-use jti). Invites can ONLY be
+// created server-side via scripts/make-sso-invite.ts — there is no route to mint
+// one, so possession of a valid invite is itself the admin's authorization.
+//
+// The user first completes a normal OAuth login (Google/Bluesky/etc.); the
+// frontend posts that LinkedTrust access token here together with the invite.
+// If an account already owns the invited email, we point the IdP session at THAT
+// account (so subsequent /oauth/authorize → userinfo returns the real email and
+// the relying app, e.g. Taiga, matches the existing user). If no account owns the
+// email, we set it on the account they just logged in with.
+export async function bindInvite(req: Request, res: Response): Promise<void> {
+  // 1. Authenticate the caller via their LinkedTrust access token.
+  const bearer = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.slice(7)
+    : undefined;
+  const ltToken = bearer || (req.body && req.body.access_token);
+  if (!ltToken) {
+    res.status(400).json({ error: 'missing_token' });
+    return;
+  }
+  let authUserId: number;
+  try {
+    const decoded = jwt.verify(ltToken, ACCESS_SECRET) as any;
+    if (decoded.type !== 'access') throw new Error('not an access token');
+    authUserId = Number(decoded.userId);
+  } catch {
+    res.status(401).json({ error: 'invalid_token' });
+    return;
+  }
+
+  // 2. Verify the invite.
+  const inviteToken: string | undefined =
+    (req.body && req.body.invite) || (typeof req.query.invite === 'string' ? req.query.invite : undefined);
+  if (!inviteToken) {
+    res.status(400).json({ error: 'missing_invite' });
+    return;
+  }
+  if (!INVITE_SECRET) {
+    res.status(503).json({ error: 'invites_disabled' });
+    return;
+  }
+  let email: string;
+  let jti: string;
+  try {
+    const inv = jwt.verify(inviteToken, INVITE_SECRET) as any;
+    if (inv.typ !== 'sso_invite' || !inv.email || !inv.jti) throw new Error('not an sso invite');
+    email = String(inv.email);
+    jti = String(inv.jti);
+  } catch {
+    res.status(401).json({ error: 'invalid_invite' });
+    return;
+  }
+
+  // 3. Single-use: atomically claim the jti. If it's already there, it was used.
+  const claimed = await prisma.$executeRaw`
+    INSERT INTO sso_invites (jti, email, consumed_at) VALUES (${jti}, ${email}, CURRENT_TIMESTAMP)
+    ON CONFLICT (jti) DO NOTHING`;
+  if (claimed === 0) {
+    res.status(409).json({ error: 'invite_already_used' });
+    return;
+  }
+
+  // 4. Resolve the target account (case-insensitive match on the invited email).
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    select: { id: true, email: true },
+  });
+  let targetUserId: number;
+  let resolvedEmail: string;
+  if (existing) {
+    targetUserId = existing.id;
+    resolvedEmail = existing.email || email;
+  } else {
+    await prisma.user.update({ where: { id: authUserId }, data: { email } });
+    targetUserId = authUserId;
+    resolvedEmail = email;
+  }
+
+  // 5. Point the IdP session at the target account and report back.
+  setSessionCookie(res, targetUserId);
+  res.json({ ok: true, account: targetUserId, email: resolvedEmail });
 }
