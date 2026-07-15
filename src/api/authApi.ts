@@ -720,13 +720,15 @@ export async function atprotoClientMetadata(_req: Request, res: Response): Promi
 // ATProto OAuth - start authorization
 export async function atprotoAuthorize(req: Request, res: Response): Promise<void> {
   try {
-    const { handle, skipEmail } = req.body;
+    const { handle, skipEmail, write } = req.body;
     if (!handle) {
       res.status(400).json({ error: 'Bluesky handle required' });
       return;
     }
 
-    const url = await AtprotoOAuth.authorize(handle, skipEmail);
+    // `write: true` is the claim-create step-up — only then do we request the
+    // granular repo-write scope. Plain login never asks for write access.
+    const url = await AtprotoOAuth.authorize(handle, { skipEmail, write });
     res.json({ url });
   } catch (error: any) {
     console.error('ATProto authorize error:', error);

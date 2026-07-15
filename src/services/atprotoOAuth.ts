@@ -71,7 +71,10 @@ function getClientMetadata() {
     client_uri: baseUrl,
     logo_uri: `${baseUrl}/logo.png`,
     redirect_uris: [`${baseUrl}/auth/atproto/callback`] as [string, ...string[]],
-    scope: 'atproto com.linkedclaims.authFull transition:email',
+    // Superset of scopes this client MAY request (listing ≠ requesting). Login asks
+    // for a subset (identity + email); the granular claim-write scope is requested
+    // only at claim-create time. We never list/request transition:generic.
+    scope: 'atproto transition:email repo:com.linkedclaims.claim?action=create',
     grant_types: ['authorization_code', 'refresh_token'] as ['authorization_code', 'refresh_token'],
     response_types: ['code'] as ['code'],
     token_endpoint_auth_method: 'none' as const,
@@ -122,17 +125,18 @@ export class AtprotoOAuth {
    * Start the OAuth authorization flow.
    * Returns the URL to redirect the user to.
    */
-  static async authorize(handle: string, skipEmail?: boolean): Promise<string> {
+  static async authorize(handle: string, opts?: { skipEmail?: boolean; write?: boolean }): Promise<string> {
     const client = await ensureClient();
 
     // Strip leading @ — users commonly type @handle.bsky.social
     const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
 
-    // Build scope — always include atproto + our lexicon, optionally email
-    let scope = 'atproto com.linkedclaims.authFull';
-    if (!skipEmail) {
-      scope += ' transition:email';
-    }
+    // Login asks ONLY for identity (+ email). Write access to the user's repo is a
+    // separate, granular scope requested at claim-create time (opts.write) — never
+    // at login, and never the broad transition:generic.
+    let scope = 'atproto';
+    if (!opts?.skipEmail) scope += ' transition:email';
+    if (opts?.write) scope += ' repo:com.linkedclaims.claim?action=create';
 
     const url = await client.authorize(cleanHandle, { scope });
     return url.toString();

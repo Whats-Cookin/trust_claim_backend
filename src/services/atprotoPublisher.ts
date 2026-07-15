@@ -174,19 +174,28 @@ export class AtprotoPublisher {
           // Bluesky supports minimal scopes) or the standard 'atproto' scope.
           const tokenInfo = await userSession.getTokenInfo();
           const scope = tokenInfo.scope || '';
-          if (scope.includes('com.linkedclaims.authFull') || scope.includes('atproto')) {
-            const { Agent } = await import('@atproto/api');
-            const userAgent = new Agent(userSession);
+          // Only attempt a user-repo write if they actually granted the granular
+          // claim-write scope (via the claim-create step-up). `atproto` alone is
+          // identity only and does NOT grant repo write.
+          if (scope.includes('repo:com.linkedclaims.claim')) {
+            try {
+              const { Agent } = await import('@atproto/api');
+              const userAgent = new Agent(userSession);
 
-            result = await userAgent.com.atproto.repo.createRecord({
-              repo: userDid,
-              collection: COLLECTION,
-              record,
-            });
+              result = await userAgent.com.atproto.repo.createRecord({
+                repo: userDid,
+                collection: COLLECTION,
+                record,
+              });
 
-            console.log(`ATProto published claim ${claim.id} to USER repo ${userDid} → ${result.data.uri}`);
+              console.log(`ATProto published claim ${claim.id} to USER repo ${userDid} → ${result.data.uri}`);
+            } catch (userErr) {
+              // Don't abort — fall through to the server fallback below.
+              console.error(`ATProto: user-repo publish failed for claim ${claim.id}, falling back to server:`, userErr);
+              result = undefined;
+            }
           } else {
-            console.log(`ATProto: user ${userDid} session lacks authFull or atproto scope (has: ${scope}), falling back to server`);
+            console.log(`ATProto: user ${userDid} session lacks claim-write scope (has: ${scope}), falling back to server`);
           }
         } else {
           console.log(`ATProto: no OAuth session for ${userDid}, falling back to server`);
