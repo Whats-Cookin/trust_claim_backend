@@ -720,15 +720,15 @@ export async function atprotoClientMetadata(_req: Request, res: Response): Promi
 // ATProto OAuth - start authorization
 export async function atprotoAuthorize(req: Request, res: Response): Promise<void> {
   try {
-    const { handle, skipEmail, write } = req.body;
+    const { handle, skipEmail } = req.body;
     if (!handle) {
       res.status(400).json({ error: 'Bluesky handle required' });
       return;
     }
 
-    // `write: true` is the claim-create step-up — only then do we request the
-    // granular repo-write scope. Plain login never asks for write access.
-    const url = await AtprotoOAuth.authorize(handle, { skipEmail, write });
+    // Login grants the narrow claim-write scope up front (only com.linkedclaims.claim,
+    // never Bluesky posts) so claim publishing works without a mid-claim step-up.
+    const url = await AtprotoOAuth.authorize(handle, { skipEmail });
     res.json({ url });
   } catch (error: any) {
     console.error('ATProto authorize error:', error);

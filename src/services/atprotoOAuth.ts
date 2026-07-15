@@ -125,18 +125,18 @@ export class AtprotoOAuth {
    * Start the OAuth authorization flow.
    * Returns the URL to redirect the user to.
    */
-  static async authorize(handle: string, opts?: { skipEmail?: boolean; write?: boolean }): Promise<string> {
+  static async authorize(handle: string, opts?: { skipEmail?: boolean }): Promise<string> {
     const client = await ensureClient();
 
     // Strip leading @ — users commonly type @handle.bsky.social
     const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
 
-    // Login asks ONLY for identity (+ email). Write access to the user's repo is a
-    // separate, granular scope requested at claim-create time (opts.write) — never
-    // at login, and never the broad transition:generic.
-    let scope = 'atproto';
+    // Simple: grant the narrow claim-write scope at login so publishing a LinkedClaim
+    // to the user's repo works directly (no mid-claim OAuth step-up). This scope permits
+    // ONLY writing com.linkedclaims.claim records — it CANNOT touch their Bluesky posts
+    // (that would be transition:generic, which we never request).
+    let scope = 'atproto repo:com.linkedclaims.claim?action=create';
     if (!opts?.skipEmail) scope += ' transition:email';
-    if (opts?.write) scope += ' repo:com.linkedclaims.claim?action=create';
 
     const url = await client.authorize(cleanHandle, { scope });
     return url.toString();
