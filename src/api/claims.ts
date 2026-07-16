@@ -679,27 +679,12 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
         replacedClaimId = existingClaim.id;
         console.log(`Deleted existing claim ${existingClaim.id}, proceeding with new claim creation`);
       } else {
-        // Return 409 Conflict with helpful information
-        return res.status(409).json({
-          success: false,
-          error: 'Duplicate claim exists',
-          code: 'DUPLICATE_CLAIM',
-          existingClaim: {
-            id: existingClaim.id,
-            createdAt: existingClaim.createdAt,
-            subject: existingClaim.subject,
-            claim: existingClaim.claim,
-            issuerId: existingClaim.issuerId
-          },
-          hint: 'Use replace: true to delete the existing claim and create a new one. Note: Claims are immutable - this will delete the old claim entirely.',
-          duplicateKey: {
-            subject: claimData.subject,
-            issuerId: claimData.issuerId,
-            claim: claimData.claim,
-            sourceURI: claimData.sourceURI,
-            statement: claimData.statement ? claimData.statement.substring(0, 100) + (claimData.statement.length > 100 ? '...' : '') : null
-          }
-        });
+        // Append-only: never reject. The match key (subject+issuerId+claim+sourceURI+
+        // statement) ignores media/amt/aspect/etc., so a "duplicate" may actually carry
+        // new data (e.g. a video the caller added). Always save a fresh, timestamped
+        // claim and let consumers dedupe downstream — a user must never get an error
+        // for re-submitting. (replace:true still deletes+recreates if explicitly asked.)
+        console.log(`Duplicate key matches claim ${existingClaim.id} — saving new claim anyway (append-only, immutable).`);
       }
     }
 
