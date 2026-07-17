@@ -9,6 +9,36 @@ import { isValidUri, userIdToUri } from '../lib/validators';
 import { findLinkedSubjects } from './identity';
 // File system imports removed - images now stored in database
 import crypto from 'crypto';
+import AWS from 'aws-sdk';
+
+// S3-compatible (Backblaze B2) client for image uploads — mirrors src/api/video/upload.ts
+// so images land in the same bucket as videos instead of being inlined into the DB.
+let imageS3: AWS.S3 | null = null;
+function getImageS3Client(): AWS.S3 {
+  if (!imageS3) {
+    imageS3 = new AWS.S3({
+      endpoint: process.env.LT_STORAGE_ENDPOINT || 'https://sfo3.digitaloceanspaces.com',
+      credentials: new AWS.Credentials({
+        accessKeyId: process.env.LT_STORAGE_KEY || '',
+        secretAccessKey: process.env.LT_STORAGE_SECRET || '',
+      }),
+      region: process.env.LT_STORAGE_REGION || 'sfo3',
+      signatureVersion: 'v4',
+      s3ForcePathStyle: false,
+    });
+  }
+  return imageS3;
+}
+function imageStorageBucket(): string {
+  return process.env.LT_STORAGE_BUCKET || 'linkedtrust-dev';
+}
+function imageStorageCdnUrl(): string {
+  return process.env.LT_STORAGE_CDN_URL || `https://${imageStorageBucket()}.sfo3.cdn.digitaloceanspaces.com`;
+}
+const IMAGE_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
+  'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/avif': 'avif'
+};
 
 /**
  * Format an image/video record for API response.
@@ -679,12 +709,28 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
         replacedClaimId = existingClaim.id;
         console.log(`Deleted existing claim ${existingClaim.id}, proceeding with new claim creation`);
       } else {
-        // Append-only: never reject. The match key (subject+issuerId+claim+sourceURI+
-        // statement) ignores media/amt/aspect/etc., so a "duplicate" may actually carry
-        // new data (e.g. a video the caller added). Always save a fresh, timestamped
-        // claim and let consumers dedupe downstream — a user must never get an error
-        // for re-submitting. (replace:true still deletes+recreates if explicitly asked.)
-        console.log(`Duplicate key matches claim ${existingClaim.id} — saving new claim anyway (append-only, immutable).`);
+        // Same issuer (issuerId is part of the match key) already has this exact claim.
+        // Return 409 so the client can offer "delete & replace" (re-POST with replace:true).
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate claim exists',
+          code: 'DUPLICATE_CLAIM',
+          existingClaim: {
+            id: existingClaim.id,
+            createdAt: existingClaim.createdAt,
+            subject: existingClaim.subject,
+            claim: existingClaim.claim,
+            issuerId: existingClaim.issuerId
+          },
+          hint: 'Use replace: true to delete the existing claim and create a new one. Claims are immutable - this deletes the old claim entirely.',
+          duplicateKey: {
+            subject: claimData.subject,
+            issuerId: claimData.issuerId,
+            claim: claimData.claim,
+            sourceURI: claimData.sourceURI,
+            statement: claimData.statement ? claimData.statement.substring(0, 100) + (claimData.statement.length > 100 ? '...' : '') : null
+          }
+        });
       }
     }
 
@@ -710,12 +756,38 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 
     // Create claim with proof
     console.log('Creating claim in database...');
-    const newClaim = await prisma.claim.create({
-      data: {
-        ...claimData,
-        proof,
-      },
-    });
+    let newClaim;
+    try {
+      newClaim = await prisma.claim.create({
+        data: {
+          ...claimData,
+          proof,
+        },
+      });
+    } catch (e: any) {
+      // DB unique constraint (subject, issuerId, claim, sourceURI, left(statement,500)).
+      // The pre-check above matches full statement; this catches the >500-char edge and
+      // any race — return 409 (never a 500) so the client can offer delete & replace.
+      if (e?.code === 'P2002') {
+        const dup = await prisma.claim.findFirst({
+          where: {
+            subject: claimData.subject,
+            issuerId: claimData.issuerId,
+            claim: claimData.claim,
+            sourceURI: claimData.sourceURI,
+            statement: claimData.statement
+          }
+        });
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate claim exists',
+          code: 'DUPLICATE_CLAIM',
+          existingClaim: dup ? { id: dup.id, createdAt: dup.createdAt } : undefined,
+          hint: 'Use replace: true to delete the existing claim and create a new one.'
+        });
+      }
+      throw e;
+    }
 
     console.log('Claim created successfully with ID:', newClaim.id);
     
@@ -767,11 +839,32 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
               .update(imageBuffer)
               .digest('base64');
             
-            console.log(`Storing image ${i + 1} directly in database...`);
-            
-            // Create Image record in database - store as URL for now
-            // TODO: Implement proper image storage if binary storage is needed
-            const imageUrl = `data:${imageData.contentType || 'image/jpeg'};base64,${imageData.base64}`;
+            // Upload to Backblaze B2 (same bucket as videos) instead of inlining base64 in the DB.
+            const contentType = imageData.contentType || 'image/jpeg';
+            const ext = IMAGE_EXT[contentType] || 'bin';
+            const userSeg = (userIdUri || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
+            const key = `images/${userSeg}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${ext}`;
+            let imageUrl: string;
+            if (process.env.LT_STORAGE_KEY && process.env.LT_STORAGE_SECRET) {
+              try {
+                await getImageS3Client().upload({
+                  Bucket: imageStorageBucket(),
+                  Key: key,
+                  Body: imageBuffer,
+                  ContentType: contentType,
+                  ACL: 'public-read',
+                }).promise();
+                imageUrl = `${imageStorageCdnUrl()}/${key}`;
+                console.log(`Image ${i + 1} uploaded to B2: ${imageUrl} (${imageBuffer.length} bytes)`);
+              } catch (uploadErr) {
+                // Don't lose the image on a transient storage error — fall back to inline.
+                console.error(`Image ${i + 1} B2 upload failed, storing inline as fallback:`, uploadErr instanceof Error ? uploadErr.message : uploadErr);
+                imageUrl = `data:${contentType};base64,${base64Data}`;
+              }
+            } else {
+              console.error(`Image ${i + 1}: LT_STORAGE not configured — storing inline (set LT_STORAGE_* to use B2)`);
+              imageUrl = `data:${contentType};base64,${base64Data}`;
+            }
             
             const imageRecord = await prisma.image.create({
               data: {

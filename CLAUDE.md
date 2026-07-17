@@ -87,6 +87,18 @@ The pipeline and claim creation must use CONSISTENT URIs. If dev uses `dev.linke
 
 LinkedTrust backend is an **AppView** for `com.linkedclaims.claim` — it indexes claims from ATProto alongside claims created through our API.
 
+## CRITICAL: Database is REMOTE (do not get confused)
+
+- **The production DB is REMOTE at `10.0.0.100:5432`** (db `claim`, user `trust_node`, password in `DATABASE_URL` in `.env`). This app server (`trustclaims-prod`, IP `10.0.0.158`) connects to it **over the network**.
+- **There is ALSO a local postgres on this VM — it is STALE / NOT the app DB.** It does not have recent claims. **Do NOT query, migrate, or "fix" the local postgres.** Always use `psql -h 10.0.0.100 -U trust_node -d claim`.
+- **`trust_node` is NOT the table owner** (owner is `postgres`). It has CRUD but **cannot run DDL** (CREATE/DROP INDEX, ALTER TABLE). Schema/index migrations require the `postgres` owner credentials **on 10.0.0.100**, which are **not on this box** — ask Golda / whoever operates the DB host. Do not thrash searching for them.
+- **Do NOT run huge recursive `grep -r`/`find` over `/data`** — it times out (large trees, node_modules, backups).
+
+## Images/media storage — should be B2, NOT inline
+
+- Media should go to **Backblaze B2** via the `LT_STORAGE_*` S3 client (see `src/api/video/upload.ts`), storing the bucket/CDN URL in `Image.url`.
+- **BUG (being fixed):** `createClaim` in `src/api/claims.ts` stores base64 images **INLINE** as `data:...;base64,...` in `Image.url` (has a `// TODO: implement proper image storage`). Since ~2026-07-07 ~92% of new images are inline, bloating the DB. Fix = upload to B2 like videos; old inline rows still render via `/api/images/:id`.
+
 ### Key Files
 - `src/services/atprotoPublisher.ts` — publishes claims TO ATProto (fire-and-forget, uses app password)
 - `src/services/atprotoIndexer.ts` — subscribes to Jetstream firehose, indexes claims FROM ATProto
