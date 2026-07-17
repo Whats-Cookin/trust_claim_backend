@@ -726,7 +726,11 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     if (existingClaim) {
       console.log('Found existing duplicate claim:', existingClaim.id);
 
-      if (replace === true) {
+      // Accept boolean true or common truthy string/number forms ("true", "1", 1) —
+      // clients often send replace as a string, which must still trigger delete+replace.
+      const wantsReplace = replace === true || replace === 1 || replace === '1' ||
+        (typeof replace === 'string' && replace.toLowerCase() === 'true');
+      if (wantsReplace) {
         // Claims are immutable - delete the old one and create new
         console.log('Replace flag set - deleting existing claim and its associated data...');
 
