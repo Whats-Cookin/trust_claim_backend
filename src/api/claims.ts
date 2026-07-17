@@ -10,6 +10,7 @@ import { findLinkedSubjects } from './identity';
 // File system imports removed - images now stored in database
 import crypto from 'crypto';
 import AWS from 'aws-sdk';
+import bcrypt from 'bcryptjs';
 
 // S3-compatible (Backblaze B2) client for image uploads — mirrors src/api/video/upload.ts
 // so images land in the same bucket as videos instead of being inlined into the DB.
@@ -39,6 +40,32 @@ const IMAGE_EXT: Record<string, string> = {
   'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
   'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/avif': 'avif'
 };
+
+// Low-friction service attribution: a registered OIDC client (e.g. workers.vc) can
+// authenticate server-to-server with its client_id + client_secret via headers, and
+// its claims get issuerId = the client's own URI. No user login required. Returns the
+// client's issuer URI if the credentials are valid, else null.
+async function getVerifiedClientIssuer(req: Request): Promise<string | null> {
+  const clientId = (req.headers['x-lt-client-id'] as string | undefined)?.trim();
+  const clientSecret = (req.headers['x-lt-client-secret'] as string | undefined)?.trim();
+  if (!clientId || !clientSecret) return null;
+  try {
+    const client = await prisma.oidcClient.findUnique({ where: { clientId } });
+    if (!client || !client.clientSecret) return null;
+    if (!(await bcrypt.compare(clientSecret, client.clientSecret))) return null;
+    // Derive a stable issuer URI: prefer the client name when it's a bare domain
+    // (e.g. "workers.vc" -> https://workers.vc), else the redirect URI host.
+    const name = (client.name || '').trim();
+    if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(name)) return `https://${name}`;
+    if (client.redirectUris?.[0]) {
+      try { return `https://${new URL(client.redirectUris[0]).host}`; } catch { /* ignore */ }
+    }
+    return null;
+  } catch (e) {
+    console.warn('getVerifiedClientIssuer error:', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
 
 /**
  * Format an image/video record for API response.
@@ -621,11 +648,24 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     
     const userId = req.user?.id || req.body.issuerId;
     console.log('Processing claim for userId:', userId);
-    
+
     // Convert user ID to proper URI format
     const userIdUri = userIdToUri(userId);
     if (userId && !userIdUri) {
       console.warn('userId is not a valid URI and cannot be converted:', userId);
+    }
+
+    // Issuer attribution precedence:
+    //   1. authenticated user (their id -> URI; later a custodial/Bluesky DID)
+    //   2. verified API-key client (e.g. workers.vc) — used when NO user is signed in
+    //   3. self-asserted body issuerId (legacy fallback)
+    const verifiedClientIssuer = req.user?.id ? null : await getVerifiedClientIssuer(req);
+    const resolvedIssuerId =
+      (req.user?.id ? userIdUri : null) || verifiedClientIssuer || clientIssuerId || userIdUri || null;
+    const resolvedIssuerIdType =
+      resolvedIssuerId && resolvedIssuerId.startsWith('did:') ? 'DID' : (clientIssuerIdType || 'URL');
+    if (verifiedClientIssuer) {
+      console.log('Attributing claim to verified client issuer:', verifiedClientIssuer);
     }
 
     if (!subject || !claim) {
@@ -659,8 +699,8 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       score: score !== undefined ? Number(score) : null,
       amt: amt !== undefined ? Number(amt) : null,
       unit: unit || null,
-      issuerId: clientIssuerId || userIdUri || null,
-      issuerIdType: clientIssuerIdType || 'URL',
+      issuerId: resolvedIssuerId,
+      issuerIdType: resolvedIssuerIdType,
       effectiveDate: (() => {
         if (!effectiveDate) return new Date();
         const d = new Date(effectiveDate);
