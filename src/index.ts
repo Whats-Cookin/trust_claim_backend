@@ -165,6 +165,8 @@ app.post('/api/v4/claims', optionalToken, claimsApi.createClaim);
 app.post('/api/claims', optionalToken, claimsApi.createClaim);     // MODERN: Create one claim (v4 format, auth optional)
 app.get('/api/v4/claims/:id', claimsApi.getClaim);
 app.get('/api/claims/:id', claimsApi.getClaim);
+app.delete('/api/v4/claims/:id', optionalToken, claimsApi.deleteClaim);
+app.delete('/api/claims/:id', optionalToken, claimsApi.deleteClaim);  // Plain delete (media preserved, auth-gated)
 app.get('/api/v4/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
 app.get('/api/claims/subject/:uri(*)', claimsApi.getClaimsBySubject);
 

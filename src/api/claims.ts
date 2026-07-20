@@ -637,6 +637,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       videoUrl, // Video testimonial URL (uploaded separately via /api/video/upload)
       subjectEntityType, // Optional hint for subject entity type (PERSON/ORGANIZATION)
       replace, // If true, delete existing duplicate and create new (claims are immutable)
+      replaceClaimId, // Explicit id of the claim to delete+replace (preferred over `replace`)
       effectiveDate, // When the event being claimed actually occurred (client-supplied)
       ...otherFields // Capture any other fields for debugging
     } = req.body;
@@ -710,11 +711,16 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     
     console.log('Prepared claim data:', JSON.stringify(claimData, null, 2));
 
-    // Check for existing duplicate claim
-    // Uniqueness is based on: subject + issuerId + claim + sourceURI + statement
+    // ---- Replace / duplicate handling ---------------------------------------
+    // "Same signer" is enforced against the VERIFIED issuer ONLY — the logged-in
+    // user or a valid API-key client — never the self-asserted body issuerId. A
+    // self-asserted, unauthenticated issuerId can never delete anyone's claim.
+    const verifiedIssuerId =
+      (req.user?.id ? userIdUri : null) || verifiedClientIssuer || null;
+
     let replacedClaimId: number | null = null;
-    // Media rows to re-point at the replacement claim (set only when replacing
-    // and the new POST brings no media of its own).
+    // On replace, the old claim's media rows are re-pointed to the new claim ONLY
+    // when the new post brings no media of its own. Media is NEVER deleted.
     let carryMediaFromClaimId: number | null = null;
 
     // Accept boolean true or common truthy string/number forms ("true", "1", 1) —
@@ -722,96 +728,85 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     const wantsReplace = replace === true || replace === 1 || replace === '1' ||
       (typeof replace === 'string' && replace.toLowerCase() === 'true');
 
-    let existingClaim = await prisma.claim.findFirst({
-      where: {
-        subject: claimData.subject,
-        issuerId: claimData.issuerId,
-        claim: claimData.claim,
-        sourceURI: claimData.sourceURI,
-        statement: claimData.statement
-      }
-    });
+    // Does the new post carry its own media?
+    const hasNewMedia =
+      (Array.isArray(images) && images.length > 0) ||
+      (typeof videoUrl === 'string' && videoUrl.trim().length > 0);
 
-    if (!existingClaim && wantsReplace && claimData.issuerId) {
-      // Replacing with NEW WORDS: the exact-duplicate key above (which includes
-      // statement) can never match a rewrite, so an explicit replace also looks
-      // for this issuer's latest prior version of the same claim about the same
-      // subject, regardless of wording or sourceURI. Only for attributed
-      // issuers — with issuerId null, "same issuer" is unknowable and one
-      // anonymous poster could overwrite another's claim.
-      existingClaim = await prisma.claim.findFirst({
+    // Determine the claim to replace (delete + recreate), if any.
+    let replaceTarget: { id: number; issuerId: string | null } | null = null;
+
+    // Preferred path: client names the exact claim id to replace — no guessing.
+    if (replaceClaimId !== undefined && replaceClaimId !== null && replaceClaimId !== '') {
+      const targetId = Number(replaceClaimId);
+      if (!Number.isInteger(targetId)) {
+        return res.status(400).json({ success: false, error: 'replaceClaimId must be an integer' });
+      }
+      const found = await prisma.claim.findUnique({
+        where: { id: targetId },
+        select: { id: true, issuerId: true }
+      });
+      if (!found) {
+        return res.status(404).json({ success: false, error: 'replaceClaimId not found', code: 'REPLACE_TARGET_NOT_FOUND' });
+      }
+      replaceTarget = found;
+    }
+
+    // Exact-duplicate detection (subject + issuerId + claim + sourceURI + statement).
+    // Legacy: replace:true with no explicit id deletes this exact duplicate; the
+    // key is unique, so this is unambiguous. Without replace -> 409.
+    if (!replaceTarget) {
+      const exactDuplicate = await prisma.claim.findFirst({
         where: {
           subject: claimData.subject,
           issuerId: claimData.issuerId,
-          claim: claimData.claim
+          claim: claimData.claim,
+          sourceURI: claimData.sourceURI,
+          statement: claimData.statement
         },
-        orderBy: { createdAt: 'desc' }
+        select: { id: true, issuerId: true, createdAt: true, subject: true, claim: true }
       });
-      if (existingClaim) {
-        console.log(`Replace: matched prior claim ${existingClaim.id} by subject+issuer+claim (new wording)`);
+      if (exactDuplicate) {
+        if (wantsReplace) {
+          replaceTarget = { id: exactDuplicate.id, issuerId: exactDuplicate.issuerId };
+        } else {
+          return res.status(409).json({
+            success: false,
+            error: 'Duplicate claim exists',
+            code: 'DUPLICATE_CLAIM',
+            existingClaim: {
+              id: exactDuplicate.id,
+              createdAt: exactDuplicate.createdAt,
+              subject: exactDuplicate.subject,
+              claim: exactDuplicate.claim,
+              issuerId: exactDuplicate.issuerId
+            },
+            hint: 'Re-POST with replaceClaimId set to this id (or replace: true) to delete the existing claim and create a new one. Claims are immutable.',
+            duplicateKey: {
+              subject: claimData.subject,
+              issuerId: claimData.issuerId,
+              claim: claimData.claim,
+              sourceURI: claimData.sourceURI,
+              statement: claimData.statement ? claimData.statement.substring(0, 100) + (claimData.statement.length > 100 ? '...' : '') : null
+            }
+          });
+        }
       }
     }
 
-    if (existingClaim) {
-      console.log('Found existing duplicate claim:', existingClaim.id);
-
-      if (wantsReplace) {
-        // Claims are immutable - delete the old one and create new
-        console.log('Replace flag set - deleting existing claim and its associated data...');
-
-        // Delete associated edges first (foreign key constraint)
-        const deletedEdges = await prisma.edge.deleteMany({
-          where: { claimId: existingClaim.id }
-        });
-        console.log(`Deleted ${deletedEdges.count} edges for claim ${existingClaim.id}`);
-
-        // Media: a replacement that brings its own images/video supersedes the
-        // old media; one that brings none KEEPS the old media (re-signing your
-        // words must not cost you your uploaded video). Image rows have no DB
-        // FK on claimId, so they survive the claim delete and are re-pointed
-        // at the new claim after it is created.
-        const hasNewMedia =
-          (Array.isArray(images) && images.length > 0) ||
-          (typeof videoUrl === 'string' && videoUrl.trim().length > 0);
-        if (hasNewMedia) {
-          const deletedImages = await prisma.image.deleteMany({
-            where: { claimId: existingClaim.id }
-          });
-          console.log(`Deleted ${deletedImages.count} images for claim ${existingClaim.id} (superseded by new media)`);
-        } else {
-          carryMediaFromClaimId = existingClaim.id;
-        }
-
-        // Delete the claim itself
-        await prisma.claim.delete({
-          where: { id: existingClaim.id }
-        });
-        replacedClaimId = existingClaim.id;
-        console.log(`Deleted existing claim ${existingClaim.id}, proceeding with new claim creation`);
-      } else {
-        // Same issuer (issuerId is part of the match key) already has this exact claim.
-        // Return 409 so the client can offer "delete & replace" (re-POST with replace:true).
-        return res.status(409).json({
+    // Auth gate: only the SAME VERIFIED issuer may delete/replace a claim.
+    if (replaceTarget) {
+      if (!verifiedIssuerId || verifiedIssuerId !== replaceTarget.issuerId) {
+        return res.status(403).json({
           success: false,
-          error: 'Duplicate claim exists',
-          code: 'DUPLICATE_CLAIM',
-          existingClaim: {
-            id: existingClaim.id,
-            createdAt: existingClaim.createdAt,
-            subject: existingClaim.subject,
-            claim: existingClaim.claim,
-            issuerId: existingClaim.issuerId
-          },
-          hint: 'Use replace: true to delete the existing claim and create a new one. Claims are immutable - this deletes the old claim entirely.',
-          duplicateKey: {
-            subject: claimData.subject,
-            issuerId: claimData.issuerId,
-            claim: claimData.claim,
-            sourceURI: claimData.sourceURI,
-            statement: claimData.statement ? claimData.statement.substring(0, 100) + (claimData.statement.length > 100 ? '...' : '') : null
-          }
+          error: 'Not authorized to replace this claim',
+          code: 'REPLACE_FORBIDDEN',
+          hint: 'Replace requires the same verified issuer (logged-in user or API key) that created the claim.'
         });
       }
+      // New media supersedes; no new media -> carry the old media forward.
+      // Media is NEVER deleted either way.
+      if (!hasNewMedia) carryMediaFromClaimId = replaceTarget.id;
     }
 
     // Use client-provided proof if available, otherwise try server signing
@@ -834,20 +829,42 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       }
     }
 
-    // Create claim with proof
+    // Create claim with proof. When replacing, the delete of the old claim + edges,
+    // the new claim create, and the media re-point are COUPLED in one transaction
+    // so we NEVER end up with the old claim gone and no replacement. Media rows are
+    // never deleted — on carry they are re-pointed; otherwise left in place (unlinked).
     console.log('Creating claim in database...');
     let newClaim;
     try {
-      newClaim = await prisma.claim.create({
-        data: {
-          ...claimData,
-          proof,
-        },
+      newClaim = await prisma.$transaction(async (tx) => {
+        if (replaceTarget) {
+          const deletedEdges = await tx.edge.deleteMany({ where: { claimId: replaceTarget.id } });
+          console.log(`Deleted ${deletedEdges.count} edges for claim ${replaceTarget.id}`);
+          await tx.claim.delete({ where: { id: replaceTarget.id } });
+          replacedClaimId = replaceTarget.id;
+          console.log(`Deleted claim ${replaceTarget.id} (media preserved, never deleted)`);
+        }
+
+        const created = await tx.claim.create({ data: { ...claimData, proof } });
+
+        if (carryMediaFromClaimId) {
+          // Replacement brought no media of its own — the old claim's image/video
+          // rows (including the uploaded video URL) now belong to the new claim.
+          const carried = await tx.image.updateMany({
+            where: { claimId: carryMediaFromClaimId },
+            data: { claimId: created.id }
+          });
+          console.log(`Carried ${carried.count} media row(s) from replaced claim ${carryMediaFromClaimId} to ${created.id}`);
+        }
+
+        return created;
       });
     } catch (e: any) {
       // DB unique constraint (subject, issuerId, claim, sourceURI, left(statement,500)).
       // The pre-check above matches full statement; this catches the >500-char edge and
       // any race — return 409 (never a 500) so the client can offer delete & replace.
+      // Inside the transaction this also rolls back the replace-delete, so the old
+      // claim is preserved when the new one collides with a different claim.
       if (e?.code === 'P2002') {
         const dup = await prisma.claim.findFirst({
           where: {
@@ -863,7 +880,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
           error: 'Duplicate claim exists',
           code: 'DUPLICATE_CLAIM',
           existingClaim: dup ? { id: dup.id, createdAt: dup.createdAt } : undefined,
-          hint: 'Use replace: true to delete the existing claim and create a new one.'
+          hint: 'Use replaceClaimId (or replace: true) to delete the existing claim and create a new one.'
         });
       }
       throw e;
@@ -871,16 +888,6 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 
     console.log('Claim created successfully with ID:', newClaim.id);
 
-    if (carryMediaFromClaimId) {
-      // Replacement brought no media of its own — the old claim's image/video
-      // rows (including the uploaded video URL) now belong to the new claim.
-      const carried = await prisma.image.updateMany({
-        where: { claimId: carryMediaFromClaimId },
-        data: { claimId: newClaim.id }
-      });
-      console.log(`Carried ${carried.count} media row(s) from replaced claim ${carryMediaFromClaimId} to ${newClaim.id}`);
-    }
-    
     // Process base64 images if provided
     const imageRecords = [];
     const imageErrors = [];
@@ -1057,7 +1064,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     const response: any = {
       success: true,
       claim: newClaim,
-      ...(replacedClaimId && { replaced: true, replacedClaimId }),
+      ...(replacedClaimId ? { replaced: true, replacedClaimId } : {}),
       images: imageRecords.map(img => ({
         id: img.id,
         claimId: img.claimId,
@@ -1103,6 +1110,56 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     
     console.log('Error response being sent:', JSON.stringify(errorResponse, null, 2));
     return res.status(500).json(errorResponse);
+  }
+}
+
+/**
+ * Plain delete: remove a claim and its edges, leaving its media rows untouched.
+ * Media is NEVER deleted — the Image rows survive (unlinked; their claimId now
+ * points at a gone claim). Auth-gated to the SAME VERIFIED issuer (logged-in user
+ * or valid API key) that created the claim — never a self-asserted body issuerId.
+ */
+export async function deleteClaim(req: AuthRequest, res: Response): Promise<Response | void> {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid claim id' });
+    }
+
+    const claim = await prisma.claim.findUnique({
+      where: { id },
+      select: { id: true, issuerId: true }
+    });
+    if (!claim) {
+      return res.status(404).json({ success: false, error: 'Claim not found' });
+    }
+
+    const userId = req.user?.id;
+    const verifiedClientIssuer = userId ? null : await getVerifiedClientIssuer(req);
+    const verifiedIssuerId = (userId ? userIdToUri(userId) : null) || verifiedClientIssuer || null;
+
+    if (!verifiedIssuerId || verifiedIssuerId !== claim.issuerId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to delete this claim',
+        code: 'DELETE_FORBIDDEN',
+        hint: 'Delete requires the same verified issuer (logged-in user or API key) that created the claim.'
+      });
+    }
+
+    // Edges reference the claim (FK); delete them, then the claim. Media is left in place.
+    const deletedEdges = await prisma.edge.deleteMany({ where: { claimId: id } });
+    await prisma.claim.delete({ where: { id } });
+    console.log(`Plain-deleted claim ${id} (${deletedEdges.count} edges; media preserved, never deleted)`);
+
+    return res.json({
+      success: true,
+      deletedClaimId: id,
+      note: 'Media rows preserved (unlinked). Claims are immutable.'
+    });
+  } catch (error) {
+    console.error('Error deleting claim:', error);
+    return res.status(500).json({ success: false, error: 'Failed to delete claim' });
   }
 }
 
