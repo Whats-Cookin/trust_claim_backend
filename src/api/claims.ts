@@ -719,8 +719,11 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       (req.user?.id ? userIdUri : null) || verifiedClientIssuer || null;
 
     let replacedClaimId: number | null = null;
-    // On replace, the old claim's media rows are re-pointed to the new claim ONLY
-    // when the new post brings no media of its own. Media is NEVER deleted.
+    // On replace, the old claim's media rows are re-pointed to the new claim.
+    // Carry-forward is decided PER KIND, not all-or-nothing: a replace that adds
+    // only a video keeps the person's photo, and one that changes only the photo
+    // keeps their video. Whatever the new post brings supersedes that kind alone.
+    // Media is NEVER deleted.
     let carryMediaFromClaimId: number | null = null;
 
     // Accept boolean true or common truthy string/number forms ("true", "1", 1) —
@@ -728,10 +731,9 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     const wantsReplace = replace === true || replace === 1 || replace === '1' ||
       (typeof replace === 'string' && replace.toLowerCase() === 'true');
 
-    // Does the new post carry its own media?
-    const hasNewMedia =
-      (Array.isArray(images) && images.length > 0) ||
-      (typeof videoUrl === 'string' && videoUrl.trim().length > 0);
+    // Does the new post carry its own media, per kind?
+    const hasNewImages = Array.isArray(images) && images.length > 0;
+    const hasNewVideo = typeof videoUrl === 'string' && videoUrl.trim().length > 0;
 
     // Determine the claim to replace (delete + recreate), if any.
     let replaceTarget: { id: number; issuerId: string | null } | null = null;
@@ -804,9 +806,9 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
           hint: 'Replace requires the same verified issuer (logged-in user or API key) that created the claim.'
         });
       }
-      // New media supersedes; no new media -> carry the old media forward.
-      // Media is NEVER deleted either way.
-      if (!hasNewMedia) carryMediaFromClaimId = replaceTarget.id;
+      // New media supersedes its OWN kind only; every other kind carries
+      // forward. Media is NEVER deleted either way.
+      if (!hasNewImages || !hasNewVideo) carryMediaFromClaimId = replaceTarget.id;
     }
 
     // Use client-provided proof if available, otherwise try server signing
@@ -848,13 +850,25 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
         const created = await tx.claim.create({ data: { ...claimData, proof } });
 
         if (carryMediaFromClaimId) {
-          // Replacement brought no media of its own — the old claim's image/video
-          // rows (including the uploaded video URL) now belong to the new claim.
-          const carried = await tx.image.updateMany({
+          // The old claim's media rows move to the new claim, kind by kind: a
+          // photo carries unless this post brought images, a video carries
+          // unless it brought a videoUrl. Partitioned in JS rather than by a
+          // JSON-path filter so rows with absent/odd metadata behave predictably
+          // (anything not marked type 'video' counts as a photo).
+          const oldMedia = await tx.image.findMany({
             where: { claimId: carryMediaFromClaimId },
-            data: { claimId: created.id }
+            select: { id: true, metadata: true }
           });
-          console.log(`Carried ${carried.count} media row(s) from replaced claim ${carryMediaFromClaimId} to ${created.id}`);
+          const carryIds = oldMedia
+            .filter(m => ((m.metadata as any)?.type === 'video' ? !hasNewVideo : !hasNewImages))
+            .map(m => m.id);
+          if (carryIds.length > 0) {
+            const carried = await tx.image.updateMany({
+              where: { id: { in: carryIds } },
+              data: { claimId: created.id }
+            });
+            console.log(`Carried ${carried.count} media row(s) from replaced claim ${carryMediaFromClaimId} to ${created.id}`);
+          }
         }
 
         return created;

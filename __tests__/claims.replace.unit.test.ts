@@ -15,7 +15,7 @@ jest.mock('../src/lib/prisma', () => ({
       delete: jest.fn(),
     },
     edge: { deleteMany: jest.fn() },
-    image: { deleteMany: jest.fn(), updateMany: jest.fn() },
+    image: { deleteMany: jest.fn(), updateMany: jest.fn(), findMany: jest.fn(), create: jest.fn() },
     oidcClient: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   },
@@ -123,5 +123,55 @@ describe('createClaim replace (replaceClaimId — auth-gated, media never delete
     // Never deleted the old claim's media (or the claim itself).
     expect(prisma.image.deleteMany).not.toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('replace media carry-forward is per kind', () => {
+  const PHOTO = { id: 11, metadata: { description: 'Photo of Alice' } };
+  const VIDEO = { id: 12, metadata: { type: 'video' } };
+
+  /** Run createClaim against a replace target owned by ALICE, with the old
+   *  claim holding one photo and one video. Returns the ids carried forward. */
+  async function carriedIdsFor(body: Record<string, unknown>) {
+    jest.clearAllMocks();
+    (prisma.claim.findUnique as jest.Mock).mockResolvedValue({ id: 7, issuerId: ALICE });
+    const tx = {
+      edge: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      claim: { delete: jest.fn().mockResolvedValue({ id: 7 }), create: jest.fn().mockResolvedValue({ id: 8 }) },
+      image: {
+        findMany: jest.fn().mockResolvedValue([PHOTO, VIDEO]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    (prisma.$transaction as jest.Mock).mockImplementation((fn: any) => fn(tx));
+    (prisma.image.create as jest.Mock).mockResolvedValue({ id: 13 });
+    const { res } = mockRes();
+    const req = {
+      body: { subject: 'https://example.org/thing', claim: 'RATED', replaceClaimId: 7, ...body },
+      headers: {},
+      user: { id: ALICE },
+    } as unknown as AuthRequest;
+    await createClaim(req, res);
+    const call = tx.image.updateMany.mock.calls[0];
+    return call ? call[0].where.id.in : [];
+  }
+
+  it('keeps the photo when the replace adds only a video', async () => {
+    expect(await carriedIdsFor({ videoUrl: 'https://cdn.example/v.webm' })).toEqual([PHOTO.id]);
+  });
+
+  it('keeps the video when the replace brings only a new photo', async () => {
+    const images = [{
+      filename: 'a.jpg',
+      contentType: 'image/jpeg',
+      base64: Buffer.from('a-photo').toString('base64'),
+      metadata: { description: 'New photo' },
+      effectiveDate: '2026-08-05',
+    }];
+    expect(await carriedIdsFor({ images })).toEqual([VIDEO.id]);
+  });
+
+  it('carries both when the replace brings no media at all', async () => {
+    expect(await carriedIdsFor({})).toEqual([PHOTO.id, VIDEO.id]);
   });
 });
