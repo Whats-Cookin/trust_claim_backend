@@ -660,13 +660,17 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     //   1. authenticated user (their id -> URI; later a custodial/Bluesky DID)
     //   2. verified API-key client (e.g. workers.vc) — used when NO user is signed in
     //   3. self-asserted body issuerId (legacy fallback)
-    const verifiedClientIssuer = req.user?.id ? null : await getVerifiedClientIssuer(req);
+    // Resolve BOTH identities the caller may have proven, so the replace/delete gate
+    // below can accept either. Attribution itself is unchanged: a signed-in user wins,
+    // and the client issuer is used for attribution ONLY when nobody is signed in.
+    const verifiedClientIssuer = await getVerifiedClientIssuer(req);
+    const attributionClientIssuer = req.user?.id ? null : verifiedClientIssuer;
     const resolvedIssuerId =
-      (req.user?.id ? userIdUri : null) || verifiedClientIssuer || clientIssuerId || userIdUri || null;
+      (req.user?.id ? userIdUri : null) || attributionClientIssuer || clientIssuerId || userIdUri || null;
     const resolvedIssuerIdType =
       resolvedIssuerId && resolvedIssuerId.startsWith('did:') ? 'DID' : (clientIssuerIdType || 'URL');
-    if (verifiedClientIssuer) {
-      console.log('Attributing claim to verified client issuer:', verifiedClientIssuer);
+    if (attributionClientIssuer) {
+      console.log('Attributing claim to verified client issuer:', attributionClientIssuer);
     }
 
     if (!subject || !claim) {
@@ -715,8 +719,13 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     // "Same signer" is enforced against the VERIFIED issuer ONLY — the logged-in
     // user or a valid API-key client — never the self-asserted body issuerId. A
     // self-asserted, unauthenticated issuerId can never delete anyone's claim.
-    const verifiedIssuerId =
-      (req.user?.id ? userIdUri : null) || verifiedClientIssuer || null;
+    // Every identity the caller CRYPTOGRAPHICALLY PROVED this request: a valid session
+    // and/or a valid client secret. Replace/delete accepts any of them, so an app acting
+    // on behalf of a signed-in user can still amend what that app itself issued.
+    const verifiedIssuers = [
+      req.user?.id ? userIdUri : null,
+      verifiedClientIssuer
+    ].filter((v): v is string => Boolean(v));
 
     let replacedClaimId: number | null = null;
     // On replace, the old claim's media rows are re-pointed to the new claim.
@@ -798,12 +807,12 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 
     // Auth gate: only the SAME VERIFIED issuer may delete/replace a claim.
     if (replaceTarget) {
-      if (!verifiedIssuerId || verifiedIssuerId !== replaceTarget.issuerId) {
+      if (!replaceTarget.issuerId || !verifiedIssuers.includes(replaceTarget.issuerId)) {
         return res.status(403).json({
           success: false,
           error: 'Not authorized to replace this claim',
           code: 'REPLACE_FORBIDDEN',
-          hint: 'Replace requires the same verified issuer (logged-in user or API key) that created the claim.'
+          hint: 'Replace requires a verified issuer (logged-in user or API key) matching the one that created the claim.'
         });
       }
       // New media supersedes its OWN kind only; every other kind carries
@@ -1149,15 +1158,19 @@ export async function deleteClaim(req: AuthRequest, res: Response): Promise<Resp
     }
 
     const userId = req.user?.id;
-    const verifiedClientIssuer = userId ? null : await getVerifiedClientIssuer(req);
-    const verifiedIssuerId = (userId ? userIdToUri(userId) : null) || verifiedClientIssuer || null;
+    // Same rule as replace: accept ANY identity the caller actually proved.
+    const verifiedClientIssuer = await getVerifiedClientIssuer(req);
+    const verifiedIssuers = [
+      userId ? userIdToUri(userId) : null,
+      verifiedClientIssuer
+    ].filter((v): v is string => Boolean(v));
 
-    if (!verifiedIssuerId || verifiedIssuerId !== claim.issuerId) {
+    if (!claim.issuerId || !verifiedIssuers.includes(claim.issuerId)) {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to delete this claim',
         code: 'DELETE_FORBIDDEN',
-        hint: 'Delete requires the same verified issuer (logged-in user or API key) that created the claim.'
+        hint: 'Delete requires a verified issuer (logged-in user or API key) matching the one that created the claim.'
       });
     }
 
