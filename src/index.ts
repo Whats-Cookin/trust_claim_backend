@@ -143,6 +143,7 @@ app.get('/.well-known/jwks.json', oidcApi.jwksHandler);
 app.get('/oauth/authorize', oidcApi.authorize);
 app.post('/oauth/token', oidcApi.token);
 app.get('/oauth/userinfo', oidcApi.userinfo);
+app.get('/oauth/client/:clientId', oidcApi.clientInfo);
 app.post('/oauth/session', oidcApi.session);
 app.post('/oauth/bind-invite', oidcApi.bindInvite);
 

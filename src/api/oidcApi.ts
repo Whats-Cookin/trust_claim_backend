@@ -76,6 +76,28 @@ export async function jwksHandler(_req: Request, res: Response): Promise<void> {
   res.json(await oidc.jwks());
 }
 
+// ── /oauth/client/:clientId ───────────────────────────────────────────────────
+// Public display details for the per-client sign-in page. Name and host only —
+// never the secret. Lets the page show "Continue to workers.vc" without taking
+// the app name from a query parameter an attacker could craft.
+export async function clientInfo(req: Request, res: Response): Promise<void> {
+  const { clientId } = req.params as Record<string, string>;
+  const client = clientId ? await prisma.oidcClient.findUnique({ where: { clientId } }) : null;
+  if (!client) {
+    res.status(404).json({ error: 'unknown_client' });
+    return;
+  }
+
+  let host: string | null = null;
+  try {
+    if (client.redirectUris[0]) host = new URL(client.redirectUris[0]).host;
+  } catch {
+    /* leave null — the page falls back to the name alone */
+  }
+
+  res.json({ clientId: client.clientId, name: client.name || host || 'this app', host });
+}
+
 // ── /oauth/authorize ──────────────────────────────────────────────────────────
 export async function authorize(req: Request, res: Response): Promise<void> {
   const { client_id, redirect_uri, response_type, scope, state, nonce, code_challenge, code_challenge_method } =
@@ -117,7 +139,11 @@ export async function authorize(req: Request, res: Response): Promise<void> {
   const userId = sessionUserId(req);
   if (!userId) {
     const returnTo = `${process.env.BASE_URL}${req.originalUrl}`;
-    const login = new URL('/login', FRONTEND_URL);
+    // Per-client sign-in page. The client is already resolved here, so callers
+    // pass nothing extra — they keep calling /oauth/authorize as before. The
+    // page fetches its display details from /oauth/client/:clientId rather than
+    // trusting a query string, so the app name shown can't be spoofed.
+    const login = new URL(`/sso/${encodeURIComponent(client.clientId)}`, FRONTEND_URL);
     login.searchParams.set('lt_oidc', '1');
     login.searchParams.set('return_to', returnTo);
     res.redirect(login.toString());
