@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
+import { findUserByEmail } from '../lib/userEmail';
 import bcrypt from 'bcryptjs';
 import { generateVerificationToken } from './linkedin/verifyProfile';
 import { AtprotoOAuth } from '../services/atprotoOAuth';
@@ -97,10 +98,9 @@ export async function googleAuth(req: Request, res: Response): Promise<Response 
     // Extract user info from payload
     const { email, name, picture, sub: googleId } = payload;
 
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { email: email || '' },
-    });
+    // Find or create user. Resolved through findUserByEmail so a person who
+    // signs in with their second address lands on the account they already have.
+    let user = await findUserByEmail(email);
 
     if (!user) {
       user = await prisma.user.create({
@@ -155,9 +155,7 @@ export async function login(req: Request, res: Response): Promise<Response | voi
       return res.status(400).json({ error: 'Email and password required' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await findUserByEmail(email);
 
     if (!user || !user.passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -195,10 +193,9 @@ export async function register(req: Request, res: Response): Promise<Response | 
       return res.status(400).json({ error: 'Email and password required' });
     }
 
-    // Check if user exists
-    const existing = await prisma.user.findUnique({
-      where: { email },
-    });
+    // Check if user exists. Any case, and aliases too — registering an address
+    // that already belongs to someone must not fork them into a second account.
+    const existing = await findUserByEmail(email);
 
     if (existing) {
       return res.status(409).json({ error: 'User already exists' });
@@ -351,9 +348,7 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
     if (!user) {
       // Check if email already exists with different auth
       if (githubUser.email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: githubUser.email },
-        });
+        const existingUser = await findUserByEmail(githubUser.email);
 
         if (existingUser) {
           console.log('[GitHub Auth] Email already exists, linking accounts:', githubUser.email);
@@ -598,9 +593,7 @@ export async function linkedinAuth(req: Request, res: Response): Promise<Respons
     if (!user) {
       // Check if email already exists with different auth
       if (email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-        });
+        const existingUser = await findUserByEmail(email);
 
         if (existingUser) {
           console.log('[LinkedIn Auth] Email already exists, linking accounts:', email);
