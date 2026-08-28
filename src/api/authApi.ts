@@ -340,6 +340,31 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
 
     const githubUser = (await userResponse.json()) as any;
 
+    // /user omits the email when the GitHub account keeps it private. Fall back to
+    // /user/emails (needs the user:email scope) and take the primary verified one —
+    // without an email the id_token/userinfo carry no email claim and relying apps
+    // that key accounts on email (Django allauth, Taiga) can't complete signup.
+    if (!githubUser.email) {
+      try {
+        const emailsResponse = await fetch('https://api.github.com/user/emails', {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        });
+        if (emailsResponse.ok) {
+          const emails = (await emailsResponse.json()) as any[];
+          const chosen =
+            emails.find((e) => e.primary && e.verified) || emails.find((e) => e.verified) || emails[0];
+          if (chosen?.email) githubUser.email = chosen.email;
+        } else {
+          console.warn('[GitHub Auth] /user/emails returned', emailsResponse.status);
+        }
+      } catch (e) {
+        console.error('[GitHub Auth] failed to fetch /user/emails', e);
+      }
+    }
+
     // Find or create user
     let user = await prisma.user.findFirst({
       where: {
@@ -380,6 +405,16 @@ export async function githubAuth(req: Request, res: Response): Promise<Response 
             authProviderId: githubUser.id.toString(),
           },
         });
+      }
+    } else if (!user.email && githubUser.email) {
+      // Account predates the /user/emails fallback and was created without an email.
+      // Backfill it, unless another account already owns that address.
+      const owner = await prisma.user.findUnique({ where: { email: githubUser.email } });
+      if (!owner) {
+        console.log('[GitHub Auth] Backfilling missing email for user', user.id);
+        user = await prisma.user.update({ where: { id: user.id }, data: { email: githubUser.email } });
+      } else {
+        console.log('[GitHub Auth] Cannot backfill, email owned by user', owner.id);
       }
     }
 
