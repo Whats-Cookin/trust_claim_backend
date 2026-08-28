@@ -23,6 +23,30 @@ model User {
   name           String?
   authType       AuthType @default(PASSWORD)
   authProviderId String?
+  emails         UserEmail[]
+}
+
+// Other addresses that are the same person as `User.email`.
+//
+// One human, several inboxes: a work address and a personal one, an old employer
+// and a new one. Without this, signing in with the second address made a second
+// LinkedTrust account, and every app behind LinkedTrust SSO keys off the OIDC
+// `sub` — so the second account arrived at the dash, the CRM and Taiga as a
+// stranger with none of the person's memberships (Michael Metz, IntegralMASS,
+// 2026-08-28).
+//
+// `email` is stored lowercase and is unique across this table, so an address
+// belongs to exactly one person. Sign-in resolves through here; `User.email`
+// stays the primary and is the one address that goes out in OIDC userinfo, so
+// downstream apps keep seeing one stable identity however the person logged in.
+model UserEmail {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 enum AuthType {
