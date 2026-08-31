@@ -90,7 +90,9 @@ export async function clientInfo(req: Request, res: Response): Promise<void> {
 
   let host: string | null = null;
   try {
-    if (client.redirectUris[0]) host = new URL(client.redirectUris[0]).host;
+    // Skip wildcard entries — they have no single host to show.
+    const concrete = client.redirectUris.find((u) => !u.includes('*'));
+    if (concrete) host = new URL(concrete).host;
   } catch {
     /* leave null — the page falls back to the name alone */
   }
@@ -109,7 +111,7 @@ export async function authorize(req: Request, res: Response): Promise<void> {
     res.status(400).json({ error: 'invalid_client', error_description: 'unknown client_id' });
     return;
   }
-  if (!redirect_uri || !client.redirectUris.includes(redirect_uri)) {
+  if (!redirect_uri || !oidc.isRegisteredRedirectUri(client.redirectUris, redirect_uri)) {
     res.status(400).json({ error: 'invalid_request', error_description: 'redirect_uri not registered for this client' });
     return;
   }

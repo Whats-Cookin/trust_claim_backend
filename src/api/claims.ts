@@ -57,8 +57,9 @@ async function getVerifiedClientIssuer(req: Request): Promise<string | null> {
     // (e.g. "workers.vc" -> https://workers.vc), else the redirect URI host.
     const name = (client.name || '').trim();
     if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(name)) return `https://${name}`;
-    if (client.redirectUris?.[0]) {
-      try { return `https://${new URL(client.redirectUris[0]).host}`; } catch { /* ignore */ }
+    const concrete = client.redirectUris?.find((u) => !u.includes('*'));
+    if (concrete) {
+      try { return `https://${new URL(concrete).host}`; } catch { /* ignore */ }
     }
     return null;
   } catch (e) {

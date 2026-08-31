@@ -248,3 +248,48 @@ export function verifyPkce(codeVerifier: string, challenge: string, method?: str
   );
   return hash === challenge;
 }
+
+// ── redirect_uri matching ────────────────────────────────────────────────────
+// Registered redirect URIs match exactly, except that an entry may carry a
+// single `*` inside the leftmost host label — e.g.
+//   https://crm-*.workers.vc/auth_oauth/signin
+// — so one client covers a whole family of per-tenant subdomains without a
+// re-registration for each new tenant.
+//
+// The wildcard is deliberately narrow: it never matches a dot, so it cannot
+// expand across domain levels; it is only allowed in the first host label; that
+// label must still contain a literal part (so a bare `*.workers.vc` opening the
+// whole domain is rejected); the rest of the host must be at least two labels
+// (no `*.vc`); and scheme, port, path and query must match exactly.
+function hostPatternToRegExp(hostPattern: string): RegExp | null {
+  const labels = hostPattern.split('.');
+  if (labels.length < 3) return null; // need wildcard label + at least domain.tld
+  const [first, ...rest] = labels;
+  if (rest.some((l) => l.includes('*'))) return null; // wildcard only in the first label
+  const literal = first.replace(/\*/g, '');
+  if (!first.includes('*') || literal.length === 0) return null;
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const firstRe = first.split('*').map(escape).join('[^.]*');
+  return new RegExp(`^${firstRe}\\.${rest.map(escape).join('\\.')}$`);
+}
+
+export function redirectUriMatches(pattern: string, uri: string): boolean {
+  if (pattern === uri) return true;
+  if (!pattern.includes('*')) return false;
+
+  const split = (s: string) => {
+    const m = /^(https?:\/\/)([^/?#]+)([^#]*)$/i.exec(s);
+    return m ? { scheme: m[1].toLowerCase(), host: m[2].toLowerCase(), rest: m[3] } : null;
+  };
+  const p = split(pattern);
+  const u = split(uri);
+  if (!p || !u) return false;
+  if (p.scheme !== u.scheme || p.rest !== u.rest) return false;
+
+  const re = hostPatternToRegExp(p.host);
+  return re ? re.test(u.host) : false;
+}
+
+export function isRegisteredRedirectUri(registered: string[], uri: string): boolean {
+  return registered.some((pattern) => redirectUriMatches(pattern, uri));
+}
