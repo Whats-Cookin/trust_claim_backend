@@ -381,3 +381,28 @@ model CredentialOffer {
   @@index([credentialId])
   @@map("credential_offers")
 }
+
+// A personal request for a testimonial. The short token in the URL is what the
+// recipient receives, so the invite is stored here rather than encoded in the
+// link: the URL stays short and trustworthy, and the note can be any length.
+model TestimonialRequest {
+  id             Int       @id @default(autoincrement())
+  tokenHash      String    @unique @map("token_hash")
+  subjectUri     String    @map("subject_uri")
+  subjectName    String?   @map("subject_name")
+  recipientName  String?   @map("recipient_name")
+  recipientProfile String? @map("recipient_profile")
+  aspect         String?
+  workSummary    String?   @map("work_summary")
+  suggestions    String?
+  note           String?
+  requesterName  String?   @map("requester_name")
+  createdById    Int?      @map("created_by_id")
+  claimId        Int?      @map("claim_id")
+  respondedAt    DateTime? @map("responded_at")
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([createdById])
+  @@map("testimonial_requests")
+}

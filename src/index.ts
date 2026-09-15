@@ -21,6 +21,8 @@ import * as claimsApi from './api/claims';
 import * as credentialsApi from './api/credentials';
 import * as credentialAdminApi from './api/credentialAdmin';
 import * as credentialOffersApi from './api/credentialOffers';
+import * as testimonialRequestsApi from './api/testimonialRequests';
+import * as myClaimsApi from './api/myClaims';
 import * as graphApi from './api/graph';
 import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
@@ -53,7 +55,11 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      // Recorded video is previewed from a blob: URL and played back from the
+      // storage CDN; without this, default-src blocks both.
+      mediaSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'", "https:"],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resources
@@ -190,6 +196,16 @@ app.post('/api/credentials/admin/create', verifyToken, credentialAdminApi.create
 app.get('/api/credentials/templates', credentialAdminApi.getCredentialTemplates);
 
 // Credential offer (magic link) endpoints - public, token is the auth
+// Testimonial invites. /t/:token is served here (not by nginx's static shell)
+// so the link preview in a DM shows who is asking rather than a bare app title.
+app.get('/t/:token', testimonialRequestsApi.renderInvitePage);
+// Same invite, development copy of the page (see Testimonial/Stable.tsx).
+app.get('/t2/:token', testimonialRequestsApi.renderInvitePage);
+app.post('/api/testimonial-requests', verifyToken, testimonialRequestsApi.createRequest);
+app.get('/api/testimonial-requests/:token', testimonialRequestsApi.getRequest);
+app.get('/api/my/claims', verifyToken, myClaimsApi.getMyClaims);
+app.post('/api/testimonial-requests/:token/responded', testimonialRequestsApi.markResponded);
+
 app.get('/api/credential-offers/:token', credentialOffersApi.getOffer);
 app.post('/api/credential-offers/:token/claim', credentialOffersApi.claimOffer);
 
