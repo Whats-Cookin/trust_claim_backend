@@ -72,8 +72,12 @@ export async function uploadVideo(req: AuthRequest, res: Response): Promise<Resp
     const timestamp = Date.now();
     const userId = req.user?.id || 'anonymous';
 
+    // Safari records mp4, everything else webm; name the file what it is so a
+    // player that goes by extension still gets it right.
+    const ext = (req.file.mimetype || '').includes('mp4') ? 'mp4' : 'webm';
+
     // Create a key that includes user ID for organization
-    const key = `videos/${userId}/${timestamp}_${videoId}.webm`;
+    const key = `videos/${userId}/${timestamp}_${videoId}.${ext}`;
 
     console.log(`Uploading video: ${key} (${req.file.size} bytes)`);
 
