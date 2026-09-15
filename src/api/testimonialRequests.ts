@@ -296,6 +296,7 @@ export async function renderInvitePage(req: Request, res: Response): Promise<any
   let title = 'A request for a few words';
   let description = 'Someone would like your testimonial.';
   let preload = 'null';
+  let firstPaint = '';
 
   try {
     const token = req.params.token || '';
@@ -321,6 +322,24 @@ export async function renderInvitePage(req: Request, res: Response): Promise<any
         ? `About ${about} — ${found.workSummary.trim()}. Takes a minute, no account needed.`
         : `About ${about}. Takes a minute, no account needed.`;
       preload = JSON.stringify(publicView(found)).replace(/</g, '\\u003c');
+
+      // The app bundle is megabytes and the people who open these links are on
+      // phones in someone else's in-app browser. Everything needed for the
+      // first screen is already here; React replaces it when it arrives.
+      const askedBy = found.requesterName?.trim();
+      const aboutName = found.subjectName?.trim() || found.subjectUri.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+      firstPaint = `
+        <div style="max-width:720px;margin:0 auto;padding:28px 22px;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1B2430">
+          <div style="font-size:15px;font-weight:600;margin-bottom:22px">LinkedTrust</div>
+          <h1 style="font-size:24px;font-weight:600;letter-spacing:-0.01em;margin:0 0 10px">
+            ${escapeHtml(askedBy ? `${askedBy} is asking you for a few words` : 'A request for a few words')}
+          </h1>
+          <p style="color:#6B7684;margin:0 0 18px">About ${escapeHtml(aboutName)}.</p>
+          ${found.note?.trim()
+            ? `<blockquote style="border-left:3px solid #00b2e5;margin:0 0 18px;padding:2px 0 2px 16px;font-family:Georgia,serif;white-space:pre-wrap">${escapeHtml(found.note.trim())}</blockquote>`
+            : ''}
+          <p style="color:#6B7684;font-size:14px;margin:0">Loading the form…</p>
+        </div>`;
     }
   } catch (error) {
     console.error('Error rendering invite page:', error);
@@ -345,7 +364,8 @@ export async function renderInvitePage(req: Request, res: Response): Promise<any
 
   const html = shell
     .replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(title)}</title>`)
-    .replace('</head>', `${head}</head>`);
+    .replace('</head>', `${head}</head>`)
+    .replace(/(<div id="root"[^>]*>)/i, `$1${firstPaint}`);
 
   // Every other page of this SPA is served by nginx with no CSP. This route
   // returns the same app from Express, so helmet's API-oriented policy would

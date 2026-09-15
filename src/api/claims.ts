@@ -608,6 +608,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       proof: clientProof,
       issuerId: clientIssuerId,
       issuerIdType: clientIssuerIdType,
+      author, // Display name of whoever wrote it, when there is no account behind it
       images, // Add images field
       videoUrl, // Video testimonial URL (uploaded separately via /api/video/upload)
       subjectEntityType, // Optional hint for subject entity type (PERSON/ORGANIZATION)
@@ -674,6 +675,9 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
       howKnown: howKnown || 'FIRST_HAND',
       confidence: confidence !== undefined ? Number(confidence) : 1.0,
       statement: statement || null,
+      // A name typed by someone with no account. It says who is speaking; it
+      // proves nothing, and it is never used for attribution or authorisation.
+      author: typeof author === 'string' && author.trim() ? author.trim().slice(0, 120) : null,
       aspect: aspect || null,
       stars: stars !== undefined ? Number(stars) : null,
       score: score !== undefined ? Number(score) : null,

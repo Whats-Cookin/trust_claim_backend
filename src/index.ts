@@ -209,13 +209,15 @@ const inviteWriteLimit = rateLimit({
 });
 // Reading an invite is one page load; the ceiling is here to stop token guessing.
 const inviteReadLimit = rateLimit({ name: 'invite-read', max: 120, windowMs: 10 * 60 * 1000 });
+// Same budget, but a person who hits it is looking at a page, not a response body.
+const invitePageLimit = rateLimit({ name: 'invite-read', max: 120, windowMs: 10 * 60 * 1000, html: true });
 
 // Testimonial invites. /t/:token is served here (not by nginx's static shell)
 // so the link preview in a DM shows who is asking rather than a bare app title.
 app.get('/t/:token/preview.png', inviteReadLimit, testimonialRequestsApi.renderInvitePreview);
-app.get('/t/:token', inviteReadLimit, testimonialRequestsApi.renderInvitePage);
+app.get('/t/:token', invitePageLimit, testimonialRequestsApi.renderInvitePage);
 // Same invite, development copy of the page (see Testimonial/Stable.tsx).
-app.get('/t2/:token', inviteReadLimit, testimonialRequestsApi.renderInvitePage);
+app.get('/t2/:token', invitePageLimit, testimonialRequestsApi.renderInvitePage);
 app.post('/api/testimonial-requests', optionalToken, inviteWriteLimit, testimonialRequestsApi.createRequest);
 app.get('/api/testimonial-requests/:token', inviteReadLimit, testimonialRequestsApi.getRequest);
 app.get('/api/my/claims', verifyToken, myClaimsApi.getMyClaims);

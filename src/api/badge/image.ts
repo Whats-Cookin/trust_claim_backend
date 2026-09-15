@@ -119,7 +119,12 @@ async function generateBadgePng(claim: any, images: any[]): Promise<Buffer> {
   const date = claim.effectiveDate
     ? new Date(claim.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : '';
-  const sourceDisplay = claim.sourceURI ? friendlySource(claim.sourceURI) : '';
+  // A name typed by someone with no account beats a bare URL as a byline.
+  const sourceDisplay = claim.author
+    ? truncate(claim.author, 40)
+    : claim.sourceURI
+    ? friendlySource(claim.sourceURI)
+    : '';
 
   // Text Y positions
   let y = PAD + 18;
