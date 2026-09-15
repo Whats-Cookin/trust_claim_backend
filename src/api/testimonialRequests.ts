@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { prisma } from '../lib/prisma';
 import { getVerifiedClient } from '../lib/clientAuth';
 
@@ -169,6 +170,90 @@ export async function markResponded(req: Request, res: Response): Promise<any> {
   }
 }
 
+// The mark from src/api/badge/image.ts, so the card and the badge look related.
+const LOGO_PATH = 'M79.78,391.27c23.36,18,53.18,32.8,81.7,32.38,47-.7,42.88-46,42.3-50.82-26.4-101.56-93.35-130-93.35-130,50,18.26,80.58,57.34,99.3,99.13-1-124.16-72.68-169.32-72.68-169.32,40.22,22.54,63.56,58.14,76.75,96l7.39-147.87,7.39,147.86c13.19-37.86,36.53-73.46,76.75-96,0,0-71.69,45.16-72.68,169.32,18.71-41.79,49.3-80.87,99.3-99.13,0,0-67,28.46-93.35,130-.58,4.81-4.71,50.12,42.3,50.82,28.52.42,58.35-14.39,81.71-32.39A220.7,220.7,0,0,0,442.38,221.2C442.38,99,343.35,0,221.19,0S0,99,0,221.2A220.7,220.7,0,0,0,79.78,391.27Z';
+
+const escapeXml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function wrap(text: string, charsPerLine: number, maxLines: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (test.length > charsPerLine && line) {
+      lines.push(line);
+      line = word;
+      if (lines.length === maxLines) return lines;
+    } else {
+      line = test;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  return lines;
+}
+
+// GET /t/:token/preview.png — the card a chat app shows before anyone taps.
+// A generic logo on an unfamiliar domain reads as review spam; the one thing
+// that makes this look like what it is, is the name of the person asking.
+export async function renderInvitePreview(req: Request, res: Response): Promise<any> {
+  const W = 1200;
+  const H = 630;
+
+  let asker = '';
+  let about = '';
+  try {
+    const token = req.params.token || '';
+    const found =
+      token.length >= 4 && token.length <= 64
+        ? await prisma.testimonialRequest.findUnique({ where: { tokenHash: hashToken(token) } })
+        : null;
+    if (found) {
+      asker = found.requesterName?.trim() || '';
+      about = found.subjectName?.trim() || found.subjectUri.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+    }
+  } catch (error) {
+    console.error('Error rendering invite preview:', error);
+  }
+
+  const headline = asker
+    ? `${asker} is asking you for a few words`
+    : 'Someone is asking you for a few words';
+  const lines = wrap(headline, 30, 3);
+  const sans = '-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="#F5F7FA"/>
+  <rect x="0" y="0" width="${W}" height="10" fill="#00b2e5"/>
+  ${lines
+    .map(
+      (line, i) =>
+        `<text x="90" y="${210 + i * 78}" font-family="${sans}" font-size="64" font-weight="600" fill="#1B2430">${escapeXml(line)}</text>`
+    )
+    .join('\n  ')}
+  ${about ? `<text x="90" y="${232 + lines.length * 78}" font-family="${sans}" font-size="34" fill="#6B7684">about ${escapeXml(about.length > 48 ? about.slice(0, 47) + '…' : about)}</text>` : ''}
+  <text x="90" y="${H - 72}" font-family="${sans}" font-size="28" fill="#6B7684">Takes a minute. No account needed.</text>
+  <g transform="translate(${W - 150}, ${H - 112}) scale(0.13)">
+    <ellipse cx="221.19" cy="221.65" rx="220.57" ry="215.85" fill="#fff"/>
+    <path d="${LOGO_PATH}" fill="#3f2534"/>
+  </g>
+  <text x="${W - 152}" y="${H - 42}" font-family="${sans}" font-size="22" fill="#6B7684">LinkedTrust</text>
+</svg>`;
+
+  try {
+    const png = await sharp(Buffer.from(svg)).png().toBuffer();
+    res.setHeader('Content-Type', 'image/png');
+    // Chat apps cache the card themselves; a day is plenty and keeps a corrected
+    // name from being stuck for a week.
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(png);
+  } catch (error) {
+    console.error('Error rendering invite preview:', error);
+    res.redirect(302, `${SITE}/og-testimonial.png`);
+  }
+}
+
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -227,15 +312,14 @@ export async function renderInvitePage(req: Request, res: Response): Promise<any
       preload = JSON.stringify({ expired: true });
     } else if (found) {
       const who = found.requesterName?.trim();
+      const about = found.subjectName?.trim() || found.subjectUri.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
 
-      title = found.subjectName?.trim()
-        ? `Review requested for ${found.subjectName.trim()}`
-        : 'A request for a few words';
+      // "Review requested for X" is the shape of the review spam everyone
+      // already deletes. Who is asking is the only reason to open this.
+      title = who ? `${who} is asking you for a few words` : 'Someone is asking you for a few words';
       description = found.workSummary?.trim()
-        ? `About ${found.workSummary.trim()}. Takes a minute.`
-        : who
-        ? `${who} would like a few words. Takes a minute.`
-        : 'It takes about a minute.';
+        ? `About ${about} — ${found.workSummary.trim()}. Takes a minute, no account needed.`
+        : `About ${about}. Takes a minute, no account needed.`;
       preload = JSON.stringify(publicView(found)).replace(/</g, '\\u003c');
     }
   } catch (error) {
@@ -247,12 +331,12 @@ export async function renderInvitePage(req: Request, res: Response): Promise<any
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:url" content="${SITE}${escapeHtml(req.originalUrl)}" />
-    <meta property="og:image" content="${SITE}/og-testimonial.png" />
+    <meta property="og:image" content="${SITE}/t/${encodeURIComponent(req.params.token || '')}/preview.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="LinkedTrust" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="${SITE}/og-testimonial.png" />
+    <meta name="twitter:image" content="${SITE}/t/${encodeURIComponent(req.params.token || '')}/preview.png" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <meta name="description" content="${escapeHtml(description)}" />
