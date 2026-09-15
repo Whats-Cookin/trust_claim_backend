@@ -22,6 +22,7 @@ import * as credentialsApi from './api/credentials';
 import * as credentialAdminApi from './api/credentialAdmin';
 import * as credentialOffersApi from './api/credentialOffers';
 import * as testimonialRequestsApi from './api/testimonialRequests';
+import { rateLimit } from './lib/rateLimit';
 import * as myClaimsApi from './api/myClaims';
 import * as graphApi from './api/graph';
 import * as feedApi from './api/feed';
@@ -195,17 +196,31 @@ app.get('/api/credentials/:uri(*)', credentialsApi.getCredential);
 app.post('/api/credentials/admin/create', verifyToken, credentialAdminApi.createCredentialForAssignment);
 app.get('/api/credentials/templates', credentialAdminApi.getCredentialTemplates);
 
-// Credential offer (magic link) endpoints - public, token is the auth
+// A partner site creates every one of its invites from one server address, so
+// its budget is per client rather than per IP.
+const inviteWriteLimit = rateLimit({
+  name: 'invite-write',
+  max: 60,
+  windowMs: 10 * 60 * 1000,
+  key: (req) => (req.headers['x-lt-client-id'] as string | undefined)?.trim()
+    || (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
+    || req.ip
+    || 'unknown'
+});
+// Reading an invite is one page load; the ceiling is here to stop token guessing.
+const inviteReadLimit = rateLimit({ name: 'invite-read', max: 120, windowMs: 10 * 60 * 1000 });
+
 // Testimonial invites. /t/:token is served here (not by nginx's static shell)
 // so the link preview in a DM shows who is asking rather than a bare app title.
-app.get('/t/:token', testimonialRequestsApi.renderInvitePage);
+app.get('/t/:token', inviteReadLimit, testimonialRequestsApi.renderInvitePage);
 // Same invite, development copy of the page (see Testimonial/Stable.tsx).
-app.get('/t2/:token', testimonialRequestsApi.renderInvitePage);
-app.post('/api/testimonial-requests', verifyToken, testimonialRequestsApi.createRequest);
-app.get('/api/testimonial-requests/:token', testimonialRequestsApi.getRequest);
+app.get('/t2/:token', inviteReadLimit, testimonialRequestsApi.renderInvitePage);
+app.post('/api/testimonial-requests', optionalToken, inviteWriteLimit, testimonialRequestsApi.createRequest);
+app.get('/api/testimonial-requests/:token', inviteReadLimit, testimonialRequestsApi.getRequest);
 app.get('/api/my/claims', verifyToken, myClaimsApi.getMyClaims);
-app.post('/api/testimonial-requests/:token/responded', testimonialRequestsApi.markResponded);
+app.post('/api/testimonial-requests/:token/responded', inviteWriteLimit, testimonialRequestsApi.markResponded);
 
+// Credential offer (magic link) endpoints - public, token is the auth
 app.get('/api/credential-offers/:token', credentialOffersApi.getOffer);
 app.post('/api/credential-offers/:token/claim', credentialOffersApi.claimOffer);
 

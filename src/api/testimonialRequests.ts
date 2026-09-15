@@ -3,11 +3,22 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '../lib/prisma';
+import { getVerifiedClient } from '../lib/clientAuth';
 
 // Unambiguous alphabet: no 0/O/1/l/I, so a token survives being read aloud or
 // retyped from a screenshot.
 const ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
 const TOKEN_LENGTH = 7;
+
+// An invite is a write capability for whoever holds the link. Ninety days is
+// long enough for a link that sits unread in an inbox over a holiday, short
+// enough that a forwarded link does not stay live for years.
+const INVITE_TTL_DAYS = 90;
+
+// A response is bound to its invite only if the claim was written within this
+// window of the call. Long enough for a slow video upload, short enough that an
+// old claim by someone else cannot be adopted.
+const RESPONSE_BINDING_WINDOW_MS = 60 * 60 * 1000;
 
 function makeToken(): string {
   const bytes = crypto.randomBytes(TOKEN_LENGTH);
@@ -41,6 +52,14 @@ function publicView(r: any) {
 // POST /api/testimonial-requests — create an invite, return the short link.
 export async function createRequest(req: Request, res: Response): Promise<any> {
   try {
+    const userId = Number.isFinite(Number((req as any).user?.id)) ? Number((req as any).user.id) : null;
+    // A partner site (act, workers.vc) creates invites from its own page with
+    // its client key, so the volunteer never leaves that page to sign in here.
+    const client = userId ? null : await getVerifiedClient(req);
+    if (userId === null && !client) {
+      return res.status(401).json({ error: 'Sign in, or send client credentials' });
+    }
+
     const {
       subjectUri,
       subjectName,
@@ -73,9 +92,9 @@ export async function createRequest(req: Request, res: Response): Promise<any> {
             suggestions: suggestions?.trim() || null,
             note: note?.trim() || null,
             requesterName: requesterName?.trim() || null,
-            createdById: Number.isFinite(Number((req as any).user?.id))
-              ? Number((req as any).user.id)
-              : null
+            requesterUri: client?.issuerUri || null,
+            createdById: userId,
+            expiresAt: new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000)
           }
         });
         return res.json({ token, url: `${SITE}/t/${token}`, id: created.id });
@@ -118,6 +137,26 @@ export async function markResponded(req: Request, res: Response): Promise<any> {
 
     const found = await prisma.testimonialRequest.findUnique({ where: { tokenHash: hashToken(token) } });
     if (!found) return res.status(404).json({ error: 'Not found' });
+
+    // Holding the link lets you answer it; it must not let you pin someone
+    // else's words to this invite. The claim has to be about what was asked
+    // about, and it has to have just been written.
+    const claim = await prisma.claim.findUnique({
+      where: { id: claimId },
+      select: { subject: true, createdAt: true }
+    });
+    if (!claim || claim.subject !== found.subjectUri) {
+      return res.status(400).json({ error: 'That claim is not a response to this request' });
+    }
+    if (Date.now() - new Date(claim.createdAt).getTime() > RESPONSE_BINDING_WINDOW_MS) {
+      return res.status(400).json({ error: 'That claim is not a response to this request' });
+    }
+
+    const takenBy = await prisma.testimonialRequest.findFirst({
+      where: { claimId, NOT: { id: found.id } },
+      select: { id: true }
+    });
+    if (takenBy) return res.status(409).json({ error: 'That claim already answers another request' });
 
     await prisma.testimonialRequest.update({
       where: { id: found.id },

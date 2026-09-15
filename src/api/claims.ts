@@ -7,10 +7,10 @@ import { AtprotoPublisher } from '../services/atprotoPublisher';
 import { signClaimWithServerKey } from '../lib/crypto';
 import { isValidUri, userIdToUri } from '../lib/validators';
 import { findLinkedSubjects } from './identity';
+import { getVerifiedClientIssuer } from '../lib/clientAuth';
 // File system imports removed - images now stored in database
 import crypto from 'crypto';
 import AWS from 'aws-sdk';
-import bcrypt from 'bcryptjs';
 
 // S3-compatible (Backblaze B2) client for image uploads — mirrors src/api/video/upload.ts
 // so images land in the same bucket as videos instead of being inlined into the DB.
@@ -41,32 +41,6 @@ const IMAGE_EXT: Record<string, string> = {
   'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/avif': 'avif'
 };
 
-// Low-friction service attribution: a registered OIDC client (e.g. workers.vc) can
-// authenticate server-to-server with its client_id + client_secret via headers, and
-// its claims get issuerId = the client's own URI. No user login required. Returns the
-// client's issuer URI if the credentials are valid, else null.
-async function getVerifiedClientIssuer(req: Request): Promise<string | null> {
-  const clientId = (req.headers['x-lt-client-id'] as string | undefined)?.trim();
-  const clientSecret = (req.headers['x-lt-client-secret'] as string | undefined)?.trim();
-  if (!clientId || !clientSecret) return null;
-  try {
-    const client = await prisma.oidcClient.findUnique({ where: { clientId } });
-    if (!client || !client.clientSecret) return null;
-    if (!(await bcrypt.compare(clientSecret, client.clientSecret))) return null;
-    // Derive a stable issuer URI: prefer the client name when it's a bare domain
-    // (e.g. "workers.vc" -> https://workers.vc), else the redirect URI host.
-    const name = (client.name || '').trim();
-    if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(name)) return `https://${name}`;
-    const concrete = client.redirectUris?.find((u) => !u.includes('*'));
-    if (concrete) {
-      try { return `https://${new URL(concrete).host}`; } catch { /* ignore */ }
-    }
-    return null;
-  } catch (e) {
-    console.warn('getVerifiedClientIssuer error:', e instanceof Error ? e.message : e);
-    return null;
-  }
-}
 
 /**
  * Format an image/video record for API response.

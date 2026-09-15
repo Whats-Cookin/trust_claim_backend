@@ -397,6 +397,8 @@ model TestimonialRequest {
   suggestions    String?
   note           String?
   requesterName  String?   @map("requester_name")
+  // Set when a partner site created the invite with its client key.
+  requesterUri   String?   @map("requester_uri")
   createdById    Int?      @map("created_by_id")
   claimId        Int?      @map("claim_id")
   respondedAt    DateTime? @map("responded_at")
@@ -404,5 +406,6 @@ model TestimonialRequest {
   createdAt      DateTime  @default(now()) @map("created_at")
 
   @@index([createdById])
+  @@index([claimId])
   @@map("testimonial_requests")
 }
