@@ -466,10 +466,21 @@ function validateRequestBody(body: any): { isValid: boolean; errors: string[]; v
 }
 
 
+// Credentials must not reach the log file. A client's secret arrives on every
+// server-to-server claim post, and the log is world-readable and unrotated.
+const SECRET_HEADERS = ['x-lt-client-secret', 'authorization', 'cookie', 'x-api-key'];
+function redactSecrets(headers: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = { ...headers };
+  for (const h of SECRET_HEADERS) {
+    if (out[h]) out[h] = '[redacted]';
+  }
+  return out;
+}
+
 // Simple claim creation
 export async function createClaim(req: AuthRequest, res: Response): Promise<Response | void> {
   console.log('=== POST /api/claims - Request received ===');
-  console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Request headers:', JSON.stringify(redactSecrets(req.headers), null, 2));
   console.log('Request body summary:', {
     hasBody: !!req.body,
     bodyKeys: req.body ? Object.keys(req.body) : [],
