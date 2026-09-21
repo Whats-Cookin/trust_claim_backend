@@ -47,7 +47,12 @@ export const videoUploadMiddleware = multer({
     if (file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only video files are allowed'));
+      // Say what was actually sent. A Blob built without a type arrives as
+      // application/octet-stream, and the old message gave no way to tell.
+      console.error(
+        `Video upload rejected: content-type "${file.mimetype}", field "${file.fieldname}", filename "${file.originalname}"`
+      );
+      cb(new Error(`Only video files are allowed (received content-type: ${file.mimetype})`));
     }
   }
 }).single('video');
