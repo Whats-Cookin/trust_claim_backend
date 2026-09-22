@@ -604,6 +604,7 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
 
     const {
       name,
+      subjectName,
       subject,
       claim,
       object,
@@ -1068,7 +1069,12 @@ export async function createClaim(req: AuthRequest, res: Response): Promise<Resp
     console.log('Starting background processes...');
 
     // Detect entities in the background
-    await EntityDetector.processClaimEntities(newClaim, name);
+    // "name" in a claim body is who signed it, not what it is about. A client
+    // that genuinely knows the subject's name sends subjectName.
+    await EntityDetector.processClaimEntities(newClaim, {
+      sourceName: name,
+      subjectName: subjectName ?? null,
+    });
 
 // Still fine to run the heavy pipeline in background
      PipelineTrigger.processClaim(newClaim.id, subjectEntityType).catch(console.error);

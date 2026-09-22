@@ -144,7 +144,8 @@ export async function claimOffer(req: Request, res: Response): Promise<Response 
       }
     });
 
-    await EntityDetector.processClaimEntities(newClaim, offer.recipientName);
+    // On a credential offer the recipient IS the subject, so the name names it.
+    await EntityDetector.processClaimEntities(newClaim, { subjectName: offer.recipientName });
     PipelineTrigger.processClaim(newClaim.id, 'PERSON').catch(console.error);
 
     res.json({
