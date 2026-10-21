@@ -44,7 +44,14 @@ export const videoUploadMiddleware = multer({
   storage,
   limits: { fileSize: MAX_VIDEO_SIZE },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('video/')) {
+    // Browsers lie about the type of a recorded Blob — Chrome sends text/plain,
+    // others application/octet-stream — so a video extension counts as well.
+    const looksLikeVideo = /\.(webm|mp4|m4v|mov|ogv|avi|mkv)$/i.test(file.originalname || '');
+    const genericType = ['application/octet-stream', 'text/plain', 'binary/octet-stream', ''].includes(
+      file.mimetype
+    );
+
+    if (file.mimetype.startsWith('video/') || (looksLikeVideo && genericType)) {
       cb(null, true);
     } else {
       // Say what was actually sent. A Blob built without a type arrives as

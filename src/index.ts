@@ -29,6 +29,8 @@ import * as feedApi from './api/feed';
 import * as reportApi from './api/report';
 import * as authApi from './api/authApi';
 import * as oidcApi from './api/oidcApi';
+import * as internalOidcApi from './api/internalOidcApi';
+import { internalOnly } from './lib/internalOnly';
 import * as imagesApi from './api/images';
 import * as identityApi from './api/identity';
 import * as legacyClaimsApi from './api/legacyClaims';
@@ -153,6 +155,14 @@ app.get('/oauth/userinfo', oidcApi.userinfo);
 app.get('/oauth/client/:clientId', oidcApi.clientInfo);
 app.post('/oauth/session', oidcApi.session);
 app.post('/oauth/bind-invite', oidcApi.bindInvite);
+
+// Internal API — our other VMs only (LAN source + x-lt-internal-key), never
+// reachable through the public front proxy. See src/lib/internalOnly.ts.
+app.get('/internal/oidc/clients', internalOnly, internalOidcApi.listClients);
+app.post('/internal/oidc/clients', internalOnly, internalOidcApi.createClient);
+app.patch('/internal/oidc/clients/:clientId', internalOnly, internalOidcApi.updateClient);
+app.post('/internal/oidc/clients/:clientId/rotate-secret', internalOnly, internalOidcApi.rotateSecret);
+app.delete('/internal/oidc/clients/:clientId', internalOnly, internalOidcApi.deleteClient);
 
 // LinkedIn verification endpoints
 app.post('/api/linkedin/verify-profile', verifyLinkedInProfile);
